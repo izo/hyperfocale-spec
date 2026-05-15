@@ -10,7 +10,7 @@
 
 | Implémentation | Dépôt | Rôle | Conformité |
 |----------------|-------|------|------------|
-| Plugin Astro `@izo/hyperfocale` | https://github.com/izo/hyperfocale-astro-plugins | Adaptateur Astro (couche 2) | ⚠️ Partielle |
+| Plugin Astro `@izo/hyperfocale` | https://github.com/izo/hyperfocale-astro-plugins | Adaptateur Astro (couche 2) | ✅ Conforme |
 | Site `mathieu-drouet.com` | https://github.com/izo/mathieu-drouet.com | Consommateur grandeur nature (Astro) | ⚠️ Migration v2.1 prévue |
 | Exporter Lightroom | https://github.com/izo/hyperfocale-exporter-app | Source de contenu : LR → format Hyperfocale | ✅ Conforme |
 
@@ -148,9 +148,9 @@ Toute implémentation (adaptateur, script, outil) qui lit du contenu Hyperfocale
 
 Section informative — un audit de conformité des implémentations connues, mis à jour à chaque révision majeure de la spec.
 
-### Plugin Astro `@izo/hyperfocale` (v0.2.0)
+### Plugin Astro `@izo/hyperfocale` (v0.3.0)
 
-**Conformité** : ⚠️ Partielle (~60 % du contrat).
+**Conformité** : ✅ Conforme.
 
 | Obligation | Statut | Note |
 |------------|--------|------|
@@ -158,9 +158,10 @@ Section informative — un audit de conformité des implémentations connues, mi
 | `title` + `date` requis | ⚠️ | `dateRequired` est configurable via preset (par défaut conforme) |
 | `description`, `cover`, `location` | ✅ | Tous optionnels, présents |
 | `draft` respecté | ✅ | |
-| `lang` lu | ❌ | Pas dans le schéma Zod |
-| Bloc `iptc.*` | ❌ | Passthrough non implémenté |
-| Mode distant (`images[]`) | ❌ | Pas implémenté |
+| `lang` lu | ✅ | Ajouté au schéma Zod (v0.3.0) |
+| Bloc `iptc.*` | ✅ | Bloc structuré + `passthrough()` pour `iptc.custom.*` (v0.3.0) |
+| Mode distant (`images[]`) | ✅ | `getSeriesImages()` détecte `images[]` ; SeriesGallery/Lightbox gèrent les URLs distantes (v0.3.0) |
+| Passthrough racine (champs inconnus) | ✅ | `.passthrough()` racine — les extensions site-spécifiques ne sont jamais rejetées (v0.3.0) |
 | Tri date desc | ✅ | |
 
 **Extensions au-delà du contrat** :
