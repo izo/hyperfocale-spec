@@ -1,29 +1,35 @@
 # Spécification — Format de contenu Hyperfocale
 
-> Format universel pour sites et applications de photographie. Définit un standard de gestion de **séries photo** portable entre SSG (Astro, Next.js, Hugo, 11ty...), vaults Obsidian, et CMS headless (Strapi, Sanity, Payload...).
+> **Source de vérité canonique.** Ce document définit le format Hyperfocale — un standard de gestion de **séries photo** portable entre SSG (Astro, Next.js, Hugo, 11ty...), vaults Obsidian, et CMS headless (Strapi, Sanity, Payload...). Toute évolution du format doit être proposée d'abord ici, dans ce dépôt.
 
-**Version** : 2.0-draft
-**Statut** : spécification en cours
+**Version** : 2.1-draft
+**Statut** : spécification active — source de vérité canonique
+**Dernière révision** : 2026-05-15
 
 ### Implémentations de référence
 
-| Implémentation | Dépôt | Rôle |
-|---------------|-------|------|
-| Plugin Astro | https://github.com/izo/hyperfocale-astro-plugins | Adaptateur Astro (couche 2) |
-| Exporter Lightroom | https://github.com/izo/hyperfocale-exporter-app | Source de contenu : LR → format Hyperfocale |
+| Implémentation | Dépôt | Rôle | Conformité |
+|----------------|-------|------|------------|
+| Plugin Astro `@izo/hyperfocale` | https://github.com/izo/hyperfocale-astro-plugins | Adaptateur Astro (couche 2) | ⚠️ Partielle |
+| Site `mathieu-drouet.com` | https://github.com/izo/mathieu-drouet.com | Consommateur grandeur nature (Astro) | ⚠️ Migration v2.1 prévue |
+| Exporter Lightroom | https://github.com/izo/hyperfocale-exporter-app | Source de contenu : LR → format Hyperfocale | ✅ Conforme |
+
+Le détail de conformité par implémentation est en **§0.5 — État des implémentations**.
 
 ---
 
 ## Table des matières
 
-0. [Spec générique — qu'est-ce qu'un contenu Hyperfocale ?](#0--spec-générique--quest-ce-quun-contenu-hyperfocale-)
-1. [Philosophie](#philosophie)
-2. [Architecture en couches](#architecture-en-couches)
-3. [Couche 1 — Format de contenu](#couche-1--format-de-contenu)
-4. [Couche 2 — Adaptateurs plateforme](#couche-2--adaptateurs-plateforme)
+0. [[#0 — Spec générique : qu'est-ce qu'un contenu Hyperfocale ?|Spec générique — qu'est-ce qu'un contenu Hyperfocale ?]]
+0.5. [[#0.5 — État des implémentations de référence|État des implémentations de référence]]
+1. [[#Philosophie]]
+2. [[#Architecture en couches]]
+3. [[#Couche 1 — Format de contenu]]
+4. [[#Couche 2 — Adaptateurs plateforme]]
    - 2.1 Astro · 2.2 Next.js · 2.3 Hugo · 2.4 11ty · 2.5 Obsidian · 2.6 CMS headless · 2.7 Exporter Lightroom
-5. [Couche 3 — Composants UI](#couche-3--composants-ui)
-6. [Annexes](#annexes)
+5. [[#Couche 3 — Composants UI]]
+6. [[#Annexes]]
+7. [[#Changelog]]
 
 ---
 
@@ -138,6 +144,72 @@ Toute implémentation (adaptateur, script, outil) qui lit du contenu Hyperfocale
 
 ---
 
+## 0.5 — État des implémentations de référence
+
+Section informative — un audit de conformité des implémentations connues, mis à jour à chaque révision majeure de la spec.
+
+### Plugin Astro `@izo/hyperfocale` (v0.2.0)
+
+**Conformité** : ⚠️ Partielle (~60 % du contrat).
+
+| Obligation | Statut | Note |
+|------------|--------|------|
+| Slug regex | ✅ | Enforced par Astro |
+| `title` + `date` requis | ⚠️ | `dateRequired` est configurable via preset (par défaut conforme) |
+| `description`, `cover`, `location` | ✅ | Tous optionnels, présents |
+| `draft` respecté | ✅ | |
+| `lang` lu | ❌ | Pas dans le schéma Zod |
+| Bloc `iptc.*` | ❌ | Passthrough non implémenté |
+| Mode distant (`images[]`) | ❌ | Pas implémenté |
+| Tri date desc | ✅ | |
+
+**Extensions au-delà du contrat** :
+- `featured: boolean` (boost ranking) — pattern utile, officialisé en §1.3 v2.1
+- `tags: string[]` — pattern utile, officialisé en §1.3 v2.1
+- `published: boolean` — redondant avec `draft`, à arbitrer
+- Presets de domaine (`series`, `recipe`, `brands`, `products`, etc.) — officialisé en §2.0.1 v2.1
+- Module virtuel Vite `virtual:hyperfocale/collection` — pattern d'implémentation Astro 6
+
+### Site `mathieu-drouet.com`
+
+**Conformité** : ⚠️ Migration v2.1 prévue.
+
+| Obligation | Statut | Note |
+|------------|--------|------|
+| Slug regex | ✅ | |
+| `title` + `date` requis | ✅ | |
+| Dossier `media/` | ❌ | Utilise `images/` (252 séries) — divergence historique |
+| Champ `description` | ❌ | Utilise `intro` (requis) — divergence historique |
+| `draft` respecté | ✅ | |
+| Bloc `iptc.*` | ❌ | Métadonnées IPTC ignorées (perdues à l'ingestion) |
+| Tri date desc | ✅ | |
+
+**Plan de migration** documenté dans `mathieu-drouet.com/docs/migration-spec-v2.1.md`. La spec reste autoritative : `media/` et `description` sont les noms canoniques.
+
+**Extensions strictement site-spécifiques (hors spec)** :
+- `private` + `password_hash` — séries protégées par mot de passe
+- `featured` — officialisé en spec v2.1
+- `tags` — officialisé en spec v2.1
+- `artist`, `bio_source`, `genres` — pipeline de génération de bios via LLM
+- Routage par collection (`series`, `series_fr`, `projects_*`, `store_*`) — pattern i18n documenté en Annexe F stratégie 3
+- Champs e-commerce (`price`, `paage_url`, `source_url`, `format`, `edition`, `available`) — strictement hors spec
+
+### Exporter Lightroom (SwiftUI + Tauri, v0.1.0)
+
+**Conformité** : ✅ Conforme (~95 %).
+
+| Obligation | Statut | Note |
+|------------|--------|------|
+| Dossier `media/` | ✅ | Les deux impls |
+| Slug regex | ⚠️ | Slug pur côté output ; le format legacy `hyperfocale-{year}-{slug}-{seq}` est l'ID de session, pas le slug de dossier |
+| Frontmatter core | ✅ | |
+| Bloc `iptc.*` | ✅ | Mapping complet depuis le catalogue Lightroom |
+| Dual naming mode | ✅ | `original` ou `sequential` (01.jpg, 02.jpg...) — officialisé en §2.7 v2.1 |
+| Tri images | ⚠️ | Tri Lightroom (`customSortOrder, captureTime`), pas alphabétique — divergence intentionnelle préservant l'ordre éditorial |
+| Bloc `translations:` | ⚠️ | Implémenté côté SwiftUI uniquement — divergence Tauri ↔ SwiftUI à résoudre, pattern officialisé en §2.7 v2.1 |
+
+---
+
 ## Philosophie
 
 ### Principes fondateurs
@@ -218,7 +290,7 @@ Chaque série est **autonome** : toutes ses données (métadonnées + médias) v
 
 #### Variante : médias externes
 
-Pour les CMS headless ou les CDN, les images peuvent être des URLs dans le frontmatter plutôt que des fichiers locaux. Voir [1.5 — Mode distant](#15--mode-distant).
+Pour les CMS headless ou les CDN, les images peuvent être des URLs dans le frontmatter plutôt que des fichiers locaux. Voir [[#1.5 — Mode distant]].
 
 ### 1.3 — Frontmatter
 
@@ -240,6 +312,10 @@ Le frontmatter est en YAML, délimité par `---`. Il se divise en deux niveaux :
 |-------|------|--------|-------------|
 | `draft` | `boolean` | non | `true` = série masquée en production. Défaut : `false`. |
 | `lang` | `string` | non | Code langue ISO 639-1 (`fr`, `en`...). Pour les sites multilingues. |
+| `featured` | `boolean` | non | `true` = série mise en avant (boost dans les listings, sections "à la une"). Défaut : `false`. *Officialisé en v2.1 à partir du pattern observé dans plusieurs implémentations.* |
+| `tags` | `string[]` | non | Tags éditoriaux libres. **Distincts** de `iptc.keywords` (qui suit le vocabulaire IPTC normalisé). Voir note ci-dessous. *Officialisé en v2.1.* |
+
+> **Relation `tags` ↔ `iptc.keywords`** : `tags` est un vocabulaire éditorial libre, géré par l'auteur (ex : `featured`, `portrait`, `intimite`). `iptc.keywords` suit le standard IPTC et peut être peuplé automatiquement depuis les métadonnées image (ex : depuis Lightroom). Les deux peuvent coexister. Les adaptateurs DEVRAIENT permettre la recherche par les deux.
 
 #### Extension IPTC
 
@@ -438,6 +514,34 @@ Tout adaptateur **PEUT** :
 | Ajouter des routes | Pages de tags, flux RSS, sitemap, API JSON |
 | Enrichir les métadonnées | Extraire EXIF des images, géocoder, etc. |
 | Proposer un thème | CSS, tokens, design system — hors périmètre de la spec |
+| Exposer des presets de domaine | Voir §2.0.1 ci-dessous |
+
+### 2.0.1 — Presets de domaine *(officialisé v2.1)*
+
+Un adaptateur PEUT exposer un système de **presets de domaine** permettant de pré-configurer la collection selon l'usage (galerie photo classique, recettes, fiches produits, line-up de festival, etc.) sans dupliquer la configuration manuellement.
+
+Exemple (plugin Astro `@izo/hyperfocale`) :
+
+```ts
+hyperfocale({ preset: 'series' })   // séries photo, prefix /series, date requise
+hyperfocale({ preset: 'recipe' })   // recettes, prefix /recipes, date optionnelle
+hyperfocale({ preset: 'brands' })   // fiches marque, prefix /brands
+```
+
+#### Contraintes des presets
+
+Tout preset DOIT respecter le contrat d'adaptateur §2.0. Un preset PEUT modifier :
+- Le nom de la collection (`collectionName`)
+- Le préfixe d'URL (`prefix`)
+- La conditionnalité de certains champs (ex : `dateRequired: false` pour les recettes intemporelles)
+- Le vocabulaire d'extension affiché à l'utilisateur
+
+Un preset NE DOIT PAS :
+- Modifier le slug regex
+- Supprimer les obligations du contrat d'adaptateur
+- Renommer les champs core (`title`, `date`, `description`, `cover`, etc.)
+
+L'ajout de nouveaux presets standardisés se discute par PR contre cette spec, dans une future Annexe G.
 
 ### 2.1 — Adaptateur Astro
 
@@ -845,6 +949,54 @@ L'exporter lit les métadonnées du catalogue Lightroom et les inscrit dans le f
 | **Écraser** | Si la série existe déjà : écraser, fusionner, ou erreur |
 | **Body** | Texte libre injecté dans le body Markdown |
 
+#### Dual naming mode des images *(officialisé v2.1)*
+
+L'exporter Lightroom supporte deux modes de nommage des fichiers exportés dans `media/`, au choix de l'utilisateur à l'export :
+
+| Mode | Description | Tri |
+|------|-------------|-----|
+| `sequential` | Renomme en `01.jpg`, `02.jpg`... avec padding configurable (2 chiffres < 100 photos, 3 chiffres ≥ 100) | Ordre Lightroom (`customSortOrder, captureTime`) |
+| `original` | Préserve le nom de fichier original du catalogue Lightroom | Ordre alphabétique (conforme à la règle générale §1.6) |
+
+Les deux modes produisent un format valide. Le mode `sequential` est recommandé pour préserver l'ordre éditorial défini dans Lightroom.
+
+#### Bloc `translations:` — i18n par série *(officialisé v2.1)*
+
+Pour les séries multilingues sans recourir à des collections séparées (cf. Annexe F stratégie 3), l'exporter peut générer un bloc `translations:` dans le frontmatter :
+
+```yaml
+---
+title: "Bretagne 2024"
+date: 2024-06-15
+description: "Côtes sauvages du Finistère"
+lang: fr
+
+translations:
+  en:
+    title: "Brittany 2024"
+    description: "Wild coasts of Finistère"
+  es:
+    title: "Bretaña 2024"
+    description: "Costas salvajes de Finistère"
+  ja:
+    title: "ブルターニュ 2024"
+    description: "フィニステールの野生の海岸"
+---
+```
+
+##### Règles du bloc `translations:`
+
+| Règle | Description |
+|-------|-------------|
+| Structure | `translations.<lang>.<champ>` — `<lang>` est un code ISO 639-1 |
+| Champs traduisibles | `title`, `description`, `location` (les autres champs ne sont pas traduisibles) |
+| Fallback | Si la locale demandée n'est pas dans `translations`, l'adaptateur DOIT renvoyer la version dans le champ racine (canonique selon `lang`) |
+| `keywords` | Les `tags` éditoriaux ne sont **pas** dans `translations` (vocabulaire stable). Les `iptc.keywords` peuvent l'être si pertinent (sous `iptc.keywords` racine, plus rarement traduits) |
+
+##### Implémentation des adaptateurs
+
+Tout adaptateur **PEUT** lire `translations` — c'est une extension optionnelle. Un adaptateur qui ne l'implémente pas DOIT ignorer le bloc sans erreur (passthrough). La stratégie 3 de l'Annexe F (collections séparées par locale) est une alternative équivalente — choisir l'une OU l'autre par projet, pas les deux.
+
 #### Fichiers générés
 
 Pour une collection LR "Bretagne 2024" exportée vers `./content/series/` :
@@ -1052,7 +1204,7 @@ Les adaptateurs web DEVRAIENT exposer un flux de syndication :
 
 ### F — Internationalisation
 
-Pour les sites multilingues, deux stratégies sont supportées :
+Pour les sites multilingues, trois stratégies sont supportées. Chaque projet choisit **une** stratégie et s'y tient — pas de mélange dans un même projet.
 
 **Stratégie 1 — Préfixe de langue dans le chemin** :
 ```
@@ -1060,10 +1212,73 @@ content/series/fr/bretagne-2024/index.md
 content/series/en/brittany-2024/index.md
 ```
 
-**Stratégie 2 — Champ `lang` + même slug** :
+Slug peut différer entre locales (`bretagne-2024` ↔ `brittany-2024`). Sitemap et hreflang à gérer manuellement.
+
+**Stratégie 2 — Fichier `index.<lang>.md` dans le même dossier** :
 ```
-content/series/bretagne-2024/index.md      (lang: fr)
-content/series/bretagne-2024/index.en.md   (lang: en)
+content/series/bretagne-2024/
+├── index.md         (lang: fr — défaut)
+├── index.en.md      (lang: en)
+└── media/
 ```
 
-La stratégie dépend de la plateforme. L'adaptateur documente laquelle il supporte.
+Slug commun, médias partagés, traductions côte à côte. Idéal quand la photo est la même mais le texte change.
+
+**Stratégie 3 — Collections séparées par locale** *(officialisée v2.1)* :
+```
+content/series/<slug>/         (collection canonique)
+content/series_fr/<slug>/      (collection FR)
+content/series_es/<slug>/      (collection ES)
+content/store/<slug>/
+content/store_fr/<slug>/
+```
+
+Chaque locale est une collection à part avec son propre loader. Permet des slugs traduits indépendants, des hierarchies de routage distinctes (`/archives/...` en EN, `/fr/archives/...` en FR), et un travail i18n en parallèle sans collision. Adapté aux gros corpus multilingues (cf. mathieu-drouet.com avec 5 locales).
+
+**Stratégie 4 — Bloc `translations:` dans le frontmatter** :
+
+Documentée en §2.7 (Dual naming mode et bloc `translations:`). Utile quand l'exporter Lightroom est la source de contenu et qu'on veut un seul fichier par série multilingue.
+
+#### Quelle stratégie choisir ?
+
+| Cas | Stratégie recommandée |
+|-----|----------------------|
+| Site monolingue avec quelques traductions ponctuelles | 2 |
+| Site bilingue équilibré, contenu très synchronisé | 2 ou 4 |
+| Site multilingue (3+ locales), routage différencié, gros corpus | 3 |
+| Slugs distincts par locale, séparation forte des contenus | 1 |
+| Pipeline LR → site direct avec traductions automatisées | 4 |
+
+L'adaptateur DOIT documenter quelle(s) stratégie(s) il supporte. Un adaptateur PEUT en supporter plusieurs (le plugin Astro `@izo/hyperfocale` supporte 2 et 3).
+
+---
+
+## Changelog
+
+### 2.1-draft — 2026-05-15
+
+Première révision normative après audit de conformité des implémentations de référence (plugin Astro, site mathieu-drouet.com, exporter Lightroom SwiftUI + Tauri).
+
+**Ajouts** :
+- §0.5 — État des implémentations de référence (tableau de conformité)
+- §1.3 — Champs `featured` et `tags` (officialisation de patterns observés)
+- §1.3 — Clarification de la relation `tags` ↔ `iptc.keywords`
+- §2.0.1 — Presets de domaine (officialisation du pattern Astro)
+- §2.7 — Dual naming mode des images (`sequential` vs `original`)
+- §2.7 — Bloc `translations:` pour i18n par série
+- Annexe F — Stratégie 3 (collections séparées par locale)
+- Annexe F — Stratégie 4 (bloc `translations:` dans frontmatter)
+- Annexe F — Tableau d'aide au choix de stratégie i18n
+
+**Décisions normatives** :
+- Le nom canonique du dossier d'images reste `media/` (et non `images/`). Le site `mathieu-drouet.com` utilise `images/` par héritage historique — un plan de migration est documenté dans son propre dépôt (`docs/migration-spec-v2.1.md`).
+- Le nom canonique du champ texte d'introduction reste `description` (et non `intro`). Même remarque que ci-dessus.
+- Les implémentations qui divergent restent fonctionnelles, mais la cible de convergence est cette spec.
+
+**Suppression des copies internes** :
+- `hyperfocale-astro-plugins/spec-hyperfocale.md` (copie partielle, masquait des omissions) — remplacée par une note pointant vers cette spec.
+- `Recipes-hyperfocale/spec-hyperfocale.md` (copie obsolète) — remplacée par une note pointant vers cette spec. La variante recettes vit dans `Recipes-hyperfocale/docs/spec-hyperfocale-v2.md` (extension projet, hors source canonique).
+
+### 2.0-draft — antérieur à 2026-05-15
+
+Première rédaction de la spec multi-plateforme (Astro, Next.js, Hugo, 11ty, Obsidian, CMS headless, Exporter Lightroom). Architecture en trois couches (format, adaptateurs, composants UI).

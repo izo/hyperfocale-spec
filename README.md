@@ -1,6 +1,8 @@
 # hyperfocale-spec
 
-Spécification du format de contenu Hyperfocale — standard ouvert pour la gestion de séries photo, portable entre tous les outils.
+**Source de vérité canonique** du format Hyperfocale — standard ouvert pour la gestion de séries photo, portable entre tous les outils.
+
+> Toute évolution du format passe d'abord par une PR contre ce dépôt. Les implémentations (plugin Astro, site mathieu-drouet.com, exporter Lightroom, projet Recipes) suivent cette spec — elles ne la précèdent pas.
 
 ## Qu'est-ce que le format Hyperfocale ?
 
@@ -55,4 +57,4 @@ La spec est organisée en trois couches :
 
 ## Statut
 
-`v2.0-draft` — spécification en cours.
+`v2.1-draft` — spécification active, source de vérité canonique. Voir le **Changelog** en fin de `spec-hyperfocale.md` pour l'historique des révisions.
