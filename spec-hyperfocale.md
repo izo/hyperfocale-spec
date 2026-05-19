@@ -486,6 +486,86 @@ Pour n'importe quelle plateforme, la procédure est :
 3. Ajouter les photos dans `media/`
 4. La série apparaît automatiquement (après build ou refresh selon la plateforme)
 
+### 1.8 — Séries imbriquées (conteneur)
+
+Une **série conteneur** est une série dont le dossier contient, en plus de son `index.md` et de son `media/`, d'autres dossiers de séries. Elle se comporte comme une série normale (frontmatter + body + galerie propre éventuelle), mais elle **regroupe** un ensemble de sous-séries liées sur un plan éditorial.
+
+Cas d'usage typiques :
+
+- **Festival → performances** : un festival regroupe les séries photo de chaque artiste / set qui y a joué.
+- **Évènement multi-temps** : un mariage ou une exposition se décompose en plusieurs moments distincts, chacun méritant sa propre série.
+- **Reportage chapitré** : un sujet long déroulé en plusieurs séries indépendantes mais liées.
+
+#### Structure filesystem
+
+```
+<content-root>/series/<slug-conteneur>/
+├── index.md                  ← série conteneur (frontmatter + body)
+├── media/                    ← optionnel : photos propres au conteneur (équipe, lieu vide, etc.)
+├── <sous-slug-1>/
+│   ├── index.md
+│   └── media/
+├── <sous-slug-2>/
+│   ├── index.md
+│   └── media/
+└── ...
+```
+
+#### Règles
+
+| Élément | Contrainte |
+|---------|-----------|
+| `index.md` du conteneur | Obligatoire. Mêmes règles que pour une série standard (`title`, `date` requis). |
+| `media/` du conteneur | **Optionnel**. Si absent, le conteneur n'a pas de galerie propre — il sert uniquement de point d'entrée vers ses sous-séries. |
+| Sous-séries | Chacune est une série complète et autonome (au sens des §1.1–1.6). Une sous-série ne peut **pas** elle-même contenir des sous-séries (pas de récursion au-delà d'un niveau). |
+| `<slug-conteneur>` et `<sous-slug>` | Suivent les mêmes règles de slug que §1.2. Le slug d'une sous-série est local : il n'a pas besoin d'inclure le slug du conteneur. |
+| Tri des sous-séries | Date décroissante par défaut (idem listing standard). L'adaptateur PEUT exposer un tri alternatif via un champ `lineup_order: number` dans le frontmatter des sous-séries. |
+
+#### Cover du conteneur
+
+Le champ `cover` du conteneur PEUT pointer vers une image d'une sous-série, en chemin relatif depuis l'index du conteneur :
+
+```yaml
+# series/printemps-bourges-2008/index.md
+cover: "./the-wombats/media/01.jpg"
+```
+
+Cette résolution traverse les sous-dossiers — c'est une dérogation explicite à la règle "pas de récursion dans `media/`" (§1.6), justifiée par le besoin éditorial.
+
+#### URLs
+
+| Route | Description |
+|-------|-------------|
+| `/<prefix>/<slug-conteneur>/` | Page du conteneur : body + galerie propre éventuelle + liste des sous-séries (line-up). |
+| `/<prefix>/<slug-conteneur>/<sous-slug>/` | Page d'une sous-série : comportement standard (body + galerie). |
+
+L'adaptateur DOIT générer ces deux niveaux d'URL automatiquement à partir de la structure filesystem.
+
+#### Listing global
+
+Lorsque l'adaptateur génère le listing de toutes les séries (`/<prefix>/`), il PEUT au choix :
+
+- **Aplatir** : exposer conteneurs et sous-séries au même niveau (toutes apparaissent dans la grille).
+- **Hiérarchiser** : n'afficher que les conteneurs ; les sous-séries n'apparaissent qu'en navigant dans le conteneur.
+
+Ce choix DOIT être explicite dans la config de l'adaptateur. Aplatir est le défaut recommandé pour préserver la rétro-compatibilité avec les implémentations qui n'ont pas la notion de conteneur.
+
+#### Frontmatter de la sous-série — recommandations
+
+Pour faciliter la navigation et le SEO, une sous-série SHOULD :
+
+- Mentionner le conteneur dans son `title` (ex : `"The Wombats - Le Printemps de Bourges 2008"`) ;
+- Hériter de tags pertinents du conteneur (lieu, édition) en plus de ses propres tags.
+
+Ces conventions sont **éditoriales**, pas normatives — un adaptateur ne doit pas les imposer.
+
+#### Compatibilité
+
+Les adaptateurs qui ne supportent pas (encore) les séries imbriquées DOIVENT au minimum :
+
+- Ne pas crasher sur la présence de sous-dossiers à côté de `media/`.
+- Indexer le conteneur comme une série normale (et ignorer les sous-séries) — perte d'information acceptable en attendant l'implémentation.
+
 ---
 
 ## Couche 2 — Adaptateurs plateforme
@@ -1255,6 +1335,20 @@ L'adaptateur DOIT documenter quelle(s) stratégie(s) il supporte. Un adaptateur 
 ---
 
 ## Changelog
+
+### 2.2-draft — 2026-05-19
+
+Officialisation des **séries imbriquées** (séries conteneur + sous-séries) après observation du pattern dans le site `mathieu-drouet.com` (festivals 2026 : `dragatypie-3-la-brat-cave-lille/` et `daimonion-fest-28-fev-2026-faches/` regroupant les performances d'artistes en sous-dossiers).
+
+**Ajouts** :
+- §1.8 — Séries imbriquées (conteneur) : structure filesystem, règles, cover du conteneur, URLs, listing global, recommandations de frontmatter, compatibilité.
+
+**Décisions normatives** :
+- Une seule profondeur d'imbrication autorisée (pas de récursion infinie).
+- Le champ `cover` du conteneur PEUT traverser un sous-dossier vers une image d'une sous-série — dérogation explicite à la règle "pas de récursion dans `media/`" (§1.6).
+- Le listing global PEUT aplatir ou hiérarchiser ; ce choix est de la responsabilité de l'adaptateur, à expliciter en config.
+
+**Justification** : permettre de représenter proprement les évènements à line-up multiple (festivals, expositions collectives, reportages chapitrés) sans dupliquer le contexte du conteneur dans chaque sous-série.
 
 ### 2.1-draft — 2026-05-15
 
