@@ -173,19 +173,19 @@ Section informative — un audit de conformité des implémentations connues, mi
 
 ### Site `mathieu-drouet.com`
 
-**Conformité** : ⚠️ Migration v2.1 prévue.
+**Conformité** : ✅ Conforme v2.1 (migration terminée 2026-05-19).
 
 | Obligation | Statut | Note |
 |------------|--------|------|
 | Slug regex | ✅ | |
 | `title` + `date` requis | ✅ | |
-| Dossier `media/` | ❌ | Utilise `images/` (252 séries) — divergence historique |
-| Champ `description` | ❌ | Utilise `intro` (requis) — divergence historique |
+| Dossier `media/` | ✅ | Migré depuis `images/` — 304 dossiers (SPEC-001) |
+| Champ `description` | ✅ | Migré depuis `intro` — 683 fichiers (SPEC-002) |
 | `draft` respecté | ✅ | |
 | Bloc `iptc.*` | ❌ | Métadonnées IPTC ignorées (perdues à l'ingestion) |
 | Tri date desc | ✅ | |
 
-**Plan de migration** documenté dans `mathieu-drouet.com/docs/migration-spec-v2.1.md`. La spec reste autoritative : `media/` et `description` sont les noms canoniques.
+**Migration v2.1** terminée sur branche `migration/spec-v2.1` (PR à merger). Historique dans `mathieu-drouet.com/docs/migration-spec-v2.1.md`.
 
 **Extensions strictement site-spécifiques (hors spec)** :
 - `private` + `password_hash` — séries protégées par mot de passe
