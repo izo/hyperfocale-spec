@@ -148,7 +148,7 @@ Toute implémentation (adaptateur, script, outil) qui lit du contenu Hyperfocale
 
 Section informative — un audit de conformité des implémentations connues, mis à jour à chaque révision majeure de la spec.
 
-### Plugin Astro `@izo/hyperfocale` (v0.3.0)
+### Plugin Astro `@izo/hyperfocale` (v0.4.0)
 
 **Conformité** : ✅ Conforme.
 
@@ -159,10 +159,14 @@ Section informative — un audit de conformité des implémentations connues, mi
 | `description`, `cover`, `location` | ✅ | Tous optionnels, présents |
 | `draft` respecté | ✅ | |
 | `lang` lu | ✅ | Ajouté au schéma Zod (v0.3.0) |
-| Bloc `iptc.*` | ✅ | Bloc structuré + `passthrough()` pour `iptc.custom.*` (v0.3.0) |
+| Bloc `iptc.*` | ✅ | `z.looseObject()` pour `iptc.custom.*` — champs inconnus transmis (v0.4.0) |
 | Mode distant (`images[]`) | ✅ | `getSeriesImages()` détecte `images[]` ; SeriesGallery/Lightbox gèrent les URLs distantes (v0.3.0) |
-| Passthrough racine (champs inconnus) | ✅ | `.passthrough()` racine — les extensions site-spécifiques ne sont jamais rejetées (v0.3.0) |
+| Passthrough racine (champs inconnus) | ✅ | `z.looseObject()` racine — les extensions site-spécifiques ne sont jamais rejetées (v0.4.0) |
 | Tri date desc | ✅ | |
+
+**Changements v0.4.0** :
+- **Breaking** : peer dependency `zod` passe de `^3.0.0 || ^4.0.0` à `^4.0.0`. Zod 3 n'est plus supporté.
+- Schéma modernisé API zod 4 : `z.looseObject()` (remplace `z.object().passthrough()`), `z.url()` (remplace `z.string().url()`).
 
 **Extensions au-delà du contrat** :
 - `featured: boolean` (boost ranking) — pattern utile, officialisé en §1.3 v2.1
@@ -634,11 +638,11 @@ L'ajout de nouveaux presets standardisés se discute par PR contre cette spec, d
 L'intégration enregistre la collection `series` via l'API Astro 6. L'utilisateur n'écrit pas le schéma manuellement.
 
 ```ts
-// Schéma Zod interne
+// Schéma Zod interne (zod 4)
 const series = defineCollection({
   type: 'content',
   schema: ({ image }) =>
-    z.object({
+    z.looseObject({
       title: z.string(),
       date: z.coerce.date(),
       description: z.string().optional(),
@@ -646,9 +650,9 @@ const series = defineCollection({
       location: z.string().optional(),
       draft: z.boolean().default(false),
       lang: z.string().optional(),
-      iptc: z.record(z.unknown()).optional(),
+      iptc: z.looseObject({}).optional(),
       images: z.array(z.object({
-        url: z.string().url(),
+        url: z.url(),
         alt: z.string().optional(),
         width: z.number().optional(),
         height: z.number().optional(),
