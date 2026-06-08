@@ -55,7 +55,7 @@ La spec est organisée en trois couches :
 | **2 — Adaptateurs** | Astro, Next.js, Hugo, 11ty, Obsidian (+ plugin), CMS headless, Lightroom |
 | **3 — Composants UI** | Vocabulaire partagé (SeriesCard, Gallery, Lightbox...) |
 
-Au-delà de la série photo, l'**Annexe G** standardise des **profils de contenu** réutilisant le même squelette : Événement (`event`), Recette (`recipe`), Application (`app`).
+Au-delà de la série photo, l'**Annexe G** standardise des **profils de contenu** réutilisant le même squelette : Événement (`event`), Recette (`recipe`), Application (`app`), Livre (`book`), Lieu (`place`).
 
 ## Statut
 

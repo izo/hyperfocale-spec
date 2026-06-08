@@ -626,7 +626,7 @@ Un preset NE DOIT PAS :
 - Supprimer les obligations du contrat d'adaptateur
 - Renommer les champs core (`title`, `date`, `description`, `cover`, etc.)
 
-Trois presets non-photo sont standardisés en **Annexe G — Profils de contenu** (`event`, `recipe`, `app`). L'ajout de nouveaux profils se discute par PR contre cette spec, en étendant cette annexe.
+Cinq presets non-photo sont standardisés en **Annexe G — Profils de contenu** (`event`, `recipe`, `app`, `book`, `place`). L'ajout de nouveaux profils se discute par PR contre cette spec, en étendant cette annexe.
 
 ### 2.1 — Adaptateur Astro
 
@@ -1368,6 +1368,8 @@ Ces règles garantissent qu'un profil reste un contenu Hyperfocale valide au sen
 | Événement | un événement | `event` | `/events` | requise (= début) | `event:` | schema.org/Event |
 | Recette | une recette | `recipe` | `/recipes` | optionnelle | `recipe:` | schema.org/Recipe |
 | Application | une app | `app` | `/apps` | optionnelle (= sortie) | `app:` | schema.org/SoftwareApplication |
+| Livre | un livre | `book` | `/books` | optionnelle | `book:` | schema.org/Book |
+| Lieu | un lieu | `place` | `/places` | optionnelle | `place:` | schema.org/Place |
 
 ---
 
@@ -1641,7 +1643,172 @@ hyperfocale({ preset: 'app' })  // collection 'apps', prefix /apps, dateRequired
 
 ---
 
-### G.4 — Créer un nouveau profil
+### G.4 — Profil Livre (`book`)
+
+**Cas d'usage** : bibliothèque, fiches de lecture, catalogue d'éditions, suivi de lectures. L'atome est **un livre** (une œuvre ou une édition précise).
+
+#### Mapping du core
+
+| Champ core | Sens dans le profil |
+|------------|---------------------|
+| `title` | Titre du livre |
+| `date` | Date de **lecture** ou d'ajout à la bibliothèque — **optionnelle** (preset `dateRequired: false`). La date de parution vit dans `book.published`. |
+| `description` | Résumé / quatrième de couverture / avis |
+| `cover` | Couverture du livre |
+| `location` | Sans objet en général (peut servir au lieu d'achat / bibliothèque physique) |
+| `media/` | Couverture, pages scannées, photos de l'exemplaire |
+
+#### Bloc d'extension `book:`
+
+| Clé | Type | Description |
+|-----|------|-------------|
+| `authors` | `string[]` | Auteur(s) |
+| `translators` | `string[]` | Traducteur(s) |
+| `isbn` | `string` | ISBN-13 (ou ISBN-10) |
+| `publisher` | `string` | Éditeur |
+| `published` | `date` (ISO 8601) | Date de parution de l'édition |
+| `language` | `string` | Langue de l'ouvrage (ISO 639-1) |
+| `original_language` | `string` | Langue d'origine (si traduction) |
+| `pages` | `number` | Nombre de pages |
+| `format` | `string` | `broché` · `relié` · `poche` · `ebook` · `audio` |
+| `genre` | `string[]` | Genres littéraires |
+| `series` | `string` | Série / cycle littéraire (ex : « Le Trône de fer ») |
+| `series_index` | `number` | Position dans la série |
+| `status` | `string` | `to_read` · `reading` · `read` · `abandoned` |
+| `rating` | `number` | Note de lecture (échelle libre, ex : 0–5) |
+| `read_date` | `date` (ISO 8601) | Date de fin de lecture |
+| `url` | `string` (URL) | Lien éditeur / achat / fiche |
+
+> **`book.series` ≠ série photo.** Le champ `series` est ici la **collection littéraire** d'un livre ; il est namespacé sous `book.` et n'a aucun rapport avec la série photo canonique. Aucune collision possible.
+
+#### Exemple
+
+```yaml
+---
+title: "Le Nom de la rose"
+date: 2026-04-10
+description: "Relecture annuelle. Toujours aussi dense."
+cover: "./media/couverture.jpg"
+tags: [roman, médiéval, polar]
+
+book:
+  authors: ["Umberto Eco"]
+  translators: ["Jean-Noël Schifano"]
+  isbn: "9782253033134"
+  publisher: "Grasset"
+  published: 1982-01-01
+  language: fr
+  original_language: it
+  pages: 640
+  format: poche
+  genre: [roman, policier, historique]
+  status: read
+  rating: 5
+  read_date: 2026-04-10
+  url: "https://www.grasset.fr/livres/le-nom-de-la-rose"
+---
+
+Notes de lecture, citations marquantes, contexte. Le body s'affiche
+**avant** la galerie (couverture, pages photographiées).
+```
+
+#### Preset & règles métier spécifiques
+
+```ts
+hyperfocale({ preset: 'book' })  // collection 'books', prefix /books, dateRequired: false
+```
+
+| Règle | Description |
+|-------|-------------|
+| Tri | `date` (lecture) desc si présente, sinon `book.published` desc, sinon `title`. |
+| Statut | Un adaptateur « bibliothèque » PEUT filtrer/grouper par `book.status` (à lire / en cours / lu). |
+| Balisage | Un adaptateur web DEVRAIT émettre du JSON-LD `schema.org/Book` depuis `book.*`. |
+
+---
+
+### G.5 — Profil Lieu (`place`)
+
+**Cas d'usage** : guide d'adresses, carnet de lieux, points d'intérêt (POI), repérages photo, sélection de restaurants / musées / cafés. L'atome est **un lieu**.
+
+#### Mapping du core
+
+| Champ core | Sens dans le profil |
+|------------|---------------------|
+| `title` | Nom du lieu |
+| `date` | Date de visite / découverte — **optionnelle** (preset `dateRequired: false`) |
+| `description` | Présentation / avis |
+| `cover` | Photo principale du lieu |
+| `location` | Adresse en texte libre (le détail structuré vit dans `place.*`) |
+| `media/` | Photos du lieu |
+
+#### Bloc d'extension `place:`
+
+| Clé | Type | Description |
+|-----|------|-------------|
+| `category` | `string` | Type de lieu (« restaurant », « musée », « café », « parc », « hôtel ») |
+| `address` | `string` | Adresse postale |
+| `city` | `string` | Ville |
+| `province` | `string` | Région / État / Province |
+| `country` | `string` | Pays |
+| `country_code` | `string` | Code ISO 3166-1 alpha-2 |
+| `gps` | `object` | `{ lat, lng }` — **réutilise la convention §1.3** |
+| `url` | `string` (URL) | Site web |
+| `phone` | `string` | Téléphone |
+| `hours` | `string` | Horaires d'ouverture (texte libre ou OSM `opening_hours`) |
+| `price_range` | `string` | Gamme de prix (`$` · `$$` · `$$$` · `$$$$`) |
+| `rating` | `number` | Note personnelle (échelle libre) |
+| `amenities` | `string[]` | Équipements / commodités (« terrasse », « wifi », « accessible PMR ») |
+| `status` | `string` | `open` · `closed` (temporaire) · `permanently_closed` |
+
+> **Synergie carte (§3.1).** `place.gps` réutilise exactement la convention de `iptc.gps`. Le composant `SeriesMap` (et la vue Carte du plugin Obsidian, §2.5) peut donc cartographier les contenus `place` sans adaptation, en filtrant sur la présence de `place.gps`.
+
+#### Exemple
+
+```yaml
+---
+title: "Café de la Presse"
+date: 2026-05-22
+description: "Bon petit déj, calme le matin, terrasse au sud."
+cover: "./media/01.jpg"
+location: "12 rue de la Monnaie, Lille"
+tags: [café, lille, petit-déjeuner]
+
+place:
+  category: café
+  address: "12 rue de la Monnaie"
+  city: "Lille"
+  country: "France"
+  country_code: FR
+  gps: { lat: 50.64, lng: 3.06 }
+  url: "https://example.com/cafe-presse"
+  phone: "+33 3 20 00 00 00"
+  hours: "Mar-Dim 08:00-18:00"
+  price_range: "$$"
+  rating: 4
+  amenities: ["terrasse", "wifi"]
+  status: open
+---
+
+Avis détaillé, ce qu'il faut commander, le bon moment pour venir.
+Le body s'affiche **avant** la galerie de photos du lieu.
+```
+
+#### Preset & règles métier spécifiques
+
+```ts
+hyperfocale({ preset: 'place' })  // collection 'places', prefix /places, dateRequired: false
+```
+
+| Règle | Description |
+|-------|-------------|
+| Tri | `date` (visite) desc si présente, sinon `title`. Un adaptateur PEUT trier/filtrer par `place.category`. |
+| Carte | Réutiliser `SeriesMap` sur les lieux ayant `place.gps`. |
+| Statut | `permanently_closed` DEVRAIT être signalé ; le lieu reste publié (≠ `draft`). |
+| Balisage | Un adaptateur web DEVRAIT émettre du JSON-LD `schema.org/Place` (ou un sous-type `LocalBusiness`) depuis `place.*`. |
+
+---
+
+### G.6 — Créer un nouveau profil
 
 Pour proposer un profil supplémentaire (livre, lieu, produit e-commerce...), une PR contre cette annexe DOIT préciser :
 
@@ -1660,14 +1827,16 @@ Un profil ne DOIT jamais : renommer un champ core, modifier le slug regex, suppr
 
 ### 2.3-draft — 2026-06-08
 
-Officialisation des **profils de contenu** : le squelette universel (dossier + `index.md` + `media/`) n'est plus réservé à la série photo. Trois profils non-photo sont standardisés comme presets de domaine, chacun avec son bloc d'extension namespacé (à l'image de `iptc:` pour la photo).
+Officialisation des **profils de contenu** : le squelette universel (dossier + `index.md` + `media/`) n'est plus réservé à la série photo. Cinq profils non-photo sont standardisés comme presets de domaine, chacun avec son bloc d'extension namespacé (à l'image de `iptc:` pour la photo).
 
 **Ajouts** :
 - Annexe G — Profils de contenu (presets standardisés) : cadre générique + règles communes + vue d'ensemble.
 - G.1 — Profil **Événement** (`event`) : bloc `event:`, alignement schema.org/Event, synergie avec les séries imbriquées (§1.8).
 - G.2 — Profil **Recette** (`recipe`) : bloc `recipe:` avec ingrédients/étapes structurés, `dateRequired: false`, alignement schema.org/Recipe.
 - G.3 — Profil **Application** (`app`) : bloc `app:`, alignement schema.org/SoftwareApplication.
-- G.4 — Procédure de création d'un nouveau profil.
+- G.4 — Profil **Livre** (`book`) : bloc `book:`, alignement schema.org/Book.
+- G.5 — Profil **Lieu** (`place`) : bloc `place:`, `gps` réutilisé (compatible `SeriesMap`), alignement schema.org/Place.
+- G.6 — Procédure de création d'un nouveau profil.
 
 **Décisions normatives** :
 - Un profil réutilise le core **sans le renommer** et n'ajoute que sous une clé d'extension unique. Aucun profil ne casse la rétro-compatibilité : un lecteur qui l'ignore lit toujours un contenu Hyperfocale valide (passthrough §1.3).
