@@ -2,9 +2,9 @@
 
 > **Source de vérité canonique.** Ce document définit le format Hyperfocale — un standard de gestion de **séries photo** portable entre SSG (Astro, Next.js, Hugo, 11ty...), vaults Obsidian, et CMS headless (Strapi, Sanity, Payload...). Toute évolution du format doit être proposée d'abord ici, dans ce dépôt.
 
-**Version** : 2.1-draft
+**Version** : 2.3-draft
 **Statut** : spécification active — source de vérité canonique
-**Dernière révision** : 2026-05-15
+**Dernière révision** : 2026-06-08
 
 ### Implémentations de référence
 
@@ -626,7 +626,7 @@ Un preset NE DOIT PAS :
 - Supprimer les obligations du contrat d'adaptateur
 - Renommer les champs core (`title`, `date`, `description`, `cover`, etc.)
 
-L'ajout de nouveaux presets standardisés se discute par PR contre cette spec, dans une future Annexe G.
+Cinq presets non-photo sont standardisés en **Annexe G — Profils de contenu** (`event`, `recipe`, `app`, `book`, `place`). L'ajout de nouveaux profils se discute par PR contre cette spec, en étendant cette annexe.
 
 ### 2.1 — Adaptateur Astro
 
@@ -1336,9 +1336,514 @@ Documentée en §2.7 (Dual naming mode et bloc `translations:`). Utile quand l'e
 
 L'adaptateur DOIT documenter quelle(s) stratégie(s) il supporte. Un adaptateur PEUT en supporter plusieurs (le plugin Astro `@izo/hyperfocale` supporte 2 et 3).
 
+### G — Profils de contenu (presets standardisés) *(officialisé v2.3)*
+
+La section 0 décrit un **squelette universel** : un dossier autonome = `index.md` (frontmatter core + body Markdown) + `media/`. Jusqu'à la v2.2, ce squelette n'avait qu'une seule déclinaison : la **série photo**. Cette annexe officialise l'idée qu'un même squelette peut porter **d'autres types de contenu**.
+
+Un **profil de contenu** est une déclinaison du squelette pour un domaine donné. Il n'invente rien au niveau structurel — il se contente de :
+
+1. **Réutiliser le core tel quel** (`title`, `date`, `description`, `cover`, `location`, `draft`, `lang`, `tags`, `featured`).
+2. **Ajouter un bloc d'extension namespacé** propre au domaine (exactement comme `iptc:` l'est pour la photo) : `event:`, `recipe:`, `app:`.
+3. **Optionnellement, relâcher la conditionnalité de certains champs** via un preset d'adaptateur (§2.0.1) — typiquement `dateRequired: false`.
+
+#### Règles communes à tous les profils
+
+Ces règles garantissent qu'un profil reste un contenu Hyperfocale valide au sens de la §0.
+
+| Règle | Description |
+|-------|-------------|
+| **Squelette inchangé** | `<slug>/index.md` + `media/` (§0, §1.2). Aucun profil ne modifie la structure filesystem ni le slug regex. |
+| **Core préservé** | Les champs core ne sont jamais renommés. `title` reste obligatoire ; `date` peut devenir optionnelle via preset (contrainte §2.0.1 : pas de suppression d'obligation du contrat). |
+| **Extension namespacée** | Tout vocabulaire de domaine vit sous **une** clé unique (`event`, `recipe`, `app`) pour ne jamais entrer en collision avec le core. |
+| **Invariants §0 respectés** | Body avant galerie, tri alphabétique de `media/`, `cover`/fallback, `draft`, passthrough des champs inconnus s'appliquent identiquement. |
+| **Rétro-compatibilité** | Un adaptateur qui ne connaît pas un profil DOIT lire le contenu comme un contenu Hyperfocale standard (core + media + body) et ignorer le bloc d'extension sans erreur (passthrough §1.3). Aucun profil ne casse un lecteur existant. |
+| **Alignement externe** | Chaque profil DEVRAIT s'aligner sur un vocabulaire externe reconnu (schema.org), comme la photo s'aligne sur IPTC, pour l'interop et le balisage SEO. |
+| **Sens de `media/`** | `media/` garde son rôle : un dossier plat de médias liés au contenu (affiches, photos du plat, captures d'écran...). |
+
+#### Vue d'ensemble
+
+| Profil | Atome | Preset | Prefix recommandé | `date` | Bloc d'extension | Vocab externe |
+|--------|-------|--------|-------------------|--------|------------------|---------------|
+| Série (canonique) | série photo | `series` | `/series` | requise | `iptc:` | IPTC |
+| Événement | un événement | `event` | `/events` | requise (= début) | `event:` | schema.org/Event |
+| Recette | une recette | `recipe` | `/recipes` | optionnelle | `recipe:` | schema.org/Recipe |
+| Application | une app | `app` | `/apps` | optionnelle (= sortie) | `app:` | schema.org/SoftwareApplication |
+| Livre | un livre | `book` | `/books` | optionnelle | `book:` | schema.org/Book |
+| Lieu | un lieu | `place` | `/places` | optionnelle | `place:` | schema.org/Place |
+
+---
+
+### G.1 — Profil Événement (`event`)
+
+**Cas d'usage** : agenda, dates de concerts, expositions, conférences, vernissages, ateliers. L'atome est **un événement** : une occurrence datée, située, avec un lien d'inscription ou de billetterie.
+
+#### Mapping du core
+
+| Champ core | Sens dans le profil |
+|------------|---------------------|
+| `title` | Nom de l'événement |
+| `date` | Date (jour) de **début** — sert au tri. La précision horaire vit dans `event.start`. |
+| `description` | Accroche / résumé |
+| `cover` | Affiche de l'événement (fallback : première image de `media/`) |
+| `location` | Lieu en texte libre (le lieu structuré vit dans `event.*`) |
+| `media/` | Affiche(s), plan d'accès, photos du lieu ou des éditions précédentes |
+
+#### Bloc d'extension `event:`
+
+Tous les champs sont optionnels. Un adaptateur DOIT les ignorer sans erreur s'il ne les supporte pas.
+
+| Clé | Type | Description |
+|-----|------|-------------|
+| `start` | `datetime` (ISO 8601) | Début, avec heure et fuseau si pertinent (`2026-09-12T20:30:00+02:00`) |
+| `end` | `datetime` (ISO 8601) | Fin |
+| `timezone` | `string` | Fuseau IANA (`Europe/Paris`) si `start`/`end` sont sans offset |
+| `status` | `string` | `scheduled` (défaut) · `rescheduled` · `postponed` · `cancelled` · `sold_out` |
+| `attendance` | `string` | `offline` · `online` · `hybrid` |
+| `venue` | `string` | Nom du lieu (« La Brat Cave ») |
+| `address` | `string` | Adresse postale |
+| `city` | `string` | Ville |
+| `country` | `string` | Pays |
+| `country_code` | `string` | Code ISO 3166-1 alpha-2 |
+| `gps` | `object` | `{ lat, lng }` — réutilise la convention §1.3 |
+| `organizer` | `string` | Organisateur |
+| `performers` | `string[]` | Artistes / intervenants (utile pour le line-up, cf. §1.8) |
+| `url` | `string` (URL) | Page d'inscription / billetterie |
+| `price` | `string` | Tarif en texte libre (« 12 € » · « Gratuit » · « Prix libre ») |
+| `currency` | `string` | Code ISO 4217 si `price` est numérique ailleurs |
+| `recurrence` | `string` | Règle de récurrence façon iCal RRULE (`FREQ=WEEKLY;BYDAY=TH`) |
+
+> **Synergie avec les séries imbriquées (§1.8).** Un festival est naturellement un **événement conteneur** : son `index.md` porte le profil `event`, et chaque sous-dossier est soit une sous-série photo, soit un sous-événement (un set d'artiste). `event.performers` côté conteneur et le `lineup_order` des sous-séries se complètent.
+
+#### Exemple
+
+```yaml
+---
+title: "Daimonion Fest #28"
+date: 2026-09-12
+description: "Nuit black/doom à Faches-Thumesnil"
+cover: "./media/affiche.jpg"
+location: "Faches-Thumesnil, France"
+draft: false
+lang: fr
+tags: [concert, metal, lille]
+
+event:
+  start: 2026-09-12T19:00:00+02:00
+  end: 2026-09-13T02:00:00+02:00
+  timezone: Europe/Paris
+  status: scheduled
+  attendance: offline
+  venue: "La Cave aux Poètes"
+  address: "4 Rue de l'Église"
+  city: "Faches-Thumesnil"
+  country: "France"
+  country_code: FR
+  gps: { lat: 50.59, lng: 3.07 }
+  organizer: "Daimonion Prod"
+  performers: ["Cantique Lépreux", "Sortilegia", "Sühnopfer"]
+  url: "https://billetterie.example.com/daimonion-28"
+  price: "18 € prévente / 22 € sur place"
+---
+
+Programme de la soirée, conditions d'accès, plan. Le body Markdown
+s'affiche **avant** la galerie (affiche + photos du lieu).
+```
+
+#### Preset & règles métier spécifiques
+
+```ts
+hyperfocale({ preset: 'event' })  // collection 'events', prefix /events, dateRequired: true
+```
+
+| Règle | Description |
+|-------|-------------|
+| Tri | Par défaut date décroissante (§1.6). Un adaptateur « agenda » PEUT exposer un tri **ascendant filtré sur les événements à venir** (`start >= now`). |
+| Statut | Les adaptateurs DEVRAIENT signaler visuellement `cancelled` / `postponed` / `sold_out`. Un événement annulé reste publié (≠ `draft`). |
+| Balisage | Un adaptateur web DEVRAIT émettre du JSON-LD `schema.org/Event` depuis `event.*`. |
+
+---
+
+### G.2 — Profil Recette (`recipe`)
+
+**Cas d'usage** : carnet de recettes, blog culinaire. L'atome est **une recette**. C'est le profil le plus structuré : ingrédients et étapes méritent un balisage machine.
+
+#### Mapping du core
+
+| Champ core | Sens dans le profil |
+|------------|---------------------|
+| `title` | Nom de la recette |
+| `date` | Date de publication — **optionnelle** (une recette est intemporelle). Preset `dateRequired: false`. |
+| `description` | Présentation / histoire courte du plat |
+| `cover` | Photo du plat fini |
+| `media/` | Photo du plat fini + photos d'étapes |
+
+#### Bloc d'extension `recipe:`
+
+| Clé | Type | Description |
+|-----|------|-------------|
+| `servings` | `number` ou `string` | Nombre de portions (« 4 personnes ») |
+| `yield` | `string` | Rendement alternatif (« 12 cookies », « 1 cake ») |
+| `prep_time` | `duration` (ISO 8601) | Préparation (`PT20M`) |
+| `cook_time` | `duration` (ISO 8601) | Cuisson (`PT45M`) |
+| `rest_time` | `duration` (ISO 8601) | Repos / pousse |
+| `total_time` | `duration` (ISO 8601) | Total (sinon dérivable) |
+| `difficulty` | `string` | `facile` · `moyen` · `difficile` |
+| `cuisine` | `string` | Type de cuisine (« italienne », « bretonne ») |
+| `course` | `string` | `entrée` · `plat` · `dessert` · `boisson` · `accompagnement` |
+| `diet` | `string[]` | `vegan` · `végétarien` · `sans-gluten` · `sans-lactose`... |
+| `ingredients` | `list` | Liste structurée (voir ci-dessous) |
+| `steps` | `string[]` | Étapes ordonnées (Markdown autorisé par étape) |
+| `equipment` | `string[]` | Matériel requis |
+| `nutrition` | `object` | `{ calories, protein, carbs, fat, ... }` par portion |
+| `source` | `string` | Origine / inspiration de la recette |
+
+##### Ingrédients structurés
+
+`ingredients` est soit une liste plate, soit groupée par section. Chaque entrée : `item` (requis), `qty`, `unit`, `note` (optionnels).
+
+```yaml
+recipe:
+  ingredients:
+    - group: "Pâte"
+      items:
+        - { item: "Farine T55", qty: 250, unit: "g" }
+        - { item: "Beurre doux", qty: 125, unit: "g", note: "froid, en dés" }
+        - { item: "Eau", qty: 60, unit: "ml" }
+    - group: "Garniture"
+      items:
+        - { item: "Pommes", qty: 4, unit: "pièces" }
+        - { item: "Sucre", qty: 2, unit: "c. à soupe" }
+```
+
+> **Structuré vs body.** Le bloc `recipe.ingredients` / `recipe.steps` est la source **machine** (balisage, listes de courses, conversion de portions). Le **body Markdown** reste libre pour la narration. Un adaptateur PEUT générer l'affichage des ingrédients/étapes depuis le frontmatter, ou laisser l'auteur les écrire dans le body — les deux sont valides, mais le frontmatter structuré est recommandé pour l'interop.
+
+#### Exemple
+
+```yaml
+---
+title: "Tarte aux pommes"
+description: "La tarte du dimanche, pâte brisée maison"
+cover: "./media/01.jpg"
+tags: [dessert, classique, pommes]
+
+recipe:
+  servings: 6
+  prep_time: PT30M
+  cook_time: PT40M
+  total_time: PT1H10M
+  difficulty: facile
+  cuisine: française
+  course: dessert
+  diet: [végétarien]
+  equipment: ["Moule à tarte 28 cm", "Rouleau à pâtisserie"]
+  ingredients:
+    - { item: "Pâte brisée", qty: 1, unit: "rouleau" }
+    - { item: "Pommes", qty: 5, unit: "pièces" }
+    - { item: "Sucre", qty: 50, unit: "g" }
+    - { item: "Beurre", qty: 30, unit: "g" }
+  steps:
+    - "Préchauffer le four à 180 °C."
+    - "Étaler la pâte dans le moule, piquer le fond."
+    - "Disposer les pommes en rosace, saupoudrer de sucre."
+    - "Parsemer de beurre, enfourner 40 min."
+---
+
+Une note perso sur la recette, son origine, les variantes possibles.
+Le body s'affiche **avant** les photos d'étapes.
+```
+
+#### Preset & règles métier spécifiques
+
+```ts
+hyperfocale({ preset: 'recipe' })  // collection 'recipes', prefix /recipes, dateRequired: false
+```
+
+| Règle | Description |
+|-------|-------------|
+| Tri | `date` étant optionnelle, un adaptateur PEUT trier par `title` ou par `featured` si `date` est absente. |
+| Conversion de portions | Un adaptateur PEUT recalculer `qty` au prorata de `servings` (extension UI, hors spec). |
+| Balisage | Un adaptateur web DEVRAIT émettre du JSON-LD `schema.org/Recipe` (éligible aux rich results Google). |
+
+> **Note historique.** Une variante recettes existait déjà hors source canonique (`Recipes-hyperfocale/docs/spec-hyperfocale-v2.md`, cf. Changelog 2.1). Ce profil G.2 en est la version officielle et alignée sur le squelette générique — la copie projet devrait converger vers ce vocabulaire.
+
+---
+
+### G.3 — Profil Application (`app`)
+
+**Cas d'usage** : portfolio d'apps, page produit logiciel, showcase de projets. L'atome est **une application** (ou un produit logiciel). `media/` porte les captures d'écran et l'icône.
+
+#### Mapping du core
+
+| Champ core | Sens dans le profil |
+|------------|---------------------|
+| `title` | Nom de l'application |
+| `date` | Date de sortie / lancement — **optionnelle** (preset `dateRequired: false`) |
+| `description` | Pitch / tagline |
+| `cover` | Hero (capture principale) ou icône (fallback : première image) |
+| `media/` | Captures d'écran, icône, mockups |
+
+#### Bloc d'extension `app:`
+
+| Clé | Type | Description |
+|-----|------|-------------|
+| `platform` | `string[]` | `ios` · `android` · `web` · `macos` · `windows` · `linux` |
+| `version` | `string` | Version courante (semver, « 1.4.0 ») |
+| `status` | `string` | `live` · `beta` · `alpha` · `wip` · `sunset` |
+| `category` | `string` | Catégorie (« Productivité », « Photo ») |
+| `pricing` | `string` | `free` · `paid` · `freemium` · `subscription` |
+| `price` | `string` | Prix en texte libre (« 4,99 € », « Gratuit ») |
+| `url` | `string` (URL) | Site officiel / landing page |
+| `store` | `object` | Liens stores : `{ app_store, play_store, web, ... }` |
+| `repository` | `string` (URL) | Dépôt source (si open source) |
+| `tech` | `string[]` | Stack technique (« Swift », « Astro », « Rust ») |
+| `developer` | `string` | Éditeur / développeur |
+| `license` | `string` | Licence (SPDX si open source : `MIT`, `GPL-3.0`) |
+
+#### Exemple
+
+```yaml
+---
+title: "Hyperfocale Exporter"
+date: 2026-03-01
+description: "Export Lightroom → format Hyperfocale, en un clic"
+cover: "./media/hero.png"
+featured: true
+tags: [lightroom, photo, export]
+
+app:
+  platform: [macos, windows]
+  version: "0.1.0"
+  status: beta
+  category: "Photo"
+  pricing: free
+  url: "https://github.com/izo/hyperfocale-exporter-app"
+  store:
+    web: "https://github.com/izo/hyperfocale-exporter-app/releases"
+  repository: "https://github.com/izo/hyperfocale-exporter-app"
+  tech: [SwiftUI, Tauri, Rust]
+  developer: "Mathieu Drouet"
+  license: MIT
+---
+
+Présentation de l'app, fonctionnalités clés, captures d'écran.
+Le body s'affiche **avant** la galerie de screenshots.
+```
+
+#### Preset & règles métier spécifiques
+
+```ts
+hyperfocale({ preset: 'app' })  // collection 'apps', prefix /apps, dateRequired: false
+```
+
+| Règle | Description |
+|-------|-------------|
+| Tri | Date desc si présente, sinon `featured` puis `title`. |
+| Statut | `sunset` DEVRAIT être signalé visuellement ; l'app reste publiée (≠ `draft`). |
+| Balisage | Un adaptateur web DEVRAIT émettre du JSON-LD `schema.org/SoftwareApplication` depuis `app.*`. |
+
+---
+
+### G.4 — Profil Livre (`book`)
+
+**Cas d'usage** : bibliothèque, fiches de lecture, catalogue d'éditions, suivi de lectures. L'atome est **un livre** (une œuvre ou une édition précise).
+
+#### Mapping du core
+
+| Champ core | Sens dans le profil |
+|------------|---------------------|
+| `title` | Titre du livre |
+| `date` | Date de **lecture** ou d'ajout à la bibliothèque — **optionnelle** (preset `dateRequired: false`). La date de parution vit dans `book.published`. |
+| `description` | Résumé / quatrième de couverture / avis |
+| `cover` | Couverture du livre |
+| `location` | Sans objet en général (peut servir au lieu d'achat / bibliothèque physique) |
+| `media/` | Couverture, pages scannées, photos de l'exemplaire |
+
+#### Bloc d'extension `book:`
+
+| Clé | Type | Description |
+|-----|------|-------------|
+| `authors` | `string[]` | Auteur(s) |
+| `translators` | `string[]` | Traducteur(s) |
+| `isbn` | `string` | ISBN-13 (ou ISBN-10) |
+| `publisher` | `string` | Éditeur |
+| `published` | `date` (ISO 8601) | Date de parution de l'édition |
+| `language` | `string` | Langue de l'ouvrage (ISO 639-1) |
+| `original_language` | `string` | Langue d'origine (si traduction) |
+| `pages` | `number` | Nombre de pages |
+| `format` | `string` | `broché` · `relié` · `poche` · `ebook` · `audio` |
+| `genre` | `string[]` | Genres littéraires |
+| `series` | `string` | Série / cycle littéraire (ex : « Le Trône de fer ») |
+| `series_index` | `number` | Position dans la série |
+| `status` | `string` | `to_read` · `reading` · `read` · `abandoned` |
+| `rating` | `number` | Note de lecture (échelle libre, ex : 0–5) |
+| `read_date` | `date` (ISO 8601) | Date de fin de lecture |
+| `url` | `string` (URL) | Lien éditeur / achat / fiche |
+
+> **`book.series` ≠ série photo.** Le champ `series` est ici la **collection littéraire** d'un livre ; il est namespacé sous `book.` et n'a aucun rapport avec la série photo canonique. Aucune collision possible.
+
+#### Exemple
+
+```yaml
+---
+title: "Le Nom de la rose"
+date: 2026-04-10
+description: "Relecture annuelle. Toujours aussi dense."
+cover: "./media/couverture.jpg"
+tags: [roman, médiéval, polar]
+
+book:
+  authors: ["Umberto Eco"]
+  translators: ["Jean-Noël Schifano"]
+  isbn: "9782253033134"
+  publisher: "Grasset"
+  published: 1982-01-01
+  language: fr
+  original_language: it
+  pages: 640
+  format: poche
+  genre: [roman, policier, historique]
+  status: read
+  rating: 5
+  read_date: 2026-04-10
+  url: "https://www.grasset.fr/livres/le-nom-de-la-rose"
+---
+
+Notes de lecture, citations marquantes, contexte. Le body s'affiche
+**avant** la galerie (couverture, pages photographiées).
+```
+
+#### Preset & règles métier spécifiques
+
+```ts
+hyperfocale({ preset: 'book' })  // collection 'books', prefix /books, dateRequired: false
+```
+
+| Règle | Description |
+|-------|-------------|
+| Tri | `date` (lecture) desc si présente, sinon `book.published` desc, sinon `title`. |
+| Statut | Un adaptateur « bibliothèque » PEUT filtrer/grouper par `book.status` (à lire / en cours / lu). |
+| Balisage | Un adaptateur web DEVRAIT émettre du JSON-LD `schema.org/Book` depuis `book.*`. |
+
+---
+
+### G.5 — Profil Lieu (`place`)
+
+**Cas d'usage** : guide d'adresses, carnet de lieux, points d'intérêt (POI), repérages photo, sélection de restaurants / musées / cafés. L'atome est **un lieu**.
+
+#### Mapping du core
+
+| Champ core | Sens dans le profil |
+|------------|---------------------|
+| `title` | Nom du lieu |
+| `date` | Date de visite / découverte — **optionnelle** (preset `dateRequired: false`) |
+| `description` | Présentation / avis |
+| `cover` | Photo principale du lieu |
+| `location` | Adresse en texte libre (le détail structuré vit dans `place.*`) |
+| `media/` | Photos du lieu |
+
+#### Bloc d'extension `place:`
+
+| Clé | Type | Description |
+|-----|------|-------------|
+| `category` | `string` | Type de lieu (« restaurant », « musée », « café », « parc », « hôtel ») |
+| `address` | `string` | Adresse postale |
+| `city` | `string` | Ville |
+| `province` | `string` | Région / État / Province |
+| `country` | `string` | Pays |
+| `country_code` | `string` | Code ISO 3166-1 alpha-2 |
+| `gps` | `object` | `{ lat, lng }` — **réutilise la convention §1.3** |
+| `url` | `string` (URL) | Site web |
+| `phone` | `string` | Téléphone |
+| `hours` | `string` | Horaires d'ouverture (texte libre ou OSM `opening_hours`) |
+| `price_range` | `string` | Gamme de prix (`$` · `$$` · `$$$` · `$$$$`) |
+| `rating` | `number` | Note personnelle (échelle libre) |
+| `amenities` | `string[]` | Équipements / commodités (« terrasse », « wifi », « accessible PMR ») |
+| `status` | `string` | `open` · `closed` (temporaire) · `permanently_closed` |
+
+> **Synergie carte (§3.1).** `place.gps` réutilise exactement la convention de `iptc.gps`. Le composant `SeriesMap` (et la vue Carte du plugin Obsidian, §2.5) peut donc cartographier les contenus `place` sans adaptation, en filtrant sur la présence de `place.gps`.
+
+#### Exemple
+
+```yaml
+---
+title: "Café de la Presse"
+date: 2026-05-22
+description: "Bon petit déj, calme le matin, terrasse au sud."
+cover: "./media/01.jpg"
+location: "12 rue de la Monnaie, Lille"
+tags: [café, lille, petit-déjeuner]
+
+place:
+  category: café
+  address: "12 rue de la Monnaie"
+  city: "Lille"
+  country: "France"
+  country_code: FR
+  gps: { lat: 50.64, lng: 3.06 }
+  url: "https://example.com/cafe-presse"
+  phone: "+33 3 20 00 00 00"
+  hours: "Mar-Dim 08:00-18:00"
+  price_range: "$$"
+  rating: 4
+  amenities: ["terrasse", "wifi"]
+  status: open
+---
+
+Avis détaillé, ce qu'il faut commander, le bon moment pour venir.
+Le body s'affiche **avant** la galerie de photos du lieu.
+```
+
+#### Preset & règles métier spécifiques
+
+```ts
+hyperfocale({ preset: 'place' })  // collection 'places', prefix /places, dateRequired: false
+```
+
+| Règle | Description |
+|-------|-------------|
+| Tri | `date` (visite) desc si présente, sinon `title`. Un adaptateur PEUT trier/filtrer par `place.category`. |
+| Carte | Réutiliser `SeriesMap` sur les lieux ayant `place.gps`. |
+| Statut | `permanently_closed` DEVRAIT être signalé ; le lieu reste publié (≠ `draft`). |
+| Balisage | Un adaptateur web DEVRAIT émettre du JSON-LD `schema.org/Place` (ou un sous-type `LocalBusiness`) depuis `place.*`. |
+
+---
+
+### G.6 — Créer un nouveau profil
+
+Pour proposer un profil supplémentaire (livre, lieu, produit e-commerce...), une PR contre cette annexe DOIT préciser :
+
+1. **L'atome** et le cas d'usage.
+2. **Le mapping du core** (sens de `title`/`date`/`cover`/`media`, `dateRequired` ou non).
+3. **Le bloc d'extension namespacé** (clé unique, table de champs, tous optionnels).
+4. **Le vocabulaire externe** d'alignement (schema.org ou équivalent).
+5. **Le preset d'adaptateur** (collection, prefix) — dans le respect des contraintes §2.0.1.
+6. La démonstration que les **invariants §0** restent satisfaits.
+
+Un profil ne DOIT jamais : renommer un champ core, modifier le slug regex, supprimer une obligation du contrat d'adaptateur (§2.0), ou exiger une récursion dans `media/`.
+
 ---
 
 ## Changelog
+
+### 2.3-draft — 2026-06-08
+
+Officialisation des **profils de contenu** : le squelette universel (dossier + `index.md` + `media/`) n'est plus réservé à la série photo. Cinq profils non-photo sont standardisés comme presets de domaine, chacun avec son bloc d'extension namespacé (à l'image de `iptc:` pour la photo).
+
+**Ajouts** :
+- Annexe G — Profils de contenu (presets standardisés) : cadre générique + règles communes + vue d'ensemble.
+- G.1 — Profil **Événement** (`event`) : bloc `event:`, alignement schema.org/Event, synergie avec les séries imbriquées (§1.8).
+- G.2 — Profil **Recette** (`recipe`) : bloc `recipe:` avec ingrédients/étapes structurés, `dateRequired: false`, alignement schema.org/Recipe.
+- G.3 — Profil **Application** (`app`) : bloc `app:`, alignement schema.org/SoftwareApplication.
+- G.4 — Profil **Livre** (`book`) : bloc `book:`, alignement schema.org/Book.
+- G.5 — Profil **Lieu** (`place`) : bloc `place:`, `gps` réutilisé (compatible `SeriesMap`), alignement schema.org/Place.
+- G.6 — Procédure de création d'un nouveau profil.
+
+**Décisions normatives** :
+- Un profil réutilise le core **sans le renommer** et n'ajoute que sous une clé d'extension unique. Aucun profil ne casse la rétro-compatibilité : un lecteur qui l'ignore lit toujours un contenu Hyperfocale valide (passthrough §1.3).
+- Les invariants §0 (body avant galerie, tri alphabétique de `media/`, cover/fallback, draft) s'appliquent identiquement à tous les profils.
+- Seule la conditionnalité de `date` peut varier par preset (`dateRequired: false` pour `recipe` et `app`), dans le respect des contraintes §2.0.1.
+
+**Justification** : plusieurs implémentations du dépôt (preset `recipe` du plugin Astro, variante recettes hors source canonique, agenda d'événements de mathieu-drouet.com) divergeaient faute de vocabulaire officiel. L'Annexe G les fait converger vers un cadre unique, dérivé de la spec générique.
 
 ### 2.2-draft — 2026-05-19
 
