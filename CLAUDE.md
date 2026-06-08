@@ -6,7 +6,7 @@ Dépôt de **spécification uniquement** — pas de code, pas de build, pas de d
 >
 > `spec-hyperfocale.md` est **la source de vérité unique** du format Hyperfocale. Toutes les implémentations (plugin Astro, site mathieu-drouet.com, exporter Lightroom, projet Recipes) suivent cette spec — elles ne la précèdent pas. Toute évolution du format passe par une modification ici, en premier.
 >
-> Version courante : **2.1-draft** (révisée le 2026-05-15). Voir le Changelog en fin de fichier.
+> Version courante : **2.3-draft** (révisée le 2026-06-08). Voir le Changelog en fin de fichier.
 
 ## Contenu
 
