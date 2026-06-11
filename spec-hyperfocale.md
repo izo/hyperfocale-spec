@@ -2,7 +2,7 @@
 
 > **Source de vérité canonique.** Ce document définit le format Hyperfocale — un standard de gestion de **séries photo** portable entre SSG (Astro, Next.js, Hugo, 11ty...), vaults Obsidian, et CMS headless (Strapi, Sanity, Payload...). Toute évolution du format doit être proposée d'abord ici, dans ce dépôt.
 
-**Version** : 2.3-draft
+**Version** : 2.4-draft
 **Statut** : spécification active — source de vérité canonique
 **Dernière révision** : 2026-06-08
 
@@ -1808,7 +1808,83 @@ hyperfocale({ preset: 'place' })  // collection 'places', prefix /places, dateRe
 
 ---
 
-### G.6 — Créer un nouveau profil
+### G.6 — Profil Écran (`screen`)
+
+**Cas d'usage** : expérience interactive narrative découpée en écrans/étapes — séquence de boot, environnements applicatifs, parcours onboarding, kiosque, démo produit pas-à-pas. L'atome est **un écran** (une étape de l'expérience). C'est le premier profil dont le contenu n'est pas une « collection d'objets » mais une **séquence ordonnée**.
+
+> **Origine** : observé dans le projet `mdr-terminal-portfolio` (portfolio dual-persona simulant des OS rétro — boot BIOS → sélection persona → ascenseur → desktop). Le contenu de chaque écran y était dispersé et hardcodé ; le profil `screen` l'unifie au format Hyperfocale.
+
+#### Mapping du core
+
+| Champ core | Sens dans le profil |
+|------------|---------------------|
+| `title` | Nom de l'écran |
+| `date` | **Optionnelle** — un écran est intemporel (preset `dateRequired: false`). La séquence est portée par `screen.order`, pas par la date. |
+| `description` | Pitch court de l'écran |
+| `cover` | Visuel / capture de l'écran (fallback : première image de `media/`) |
+| `location` | Sans objet en général |
+| `media/` | Captures d'écran, assets visuels de l'écran |
+
+#### Bloc d'extension `screen:`
+
+`order` et `kind` sont **requis** (squelette de séquence) ; tout le reste est optionnel.
+
+| Clé | Type | Description |
+|-----|------|-------------|
+| `order` | `number` | **Requis.** Position dans la séquence globale |
+| `kind` | `string` | **Requis.** Nature de l'écran. Vocabulaire suggéré : `boot` · `persona` · `app` · `terminal` · `step` · `easter-egg` (libre selon le domaine) |
+| `stage_id` | `string` | Identifiant technique reliant l'écran au code (enum d'états, id d'app) |
+| `persona` | `string` | Identité / rôle associé à l'écran, si l'expérience est multi-persona |
+| `theme` | `string` | Thème visuel actif sur l'écran |
+| `duration` | `duration` (ISO 8601) | Durée d'affichage des écrans temporisés (`PT2.5S`) |
+| `skippable` | `boolean` | L'utilisateur peut-il sauter cet écran ? Défaut `false` |
+| `next` | `string[]` | Slugs des écrans suivants possibles (graphe de navigation) |
+| `prev` | `string` | Slug de l'écran précédent |
+| `llm_context` | `string` | Chemin vers un contexte LLM lu par un assistant conversationnel quand l'écran est actif (base de connaissance contextuelle) |
+
+> **`screen` est une séquence, pas une collection.** Contrairement aux profils G.1–G.5 (tri par date desc), l'ordre canonique d'un contenu `screen` est `screen.order` ascendant. Le champ `next`/`prev` permet d'exprimer un graphe de navigation non-linéaire (branches, easter-eggs) au-delà de l'ordre plat.
+
+#### Exemple
+
+```yaml
+---
+title: "BIOS Screen"
+description: "Écran BIOS rétro-corporate"
+draft: false
+lang: en
+tags: [boot, bios]
+
+screen:
+  order: 1
+  kind: boot
+  stage_id: BIOS
+  theme: lumon
+  duration: PT8S
+  skippable: true
+  next: ["02-os9-boot"]
+  llm_context: /personas/01-mathieu-d/llm.txt
+---
+
+Texte de l'écran (affiché **avant** ses captures). Le body Markdown
+décrit le contenu narratif de l'étape.
+```
+
+#### Preset & règles métier spécifiques
+
+```ts
+hyperfocale({ preset: 'screen' })  // collection 'screens', prefix /screens, dateRequired: false
+```
+
+| Règle | Description |
+|-------|-------------|
+| Tri | **`screen.order` ascendant** (dérogation au tri date desc §1.6, justifiée par la nature séquentielle). `date` absente n'empêche pas l'ordonnancement. |
+| Navigation | Un adaptateur PEUT exposer la navigation `next`/`prev` comme un parcours guidé (boutons précédent/suivant, deep-linking par slug). |
+| Balisage | Un adaptateur web DEVRAIT émettre du JSON-LD `schema.org/HowToStep` pour les écrans séquencés (`kind: boot`/`step`), ou `schema.org/WebPageElement` pour les écrans-pages. |
+| Assistant LLM | `screen.llm_context` est un pointeur de contexte ; l'adaptateur PEUT le charger comme system prompt / base de connaissance d'un chat contextuel. Champ optionnel, ignoré sans erreur. |
+
+---
+
+### G.7 — Créer un nouveau profil
 
 Pour proposer un profil supplémentaire (livre, lieu, produit e-commerce...), une PR contre cette annexe DOIT préciser :
 
@@ -1824,6 +1900,21 @@ Un profil ne DOIT jamais : renommer un champ core, modifier le slug regex, suppr
 ---
 
 ## Changelog
+
+### 2.4-draft — 2026-06-11
+
+Ajout du profil **Écran** (`screen`) — premier profil **séquentiel** (l'atome n'est plus une collection d'objets triée par date, mais une étape ordonnée par `screen.order`).
+
+**Ajouts** :
+- G.6 — Profil **Écran** (`screen`) : bloc `screen:` (`order`/`kind` requis, `stage_id`/`persona`/`theme`/`duration`/`skippable`/`next`/`prev`/`llm_context` optionnels), alignement schema.org/HowToStep (écrans séquencés) et schema.org/WebPageElement (écrans-pages).
+- G.7 — « Créer un nouveau profil » (renommé depuis G.6).
+
+**Décisions normatives** :
+- Un profil PEUT définir un **ordre canonique alternatif** au tri date desc (§1.6) quand sa nature le justifie — `screen` trie par `screen.order` ascendant. C'est une dérogation explicite, à documenter dans le preset.
+- Les invariants §0 restent satisfaits : core non renommé, extension namespacée sous `screen:`, passthrough (§1.3). Un lecteur qui ignore le profil lit un contenu Hyperfocale valide.
+- `date` reste optionnelle (`dateRequired: false`), comme `recipe`/`app`/`book`/`place`.
+
+**Justification** : le projet `mdr-terminal-portfolio` (portfolio dual-persona, séquence de boot rétro-OS) modélisait chaque écran de son expérience en contenu hardcodé et dispersé. Le profil `screen` les fait converger vers le squelette Hyperfocale, en généralisant le format aux expériences narratives multi-écrans (onboarding, kiosque, démo pas-à-pas) au-delà des collections d'objets.
 
 ### 2.3-draft — 2026-06-08
 
