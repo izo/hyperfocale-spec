@@ -39,7 +39,7 @@ Le reste (métadonnées IPTC, GPS, couverture, mots-clés...) est optionnel et s
 
 | Outil | Dépôt | Rôle |
 |-------|-------|------|
-| Plugin Astro | https://github.com/izo/hyperfocale-astro-plugins | Intégration Astro 6 (routes, composants, helpers) |
+| `@izo/hyperfocale` (v0.4.0) | https://github.com/izo/hyperfocale-astro-plugins | Plugin Astro 6 — schéma Zod, collections, presets, composants |
 | Exporter Lightroom | https://github.com/izo/hyperfocale-exporter-app | Export LR → format Hyperfocale avec métadonnées IPTC |
 
 ## Lire la spec

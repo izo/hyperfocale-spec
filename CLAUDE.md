@@ -32,3 +32,9 @@ La version est dans le header de `spec-hyperfocale.md`.
 - Ne pas créer d'autres fichiers que `spec-hyperfocale.md`, `README.md`, `CLAUDE.md`
 - Ne pas générer de code d'implémentation dans ce repo
 - Toute modification de la spec doit rester cohérente avec la section 0 (spec générique)
+
+## Workflow
+
+- Mise à jour du CLAUDE.md : invoquer le skill `claude-md-management:revise-claude-md`
+- Pattern de commit : `type(spec): message` + PR via `gh pr create`
+- Avant toute modification : lire `spec-hyperfocale.md` en entier (fichier unique, ~600+ lignes)
