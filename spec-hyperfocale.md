@@ -2,9 +2,9 @@
 
 > **Source de vérité canonique.** Ce document définit le format Hyperfocale — un standard de gestion de **séries photo** portable entre SSG (Astro, Next.js, Hugo, 11ty...), vaults Obsidian, et CMS headless (Strapi, Sanity, Payload...). Toute évolution du format doit être proposée d'abord ici, dans ce dépôt.
 
-**Version** : 2.4-draft
+**Version** : 2.5-draft
 **Statut** : spécification active — source de vérité canonique
-**Dernière révision** : 2026-06-08
+**Dernière révision** : 2026-07-09
 
 ### Implémentations de référence
 
@@ -58,7 +58,7 @@ Un contenu Hyperfocale est toujours un **dossier** avec cette structure stricte 
 |---------|------|-----------|
 | `<slug>/` | Identifiant de la série | `^[a-z0-9]+(-[a-z0-9]+)*$` |
 | `index.md` | Toutes les métadonnées + texte | Obligatoire |
-| `media/` | Images de la série | Obligatoire, plat (pas de sous-dossiers) |
+| `media/` | Médias de la série (images + documents joints) | Obligatoire, plat (pas de sous-dossiers) |
 
 ### Le fichier `index.md`
 
@@ -121,7 +121,8 @@ Ces règles s'appliquent quel que soit l'adaptateur ou la plateforme :
 | **Couverture** | `cover` du frontmatter, sinon première image alphabétique |
 | **Tri des séries** | Date décroissante dans les listings |
 | **Brouillons** | `draft: true` → exclu des listings en production |
-| **Formats images** | `.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`, `.tiff` |
+| **Formats images** | `.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`, `.tiff` — seuls formats alimentant la galerie |
+| **Documents joints** | Tout autre fichier de `media/` est un document joint (§1.9), listé après la galerie |
 | **Pas de récursion** | `media/` est plat, pas de sous-dossiers |
 | **Passthrough** | Les champs inconnus du frontmatter ne provoquent pas d'erreur |
 
@@ -137,10 +138,11 @@ Toute implémentation (adaptateur, script, outil) qui lit du contenu Hyperfocale
 
 1. Parser le frontmatter YAML de `index.md`
 2. Exiger `title` et `date`, ignorer les champs inconnus
-3. Scanner `media/` et trier les images alphabétiquement
-4. Utiliser `cover` ou la première image comme couverture
+3. Scanner `media/` et trier les fichiers alphabétiquement — les images alimentent la galerie, les autres fichiers sont des documents joints (§1.9)
+4. Utiliser `cover` ou la première image comme couverture (les documents joints ne sont jamais candidats)
 5. Exclure les entrées `draft: true` des listings publics
 6. Rendre le body Markdown
+7. Ne jamais échouer sur un fichier de type inconnu dans `media/`
 
 ---
 
@@ -161,6 +163,7 @@ Section informative — un audit de conformité des implémentations connues, mi
 | `lang` lu | ✅ | Ajouté au schéma Zod (v0.3.0) |
 | Bloc `iptc.*` | ✅ | `z.looseObject()` pour `iptc.custom.*` — champs inconnus transmis (v0.4.0) |
 | Mode distant (`images[]`) | ✅ | `getSeriesImages()` détecte `images[]` ; SeriesGallery/Lightbox gèrent les URLs distantes (v0.3.0) |
+| Documents joints (§1.9) | ❌ | Introduits en v2.5-draft — à implémenter (`getSeriesAttachments()`, `files[]`, `<SeriesAttachments>`) |
 | Passthrough racine (champs inconnus) | ✅ | `z.looseObject()` racine — les extensions site-spécifiques ne sont jamais rejetées (v0.4.0) |
 | Tri date desc | ✅ | |
 
@@ -290,7 +293,8 @@ Chaque série est **autonome** : toutes ses données (métadonnées + médias) v
 | `<slug>` | Identifiant unique. Minuscules, chiffres, tirets uniquement. Regex : `^[a-z0-9]+(-[a-z0-9]+)*$`. Utilisé dans les URLs. |
 | `index.md` | Obligatoire. Contient le frontmatter YAML et le body Markdown. Encodage UTF-8. |
 | `media/` | Obligatoire (peut être vide pour une série en brouillon). Plat — pas de sous-dossiers. |
-| Images | Formats acceptés : `.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`, `.tiff`. Pas de récursion dans `media/`. |
+| Images | Formats alimentant la galerie : `.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`, `.tiff`. Pas de récursion dans `media/`. |
+| Documents joints | Tout autre type de fichier est accepté dans `media/` (PDF, vidéo, audio, archives…) et traité en document joint — voir §1.9. |
 | Nommage des images | Libre, mais recommandé : `01.jpg`, `02.jpg`... (padding 2+ chiffres pour l'ordre). |
 
 #### Variante : médias externes
@@ -570,6 +574,66 @@ Les adaptateurs qui ne supportent pas (encore) les séries imbriquées DOIVENT a
 - Ne pas crasher sur la présence de sous-dossiers à côté de `media/`.
 - Indexer le conteneur comme une série normale (et ignorer les sous-séries) — perte d'information acceptable en attendant l'implémentation.
 
+### 1.9 — Documents joints (tous types de médias) *(introduit v2.5)*
+
+Une série n'est pas limitée aux images : `media/` accepte **tous les types de documents** (PDF, vidéo, audio, archives, tracés GPX…). Tout fichier de `media/` qui n'est pas une image au sens de §1.2 est un **document joint** (*attachment*).
+
+#### Classes de médias
+
+La classification se fait par extension de fichier, en minuscules. Un adaptateur PEUT affiner (détection MIME) mais DOIT rester prévisible.
+
+| Classe | Extensions | Rendu recommandé |
+|--------|-----------|------------------|
+| `image` | `.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`, `.tiff` | Galerie (comportement §1.6, inchangé) |
+| `video` | `.mp4`, `.webm`, `.mov`, `.m4v` | Lecteur intégré (`<video>`) dans ou après la galerie |
+| `audio` | `.mp3`, `.m4a`, `.ogg`, `.wav`, `.flac` | Lecteur intégré (`<audio>`) après la galerie |
+| `document` | `.pdf`, `.epub`, `.txt`, `.md` (hors `index.md`) | Lien de téléchargement / visionneuse |
+| `file` | Tout le reste (`.zip`, `.gpx`, `.svg`…) | Lien de téléchargement |
+
+#### Règles
+
+| Règle | Description |
+|-------|-------------|
+| Galerie | Seule la classe `image` alimente la galerie et la lightbox. Les invariants §0 / §1.6 sont inchangés. |
+| Pièces jointes | Les autres classes sont exposées en **liste de documents joints**, affichée **après** la galerie. Tri alphabétique par nom de fichier. |
+| Couverture | `cover` DOIT référencer une image. Les documents joints ne sont jamais candidats au fallback de couverture. |
+| Lecteurs | Un adaptateur PEUT rendre `video` / `audio` en lecteurs intégrés ; à défaut, il les liste en pièces jointes. |
+| Robustesse | Un lecteur DOIT ignorer sans erreur tout fichier de type inconnu dans `media/`. |
+| `index.md` | N'est jamais un document joint (c'est le fichier de métadonnées de la série). |
+
+#### Métadonnées des documents joints (optionnel)
+
+Le nom de fichier sert de libellé par défaut. Le frontmatter PEUT enrichir les pièces jointes via un bloc `attachments:` :
+
+```yaml
+attachments:
+  - file: "./media/dossier-de-presse.pdf"
+    title: "Dossier de presse"
+    description: "Version print, 12 pages"
+  - file: "./media/interview.mp3"
+    title: "Interview de l'artiste"
+```
+
+Les fichiers non listés dans `attachments:` restent des pièces jointes valides (libellé = nom de fichier). Une entrée `attachments:` dont le fichier est absent de `media/` DEVRAIT être signalée par le lint et ignorée au rendu.
+
+#### Mode distant
+
+En mode distant (§1.5), le champ `files` complète `images` pour les pièces jointes hébergées sur un CDN :
+
+```yaml
+files:
+  - url: "https://cdn.example.com/series/bretagne-2024/dossier.pdf"
+    title: "Dossier de presse"
+    kind: document
+    size: 2400000
+```
+
+`url` est requis ; `title`, `kind` (une classe du tableau ci-dessus) et `size` (octets) sont optionnels. Mêmes règles d'exclusivité que §1.5 : si `files` est présent, il a priorité sur les fichiers non-image de `media/`.
+
+#### Compatibilité
+
+Les adaptateurs antérieurs à v2.5 globbent les extensions image et ignorent déjà de facto les autres fichiers : **aucun contenu existant n'est cassé**. Un adaptateur qui n'implémente pas encore les documents joints DOIT au minimum ne pas échouer sur leur présence ; l'exposition des pièces jointes est requise pour la conformité v2.5 (§2.0).
+
 ---
 
 ## Couche 2 — Adaptateurs plateforme
@@ -586,7 +650,8 @@ Tout adaptateur Hyperfocale **DOIT** :
 | Ignorer les champs inconnus | Ne jamais échouer sur un champ frontmatter non reconnu |
 | Transmettre les extensions | Rendre accessible `iptc.*` et tout champ supplémentaire aux templates/composants |
 | Scanner `media/` | Mode local : glob les images, trier alphabétiquement |
-| Supporter le mode distant | Si `images` est présent, l'utiliser à la place de `media/` |
+| Exposer les documents joints | Lister les fichiers non-image de `media/` (tri alphabétique) et les rendre accessibles aux templates (§1.9) — *conformité v2.5* |
+| Supporter le mode distant | Si `images` est présent, l'utiliser à la place de `media/` ; si `files` est présent, l'utiliser pour les pièces jointes |
 | Respecter `draft` | Exclure les drafts en production |
 | Trier par date desc | Listing par défaut : date décroissante |
 | Exposer le body | Rendre le Markdown du body en HTML |
@@ -1145,6 +1210,7 @@ La couche UI est **optionnelle et par framework**. Elle définit un vocabulaire 
 | `SeriesLightbox` | Visionneuse plein écran | `images: Image[]` |
 | `SeriesMap` | Carte des séries géolocalisées | `series: Series[]` (filtrées sur celles ayant `iptc.gps`) |
 | `SeriesFilter` | Filtrage par keywords, date, lieu | `series: Series[]`, `filters: FilterConfig` |
+| `SeriesAttachments` | Liste des documents joints (téléchargements, lecteurs audio/vidéo) | `attachments: Attachment[]` |
 
 ### 3.2 — Types de données partagés
 
@@ -1164,6 +1230,7 @@ interface Series {
   body: string;           // Markdown brut ou HTML rendu, selon la plateforme
   iptc: IPTCMetadata;
   images: Image[];        // toutes les images de la série
+  attachments: Attachment[]; // documents joints non-image (§1.9)
 }
 
 /** Image — mode local ou distant */
@@ -1172,6 +1239,15 @@ interface Image {
   alt?: string;
   width?: number;
   height?: number;
+}
+
+/** Document joint — mode local ou distant (§1.9) */
+interface Attachment {
+  src: string;            // chemin relatif (local) ou URL (distant)
+  kind: 'video' | 'audio' | 'document' | 'file';
+  title?: string;         // libellé (frontmatter attachments: ou nom de fichier)
+  description?: string;
+  size?: number;          // octets, si connu
 }
 
 /** Métadonnées IPTC */
@@ -1232,7 +1308,9 @@ Vérifications :
 - [ ] `slug` respecte le pattern `^[a-z0-9]+(-[a-z0-9]+)*$`
 - [ ] `cover` pointe vers un fichier existant dans `media/`
 - [ ] `media/` ne contient pas de sous-dossiers
-- [ ] Les images sont dans un format accepté
+- [ ] Chaque fichier de `media/` est classé (image ou document joint, §1.9)
+- [ ] `cover` pointe vers une image (jamais un document joint)
+- [ ] Chaque entrée `attachments:` du frontmatter référence un fichier existant de `media/`
 - [ ] `iptc.country_code` est un code ISO 3166-1 valide (si présent)
 - [ ] `iptc.gps.lat` est entre -90 et 90, `lng` entre -180 et 180 (si présent)
 - [ ] Pas de mélange mode local / mode distant dans la même série
@@ -1900,6 +1978,24 @@ Un profil ne DOIT jamais : renommer un champ core, modifier le slug regex, suppr
 ---
 
 ## Changelog
+
+### 2.5-draft — 2026-07-09
+
+Extension de `media/` à **tous les types de documents** : une série peut embarquer des documents joints (PDF, vidéo, audio, archives…) aux côtés de ses images.
+
+**Ajouts** :
+- §1.9 — Documents joints : classes de médias (`image` / `video` / `audio` / `document` / `file`), règles de rendu (galerie inchangée, pièces jointes après la galerie), bloc frontmatter optionnel `attachments:`, champ `files[]` en mode distant.
+- §2.0 — Nouvelle obligation du contrat d'adaptateur : exposer les documents joints (conformité v2.5).
+- §3.1 — Composant `SeriesAttachments` ; §3.2 — `Series.attachments` et interface `Attachment`.
+- Annexe A — Vérifications lint correspondantes (classification des fichiers, `cover` = image, cohérence du bloc `attachments:`).
+
+**Décisions normatives** :
+- La galerie et la lightbox restent réservées à la classe `image` ; `cover` DOIT être une image. Les invariants §0 / §1.6 sont inchangés.
+- Rétro-compatibilité totale : les lecteurs existants globbent les extensions image et ignorent déjà les autres fichiers — aucun contenu ni adaptateur existant n'est cassé. L'exposition des pièces jointes devient une obligation à partir de la conformité v2.5.
+- `index.md` n'est jamais un document joint.
+- Contrat minimum (§0) : ajout de l'exigence « ne jamais échouer sur un fichier de type inconnu dans `media/` ».
+
+**Justification** : le plugin SPIP `spip2astro` (export SPIP → format Hyperfocale) doit exporter **tous** les documents liés à un contenu SPIP — PDF, sons, vidéos, archives — et pas seulement les images. Plus largement, une série photo réelle s'accompagne souvent de pièces (dossier de presse, tracé GPX, enregistrement) qui n'avaient pas de place normative dans le format.
 
 ### 2.4-draft — 2026-06-11
 
