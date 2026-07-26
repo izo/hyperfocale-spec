@@ -143,6 +143,7 @@ Toute implémentation (adaptateur, script, outil) qui lit du contenu Hyperfocale
 5. Exclure les entrées `draft: true` des listings publics
 6. Rendre le body Markdown
 7. Ne jamais échouer sur un fichier de type inconnu dans `media/`
+8. Ne pas traiter comme une série un `index.md` déclarant `type: section` — c'est un rangement, pas un contenu (§1.10)
 
 ---
 
@@ -344,6 +345,7 @@ Le frontmatter est en YAML, délimité par `---`. Il se divise en deux niveaux :
 | `lang` | `string` | non | Code langue ISO 639-1 (`fr`, `en`...). Pour les sites multilingues. |
 | `featured` | `boolean` | non | `true` = série mise en avant (boost dans les listings, sections "à la une"). Défaut : `false`. *Officialisé en v2.1 à partir du pattern observé dans plusieurs implémentations.* |
 | `tags` | `string[]` | non | Tags éditoriaux libres. **Distincts** de `iptc.keywords` (qui suit le vocabulaire IPTC normalisé). Voir note ci-dessous. *Officialisé en v2.1.* |
+| `type` | `string` | non | Nature du contenu. Défaut : `series`. Seule autre valeur normative : `section` — le fichier est alors une page d'index de section et non une série (§1.10). *Introduit en v2.6.* |
 
 > **Relation `tags` ↔ `iptc.keywords`** : `tags` est un vocabulaire éditorial libre, géré par l'auteur (ex : `featured`, `portrait`, `intimite`). `iptc.keywords` suit le standard IPTC et peut être peuplé automatiquement depuis les métadonnées image (ex : depuis Lightroom). Les deux peuvent coexister. Les adaptateurs DEVRAIENT permettre la recherche par les deux.
 
@@ -717,6 +719,77 @@ files:
 
 Les adaptateurs antérieurs à v2.5 globbent les extensions image et ignorent déjà de facto les autres fichiers : **aucun contenu existant n'est cassé**. Un adaptateur qui n'implémente pas encore les documents joints DOIT au minimum ne pas échouer sur leur présence ; l'exposition des pièces jointes est requise pour la conformité v2.5 (§2.0).
 
+### 1.10 — Page d'index de section *(introduit v2.6)*
+
+Un corpus un peu grand range ses contenus par **sections** : des dossiers de classement (`archives/music/`, `portfolio/`) qui regroupent des séries sans être eux-mêmes des séries. Ces sections ont besoin d'un titre et d'un texte de présentation — c'est ce qui s'affiche en tête de la page de listing.
+
+Le format n'offrait aucune forme pour cela. Un `index.md` posé à cet emplacement était lu comme une série et échouait sur `date` manquante, alors qu'une section n'a pas de date : elle n'est pas un moment, c'est un rangement.
+
+Une **page d'index de section** est un `index.md` qui déclare `type: section`. **Ce n'est pas une série** : pas de galerie, pas de `date`, pas de présence dans les listings de séries.
+
+#### Structure filesystem
+
+```
+<content-root>/archives/music/
+├── index.md            ← page d'index de section (type: section)
+├── concerts/
+│   └── <slug>/
+│       ├── index.md    ← série
+│       └── media/
+└── festivals/
+    └── <slug>/…
+```
+
+#### Frontmatter
+
+```yaml
+---
+type: section
+title: "Musique"
+description: "Concerts, festivals et portraits d'artistes depuis 2005."
+---
+
+Texte libre affiché **avant** la liste des contenus de la section.
+```
+
+| Champ | Type | Requis | Description |
+|-------|------|--------|-------------|
+| `type` | `string` | **oui** | Valeur `section`. C'est ce champ, et lui seul, qui distingue une page d'index d'une série. |
+| `title` | `string` | **oui** | Nom de la section. |
+| `date` | — | **non** | Non requise. Une section n'est pas datée. Si présente, elle est ignorée (aucun tri ne s'appuie dessus). |
+| `description`, `cover`, `lang`, `draft` | | non | Même sens qu'en §1.3. |
+
+Le champ `type` est **réservé** au niveau du core. Son absence vaut `type: series` — la valeur par défaut, et le comportement de tout le contenu antérieur à v2.6.
+
+#### Règles
+
+| Règle | Description |
+|-------|-------------|
+| Ce n'est pas un contenu de collection | Une page d'index de section est **exclue** des listings de séries, des flux de syndication (Annexe E) et du tri par date (§1.6). Un adaptateur PEUT lui générer une page de section, avec son body en tête et la liste de ses contenus en dessous. |
+| Pas de galerie | La section ne porte pas de `media/`. Un `cover` PEUT être renseigné pour l'illustrer dans une navigation ; il pointe alors vers une image d'un contenu de la section, en chemin relatif — même dérogation qu'en §1.8. |
+| Discriminant explicite | La distinction série / section se lit **uniquement** dans `type`. Un adaptateur ne DOIT jamais la deviner (par l'absence de `date`, par la présence de sous-dossiers, ou autrement) : une série sans `date` reste une série invalide. |
+| Pas de contenu direct | Les contenus d'une section vivent dans ses sous-dossiers. Une section ne « contient » rien au sens de §1.8 : elle ne les regroupe pas éditorialement, elle les range. |
+| Imbrication | Une section PEUT contenir d'autres sections. Contrairement à §1.8, la profondeur n'est pas limitée : ce sont des dossiers de classement, pas des contenus. |
+| Robustesse | Un adaptateur qui n'implémente pas §1.10 DOIT **ignorer** un `index.md` portant `type: section` — sans erreur, et sans tenter de le valider comme série (validation qui échouerait sur `date`). |
+
+#### Distinction avec la série conteneur (§1.8)
+
+Les deux formes rassemblent des séries ; elles ne sont pas interchangeables.
+
+| | Conteneur §1.8 | Page d'index de section §1.10 |
+|---|---|---|
+| Nature | Une **série** qui en regroupe d'autres | Un **rangement**, pas un contenu |
+| Intention | Éditoriale (un festival, un reportage chapitré) | Structurelle (une rubrique du site) |
+| `date` | Requise | Sans objet |
+| Galerie propre | Possible (`media/` optionnel) | Non |
+| Dans les listings de séries | Oui | Non |
+| Profondeur | Un seul niveau d'imbrication | Libre |
+| Déclaration | `type` absent (ou `series`) | `type: section` |
+
+#### Compatibilité
+
+Le champ `type` est nouveau : aucun contenu antérieur ne le porte, donc tout contenu antérieur reste une série. Un adaptateur antérieur à v2.6 qui rencontre un `type: section` le traite comme un champ inconnu (passthrough §1.3) et échoue sur `date` — c'est précisément le comportement que cette section corrige, et la raison pour laquelle la prise en charge de §1.10 est requise pour la conformité v2.6 (§2.0).
+
 ---
 
 ## Couche 2 — Adaptateurs plateforme
@@ -735,6 +808,7 @@ Tout adaptateur Hyperfocale **DOIT** :
 | Scanner `media/` | Mode local : glob les images, trier alphabétiquement |
 | Exposer les documents joints | Lister les fichiers non-image de `media/` (tri alphabétique) et les rendre accessibles aux templates (§1.9) — *conformité v2.5* |
 | Supporter le mode distant | Si `images` est présent, l'utiliser à la place de `media/` ; si `files` est présent, l'utiliser pour les pièces jointes |
+| Distinguer les sections | Ne pas valider comme série un `index.md` portant `type: section` ; l'exclure des listings de séries (§1.10) — *conformité v2.6* |
 | Supporter le manifeste d'images | Si un `images.json` accompagne `index.md`, l'utiliser à la place de `media/` en respectant l'ordre du tableau (§1.5.1) — *conformité v2.6* |
 | Respecter `draft` | Exclure les drafts en production |
 | Trier par date desc | Listing par défaut : date décroissante |
@@ -1387,7 +1461,9 @@ hyperfocale-lint ./content/series/
 
 Vérifications :
 - [ ] Chaque dossier série contient `index.md`
-- [ ] Frontmatter contient `title` et `date`
+- [ ] Frontmatter contient `title` et `date` — sauf `type: section`, où seul `title` est requis (§1.10)
+- [ ] `type`, si présent, vaut `series` ou `section`
+- [ ] Un `index.md` sans `date` déclare explicitement `type: section` (une série sans date reste une erreur)
 - [ ] `date` est au format ISO 8601
 - [ ] `slug` respecte le pattern `^[a-z0-9]+(-[a-z0-9]+)*$`
 - [ ] `cover` pointe vers un fichier existant dans `media/`
@@ -2068,6 +2144,27 @@ Un profil ne DOIT jamais : renommer un champ core, modifier le slug regex, suppr
 ### 2.6-draft — 2026-07-26
 
 Clarifications issues d'une même mesure : le round-trip du 2026-07-26 sur les **332 séries** de `mathieu-drouet.com`, qui a confronté la spec à un corpus réel pour la première fois. Aucune n'est une rupture — chacune nomme une forme que le réel pratiquait déjà sans que le format sache la décrire.
+
+---
+
+#### Page d'index de section (§1.10)
+
+Comblement d'une lacune du format : un dossier de **rangement** n'avait aucune façon de porter un titre et un texte de présentation.
+
+**Ajouts** :
+- §1.10 — Page d'index de section : `type: section`, frontmatter sans `date`, règles de rendu et d'exclusion des listings, tableau de distinction avec le conteneur §1.8.
+- §1.3 — Champ core `type` (défaut `series`, valeur normative alternative `section`).
+- §0 — Contrat minimum d'un lecteur : ne pas traiter comme une série un `index.md` déclarant `type: section`.
+- §2.0 — Nouvelle obligation du contrat d'adaptateur (conformité v2.6).
+- Annexe A — Vérifications lint correspondantes.
+
+**Décisions normatives** :
+- Une page d'index de section **n'est pas un contenu Hyperfocale** : elle est exclue des listings de séries, des flux et du tri par date. Les invariants §0 sur les séries sont donc inchangés.
+- Le discriminant est **explicite et unique** : le champ `type`. Un adaptateur ne DOIT jamais deviner la nature d'un `index.md` par l'absence de `date` ou par la présence de sous-dossiers — une série sans `date` reste une série invalide.
+- `type` absent vaut `series` : rétro-compatibilité totale, aucun contenu antérieur n'est requalifié.
+- Contrairement au conteneur §1.8, une section PEUT en contenir une autre sans limite de profondeur — ce sont des dossiers de classement, pas des contenus.
+
+**Justification** : mesuré sur le corpus de `mathieu-drouet.com` le 2026-07-26 — **5 fichiers** (`archives/corporate`, `archives/experiments`, `archives/fashion`, `archives/food-and-wine`, `archives/music`) portent `title` + `description` sans `date`. Ce sont les **seuls points bloquants** de tout le corpus, et ce ne sont pas des séries. Aucune forme du format ne les couvrait : `date` est obligatoire au §0, un conteneur §1.8 doit en avoir une, et aucun des six profils de l'Annexe G ne décrit un rangement. Le §2.0.1 interdisant à un preset de supprimer une obligation du contrat d'adaptateur, la lacune ne pouvait pas se contourner par preset.
 
 ---
 
