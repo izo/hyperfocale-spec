@@ -320,7 +320,7 @@ Les segments situés **au-dessus** du dossier de série sont des **sections de r
 
 #### Variante : médias externes
 
-Pour les CMS headless ou les CDN, les images peuvent être des URLs dans le frontmatter plutôt que des fichiers locaux. Voir [[#1.5 — Mode distant]].
+Pour les CMS headless ou les CDN, les images peuvent être des URLs plutôt que des fichiers locaux — dans le frontmatter (§1.5) ou dans un manifeste annexe `images.json` (§1.5.1). Voir [[#1.5 — Mode distant]].
 
 ### 1.3 — Frontmatter
 
@@ -469,6 +469,65 @@ images:
 - Si `images` est absent, l'adaptateur scanne `media/` (mode local, comportement par défaut).
 - Les deux modes sont mutuellement exclusifs par série. Ne pas mélanger.
 - Chaque entrée `images` : `url` (requis), `alt` (optionnel), `width`/`height` (optionnels).
+
+#### 1.5.1 — Manifeste d'images externalisé *(introduit v2.6)*
+
+Le tableau `images:` du frontmatter suppose que la liste des images est **écrite à la main**. Dès qu'elle est **générée** — synchronisation vers un CDN, pipeline d'optimisation, export depuis un catalogue — l'inscrire dans le frontmatter mélange une donnée dérivée à une donnée éditoriale. Deux conséquences pratiques : chaque resynchronisation réécrit `index.md` et pollue son historique Git, et tout éditeur du fichier doit préserver à l'octet un tableau qu'il n'a pas produit.
+
+Le format accepte donc une troisième forme : un **manifeste d'images** dans un fichier annexe `images.json`, à côté de `index.md`.
+
+```
+<slug>/
+├── index.md
+└── images.json
+```
+
+**Forme courte** — l'ordre du tableau porte l'ordre de la galerie :
+
+```json
+{ "images": [
+  "/content/bretagne-2024/media/01.jpg",
+  "/content/bretagne-2024/media/02.jpg"
+] }
+```
+
+**Forme longue** — mêmes clés qu'une entrée `images:` du frontmatter :
+
+```json
+{ "images": [
+  { "url": "https://cdn.example.com/bretagne-2024/01.jpg", "alt": "Phare de la Pointe Saint-Mathieu", "width": 3000, "height": 2000 }
+] }
+```
+
+Un adaptateur DOIT accepter les deux formes : une entrée de type chaîne équivaut à `{ "url": <chaîne> }`.
+
+##### Règles du manifeste
+
+| Règle | Description |
+|-------|-------------|
+| Priorité | `images:` du frontmatter > `images.json` > scan de `media/`. |
+| Exclusivité | Les trois modes sont mutuellement exclusifs **par série**. Une série qui porte un `images.json` ne DOIT pas porter aussi un tableau `images:` — le lint DOIT le signaler. |
+| Ordre | L'ordre du tableau fait foi. Le tri alphabétique de §1.6 ne s'applique pas : le manifeste est une donnée ordonnée, pas un scan. |
+| Résolution des URLs | Une entrée est soit une URL absolue (`https://…`), soit un chemin absolu au site (`/…`), soit un chemin relatif à `index.md` (`./media/01.jpg`). L'adaptateur DOIT supporter les trois. |
+| Couverture | `cover` du frontmatter, sinon **première entrée du tableau** (et non la première par ordre alphabétique). |
+| Documents joints | Une clé `files` optionnelle complète `images`, avec les mêmes entrées qu'en §1.9 mode distant. |
+| Robustesse | JSON illisible, clé `images` absente ou non-tableau : l'adaptateur DOIT se rabattre sur `media/` et DEVRAIT signaler l'anomalie. Jamais d'échec de build. |
+| `images.json` | N'est jamais un média ni un document joint — c'est un fichier de métadonnées, au même titre qu'`index.md`. |
+
+##### Pourquoi un fichier annexe plutôt que le frontmatter
+
+| | `images:` (§1.5) | `images.json` (§1.5.1) |
+|---|---|---|
+| Liste écrite à la main | ✅ naturel | ⚠️ un fichier de plus |
+| Liste générée par un outil | ⚠️ réécrit `index.md` à chaque sync | ✅ isole la donnée dérivée |
+| Diff Git d'une modification éditoriale | bruité par la liste d'images | propre |
+| Contrat d'un éditeur (CMS) | doit préserver un tableau qu'il n'a pas écrit | n'a pas à toucher au fichier |
+
+Les deux formes restent normatives : une série dont la liste d'images est éditoriale a toute raison de la garder dans son frontmatter.
+
+##### Compatibilité
+
+Un adaptateur antérieur à v2.6 ignore le fichier et ne trouve aucune image (`media/` absent) : la série s'affiche sans galerie, sans erreur — c'est le comportement de §1.9 pour un fichier inconnu, appliqué à un dossier vide. Aucun contenu existant n'est cassé. La prise en charge du manifeste est requise pour la conformité v2.6.
 
 ### 1.6 — Règles métier
 
@@ -676,6 +735,7 @@ Tout adaptateur Hyperfocale **DOIT** :
 | Scanner `media/` | Mode local : glob les images, trier alphabétiquement |
 | Exposer les documents joints | Lister les fichiers non-image de `media/` (tri alphabétique) et les rendre accessibles aux templates (§1.9) — *conformité v2.5* |
 | Supporter le mode distant | Si `images` est présent, l'utiliser à la place de `media/` ; si `files` est présent, l'utiliser pour les pièces jointes |
+| Supporter le manifeste d'images | Si un `images.json` accompagne `index.md`, l'utiliser à la place de `media/` en respectant l'ordre du tableau (§1.5.1) — *conformité v2.6* |
 | Respecter `draft` | Exclure les drafts en production |
 | Trier par date desc | Listing par défaut : date décroissante |
 | Exposer le body | Rendre le Markdown du body en HTML |
@@ -1337,7 +1397,8 @@ Vérifications :
 - [ ] Chaque entrée `attachments:` du frontmatter référence un fichier existant de `media/`
 - [ ] `iptc.country_code` est un code ISO 3166-1 valide (si présent)
 - [ ] `iptc.gps.lat` est entre -90 et 90, `lng` entre -180 et 180 (si présent)
-- [ ] Pas de mélange mode local / mode distant dans la même série
+- [ ] Pas de mélange mode local / mode distant / manifeste dans la même série
+- [ ] `images.json` (si présent) est un JSON valide dont la clé `images` est un tableau (§1.5.1)
 - [ ] Aucune série imbriquée au-delà d'un niveau — un conteneur §1.8 n'est jamais lui-même une sous-série (la profondeur de rangement §1.2, elle, n'est pas contrainte)
 
 ### B — Migration depuis la spec v1 (Astro-only)
@@ -2006,6 +2067,12 @@ Un profil ne DOIT jamais : renommer un champ core, modifier le slug regex, suppr
 
 ### 2.6-draft — 2026-07-26
 
+Clarifications issues d'une même mesure : le round-trip du 2026-07-26 sur les **332 séries** de `mathieu-drouet.com`, qui a confronté la spec à un corpus réel pour la première fois. Aucune n'est une rupture — chacune nomme une forme que le réel pratiquait déjà sans que le format sache la décrire.
+
+---
+
+#### Rangement et imbrication (§1.2, §1.8)
+
 Clarification d'une ambiguïté de la §1.8 : la spec confondait **profondeur de rangement** et **imbrication de séries**.
 
 **Ajouts** :
@@ -2020,6 +2087,25 @@ Clarification d'une ambiguïté de la §1.8 : la spec confondait **profondeur de
 - Le slug seul PEUT ne pas être unique dans un corpus ; c'est le chemin relatif à `<content-root>` qui identifie une série.
 
 **Justification** : mesuré sur le corpus de `mathieu-drouet.com` le 2026-07-26 — **303 séries sur 332** sont rangées 2 à 4 segments au-dessus de leur slug (`archives/music/concerts/2010/<slug>/`), profondeur maximale 5. Lues à la lettre de la §1.8, ces séries violaient la limite d'un niveau ; elles n'imbriquent pourtant rien — aucun dossier traversé ne porte d'`index.md`. Le même corpus compte par ailleurs **11 vrais conteneurs §1.8** portant 41 sous-séries, tous conformes : les deux formes coexistent et méritaient d'être nommées séparément.
+---
+
+#### Manifeste d'images externalisé (§1.5.1)
+
+Officialisation du **manifeste d'images externalisé** : la liste des images d'une série peut vivre dans un fichier annexe `images.json` plutôt que dans le frontmatter.
+
+**Ajouts** :
+- §1.5.1 — Manifeste d'images externalisé : formes courte et longue, ordre de priorité `images:` > `images.json` > `media/`, résolution des URLs, couverture, robustesse.
+- §1.2 — La variante « médias externes » mentionne les deux formes.
+- §2.0 — Nouvelle obligation du contrat d'adaptateur : prendre en charge le manifeste (conformité v2.6).
+- Annexe A — Vérifications lint correspondantes (exclusivité des trois modes, validité du JSON).
+
+**Décisions normatives** :
+- Les trois modes (scan de `media/`, `images:` du frontmatter, `images.json`) sont **mutuellement exclusifs par série**, dans cet ordre de priorité inverse.
+- L'ordre du manifeste **fait foi** — le tri alphabétique de §1.6 ne s'applique qu'au scan de `media/`. Le fallback de couverture devient « première entrée du tableau ».
+- `images.json` n'est ni un média ni un document joint (§1.9) : c'est un fichier de métadonnées, comme `index.md`.
+- Rétro-compatibilité : un adaptateur antérieur ignore le fichier et rend une série sans galerie, sans erreur. Aucun contenu existant n'est cassé.
+
+**Justification** : mesuré sur le corpus de `mathieu-drouet.com` le 2026-07-26 — **309 séries sur 332** portent un `images.json` par série, aucune n'utilise le mode distant §1.5, et **aucune n'a de dossier `media/` local** (les images vivent sur Cloudflare R2, synchronisées par un manifeste). Le format n'offrait aucune forme normative pour une liste d'images **générée** : l'inscrire dans le frontmatter fait réécrire `index.md` à chaque synchronisation et impose à tout éditeur de préserver une donnée dérivée qu'il n'a pas produite.
 
 ### 2.5-draft — 2026-07-09
 
