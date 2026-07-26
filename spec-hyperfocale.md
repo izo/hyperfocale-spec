@@ -297,6 +297,27 @@ Chaque série est **autonome** : toutes ses données (métadonnées + médias) v
 | Documents joints | Tout autre type de fichier est accepté dans `media/` (PDF, vidéo, audio, archives…) et traité en document joint — voir §1.9. |
 | Nommage des images | Libre, mais recommandé : `01.jpg`, `02.jpg`... (padding 2+ chiffres pour l'ordre). |
 
+#### Profondeur de rangement *(clarifié v2.6)*
+
+`<content-root>/series/<slug>/` est la forme **canonique**, pas une contrainte de profondeur. Un dossier de série PEUT être rangé à une profondeur arbitraire sous `<content-root>` :
+
+```
+<content-root>/archives/music/concerts/2010/<slug>/
+├── index.md
+└── media/
+```
+
+Les segments situés **au-dessus** du dossier de série sont des **sections de rangement** : des dossiers de classement, propres au routage du site, sans existence dans le format.
+
+| Élément | Contrainte |
+|---------|-----------|
+| Section de rangement | Dossier **sans** `index.md` propre. Profondeur libre. N'est pas un contenu : pas de slug, pas de frontmatter, absente de tout listing. |
+| `<slug>` | Le **dernier** segment du chemin. Suit la regex §1.2. Les segments de rangement ne font pas partie du slug. |
+| Découverte | Un adaptateur DOIT découvrir les séries par **parcours récursif** de `<content-root>` — tout dossier portant un `index.md` est un contenu. Un listing du seul premier niveau est non conforme. |
+| Identité | Le chemin relatif à `<content-root>` est la clé de routage. Le slug seul PEUT ne pas être unique dans le corpus (deux sections peuvent porter un `bretagne-2024/`) ; c'est le chemin qui l'est. |
+
+> **Rangement ≠ imbrication.** La limite d'un seul niveau posée en §1.8 porte sur l'**imbrication** — une série à l'intérieur d'une série — et non sur la profondeur de rangement. Le critère est mécanique et unique : **un dossier parent qui porte un `index.md` est un conteneur** (§1.8, un seul niveau) ; **un dossier parent sans `index.md` est une section de rangement** (profondeur libre).
+
 #### Variante : médias externes
 
 Pour les CMS headless ou les CDN, les images peuvent être des URLs plutôt que des fichiers locaux — dans le frontmatter (§1.5) ou dans un manifeste annexe `images.json` (§1.5.1). Voir [[#1.5 — Mode distant]].
@@ -563,6 +584,8 @@ Cas d'usage typiques :
 - **Évènement multi-temps** : un mariage ou une exposition se décompose en plusieurs moments distincts, chacun méritant sa propre série.
 - **Reportage chapitré** : un sujet long déroulé en plusieurs séries indépendantes mais liées.
 
+> **Ne pas confondre avec le rangement (§1.2).** `archives/music/concerts/2010/<slug>/` est une série rangée à quatre segments de profondeur — pas une sous-série de quatrième niveau. Aucun des dossiers traversés ne porte d'`index.md` : ce sont des sections de routage propres au site, invisibles du format. L'imbrication commence quand un dossier de série **porteur d'un `index.md`** en contient un autre ; c'est cette imbrication-là qui est limitée à un niveau.
+
 #### Structure filesystem
 
 ```
@@ -585,6 +608,7 @@ Cas d'usage typiques :
 | `index.md` du conteneur | Obligatoire. Mêmes règles que pour une série standard (`title`, `date` requis). |
 | `media/` du conteneur | **Optionnel**. Si absent, le conteneur n'a pas de galerie propre — il sert uniquement de point d'entrée vers ses sous-séries. |
 | Sous-séries | Chacune est une série complète et autonome (au sens des §1.1–1.6). Une sous-série ne peut **pas** elle-même contenir des sous-séries (pas de récursion au-delà d'un niveau). |
+| Ce qu'est un conteneur | Un dossier de série dont un **sous-dossier porte un `index.md`**. Un dossier sans `index.md` traversé pour atteindre une série est une section de rangement (§1.2), pas un conteneur — sa profondeur est libre. |
 | `<slug-conteneur>` et `<sous-slug>` | Suivent les mêmes règles de slug que §1.2. Le slug d'une sous-série est local : il n'a pas besoin d'inclure le slug du conteneur. |
 | Tri des sous-séries | Date décroissante par défaut (idem listing standard). L'adaptateur PEUT exposer un tri alternatif via un champ `lineup_order: number` dans le frontmatter des sous-séries. |
 
@@ -1375,6 +1399,7 @@ Vérifications :
 - [ ] `iptc.gps.lat` est entre -90 et 90, `lng` entre -180 et 180 (si présent)
 - [ ] Pas de mélange mode local / mode distant / manifeste dans la même série
 - [ ] `images.json` (si présent) est un JSON valide dont la clé `images` est un tableau (§1.5.1)
+- [ ] Aucune série imbriquée au-delà d'un niveau — un conteneur §1.8 n'est jamais lui-même une sous-série (la profondeur de rangement §1.2, elle, n'est pas contrainte)
 
 ### B — Migration depuis la spec v1 (Astro-only)
 
@@ -2041,6 +2066,30 @@ Un profil ne DOIT jamais : renommer un champ core, modifier le slug regex, suppr
 ## Changelog
 
 ### 2.6-draft — 2026-07-26
+
+Clarifications issues d'une même mesure : le round-trip du 2026-07-26 sur les **332 séries** de `mathieu-drouet.com`, qui a confronté la spec à un corpus réel pour la première fois. Aucune n'est une rupture — chacune nomme une forme que le réel pratiquait déjà sans que le format sache la décrire.
+
+---
+
+#### Rangement et imbrication (§1.2, §1.8)
+
+Clarification d'une ambiguïté de la §1.8 : la spec confondait **profondeur de rangement** et **imbrication de séries**.
+
+**Ajouts** :
+- §1.2 — « Profondeur de rangement » : notion de **section de rangement** (dossier sans `index.md`, profondeur libre), slug = dernier segment, découverte par parcours récursif, chemin relatif comme clé de routage.
+- §1.8 — Encadré « Ne pas confondre avec le rangement » + ligne de règle définissant mécaniquement ce qu'est un conteneur.
+- Annexe A — Vérification lint : imbrication limitée à un niveau, profondeur de rangement non contrainte.
+
+**Décisions normatives** :
+- La limite d'un seul niveau de la §1.8 porte sur l'**imbrication** (une série dans une série), **pas** sur la profondeur de rangement, qui est libre.
+- Le discriminant est mécanique : un dossier parent porteur d'un `index.md` est un conteneur §1.8 ; sans `index.md`, c'est une section de rangement §1.2.
+- La découverte des séries est un **parcours récursif** de `<content-root>`. Un adaptateur qui liste le seul premier niveau est non conforme.
+- Le slug seul PEUT ne pas être unique dans un corpus ; c'est le chemin relatif à `<content-root>` qui identifie une série.
+
+**Justification** : mesuré sur le corpus de `mathieu-drouet.com` le 2026-07-26 — **303 séries sur 332** sont rangées 2 à 4 segments au-dessus de leur slug (`archives/music/concerts/2010/<slug>/`), profondeur maximale 5. Lues à la lettre de la §1.8, ces séries violaient la limite d'un niveau ; elles n'imbriquent pourtant rien — aucun dossier traversé ne porte d'`index.md`. Le même corpus compte par ailleurs **11 vrais conteneurs §1.8** portant 41 sous-séries, tous conformes : les deux formes coexistent et méritaient d'être nommées séparément.
+---
+
+#### Manifeste d'images externalisé (§1.5.1)
 
 Officialisation du **manifeste d'images externalisé** : la liste des images d'une série peut vivre dans un fichier annexe `images.json` plutôt que dans le frontmatter.
 
