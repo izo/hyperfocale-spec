@@ -10,7 +10,7 @@
 
 | Implémentation | Dépôt | Rôle | Conformité |
 |----------------|-------|------|------------|
-| Plugin Astro `@izo/hyperfocale` | https://github.com/izo/hyperfocale-astro-plugins | Adaptateur Astro (couche 2) | ⚠️ Conforme au contrat, écart Annexe G |
+| Plugin Astro `@izo/hyperfocale` | https://github.com/izo/hyperfocale-astro-plugins | Adaptateur Astro (couche 2) | ⚠️ Conforme au contrat ; preset `photo` à renommer `series` |
 | Site `mathieu-drouet.com` | https://github.com/izo/mathieu-drouet.com | Consommateur grandeur nature (Astro) | ⚠️ Migration v2.1 prévue |
 | Exporter Lightroom | https://github.com/izo/hyperfocale-exporter-app | Source de contenu : LR → format Hyperfocale | ✅ Conforme |
 
@@ -177,16 +177,21 @@ Section informative — un audit de conformité des implémentations connues, mi
 
 **Écart ouvert — presets vs Annexe G** :
 
-Le plugin expose `photo`, `portfolio`, `music`, `catalog`, `press`, `recipe` ; l'Annexe G standardise `series`, `event`, `recipe`, `app`, `book`, `place`.
+Le plugin expose `photo`, `portfolio`, `music`, `catalog`, `press`, `recipe`. Quatre d'entre eux — `portfolio`, `music`, `catalog`, `press` — ont été standardisés en Annexe G par la v2.7 ; il reste un écart de nommage.
 
-| Preset plugin | Prefix plugin | Profil Annexe G | Écart |
-|---------------|---------------|-----------------|-------|
-| `photo` | `/series` | `series` → `/series` | nom divergent, prefix conforme |
-| `recipe` | `/recettes` | `recipe` → `/recipes` | nom conforme, prefix divergent |
-| `portfolio`, `music`, `catalog`, `press` | `/projets`, `/discographie`, `/catalogue`, `/presse` | — | hors annexe |
-| — | — | `event`, `app`, `book`, `place` | non implémentés |
+| Preset plugin | Prefix plugin | Profil Annexe G | État |
+|---------------|---------------|-----------------|------|
+| `photo` | `/series` | `series` → `/series` | ⚠️ **nom divergent** — `series` est l'identifiant standardisé |
+| `recipe` | `/recettes` | `recipe` → `/recipes` | ✅ nom conforme ; prefix localisé |
+| `portfolio` | `/projets` | `portfolio` → `/portfolio` | ✅ nom conforme ; prefix localisé |
+| `music` | `/discographie` | `music` → `/music` | ✅ nom conforme ; prefix localisé |
+| `catalog` | `/catalogue` | `catalog` → `/catalog` | ✅ nom conforme ; prefix localisé |
+| `press` | `/presse` | `press` → `/press` | ✅ nom conforme ; prefix localisé |
+| — | — | `event`, `app`, `book`, `place`, `screen` | non implémentés |
 
-Aucun de ces écarts ne viole les contraintes §2.0.1 (le squelette, le slug regex et les champs core sont préservés) : ils portent sur le **vocabulaire standardisé**, pas sur le contrat. À arbitrer dans un sens ou dans l'autre — aligner le plugin sur l'annexe, ou étendre l'annexe par PR comme le prévoit §2.0.1.
+Aucun de ces écarts ne viole les contraintes §2.0.1 : le squelette, le slug regex et les champs core sont préservés. Les prefix divergents ne sont pas des non-conformités — la colonne de l'Annexe G est un **prefix recommandé**, et un preset PEUT fixer le sien (§2.0.1) ; le plugin les a simplement localisés en français.
+
+Reste un seul écart réel : le preset `photo` devrait s'appeler **`series`**, nom standardisé du profil canonique. Correction à porter côté plugin — changement cassant, donc à cadrer dans une version majeure de son cycle.
 
 **Extensions au-delà du contrat** :
 - `featured: boolean` (boost ranking) — pattern utile, officialisé en §1.3 v2.1
