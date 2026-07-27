@@ -10,7 +10,7 @@
 
 | Implémentation | Dépôt | Rôle | Conformité |
 |----------------|-------|------|------------|
-| Plugin Astro `@izo/hyperfocale` | https://github.com/izo/hyperfocale-astro-plugins | Adaptateur Astro (couche 2) | ✅ Conforme |
+| Plugin Astro `@izo/hyperfocale` | https://github.com/izo/hyperfocale-astro-plugins | Adaptateur Astro (couche 2) | ⚠️ Conforme au contrat, écart Annexe G |
 | Site `mathieu-drouet.com` | https://github.com/izo/mathieu-drouet.com | Consommateur grandeur nature (Astro) | ⚠️ Migration v2.1 prévue |
 | Exporter Lightroom | https://github.com/izo/hyperfocale-exporter-app | Source de contenu : LR → format Hyperfocale | ✅ Conforme |
 
@@ -151,9 +151,9 @@ Toute implémentation (adaptateur, script, outil) qui lit du contenu Hyperfocale
 
 Section informative — un audit de conformité des implémentations connues, mis à jour à chaque révision majeure de la spec.
 
-### Plugin Astro `@izo/hyperfocale` (v0.4.0)
+### Plugin Astro `@izo/hyperfocale` (v0.8.0)
 
-**Conformité** : ✅ Conforme.
+**Conformité** : ⚠️ Conforme sur le contrat d'adaptateur (§2.0) ; **écart ouvert sur les profils de contenu** (Annexe G) — détaillé plus bas.
 
 | Obligation | Statut | Note |
 |------------|--------|------|
@@ -164,20 +164,35 @@ Section informative — un audit de conformité des implémentations connues, mi
 | `lang` lu | ✅ | Ajouté au schéma Zod (v0.3.0) |
 | Bloc `iptc.*` | ✅ | `z.looseObject()` pour `iptc.custom.*` — champs inconnus transmis (v0.4.0) |
 | Mode distant (`images[]`) | ✅ | `getSeriesImages()` détecte `images[]` ; SeriesGallery/Lightbox gèrent les URLs distantes (v0.3.0) |
-| Documents joints (§1.9) | ❌ | Introduits en v2.5-draft — à implémenter (`getSeriesAttachments()`, `files[]`, `<SeriesAttachments>`) |
+| Documents joints (§1.9) | ✅ | Implémenté en **v0.7.0** : `classifyAttachment()`, `getSeriesAttachments()`, bloc `attachments:`, `files[]` en mode distant, `<SeriesAttachments>` rendu après la galerie (invariant §1.9) |
+| Page d'index de section (§1.10) | ❌ | Introduite en v2.6-draft — non implémentée |
+| Profils de contenu (Annexe G) | ⚠️ | 6 presets exposés, 1 seul aligné sur l'annexe — voir l'écart ci-dessous |
 | Passthrough racine (champs inconnus) | ✅ | `z.looseObject()` racine — les extensions site-spécifiques ne sont jamais rejetées (v0.4.0) |
 | Tri date desc | ✅ | |
 
-**Changements v0.4.0** :
-- **Breaking** : peer dependency `zod` passe de `^3.0.0 || ^4.0.0` à `^4.0.0`. Zod 3 n'est plus supporté.
-- Schéma modernisé API zod 4 : `z.looseObject()` (remplace `z.object().passthrough()`), `z.url()` (remplace `z.string().url()`).
+**Changements depuis v0.4.0** :
+- **v0.7.0** — documents joints (§1.9) ; slot de layout du site consommateur (options `layout`, `injectRoutes`) ; `galleryLayout: 'grid' | 'column'` ; images locales ordonnées portant leur `alt`.
+- **v0.8.0** — presets de domaine (option `preset`) ; option `listRoute` (désactive l'injection de la route d'index) ; correctif de packaging : `<SeriesFilter>`, `<SeriesMap>` et `<SeriesMasonry>` étaient livrés mais absents du champ `exports`, donc non importables.
+- Socle : **Astro 7.1.3**, TypeScript 7, Zod 4.
+
+**Écart ouvert — presets vs Annexe G** :
+
+Le plugin expose `photo`, `portfolio`, `music`, `catalog`, `press`, `recipe` ; l'Annexe G standardise `series`, `event`, `recipe`, `app`, `book`, `place`.
+
+| Preset plugin | Prefix plugin | Profil Annexe G | Écart |
+|---------------|---------------|-----------------|-------|
+| `photo` | `/series` | `series` → `/series` | nom divergent, prefix conforme |
+| `recipe` | `/recettes` | `recipe` → `/recipes` | nom conforme, prefix divergent |
+| `portfolio`, `music`, `catalog`, `press` | `/projets`, `/discographie`, `/catalogue`, `/presse` | — | hors annexe |
+| — | — | `event`, `app`, `book`, `place` | non implémentés |
+
+Aucun de ces écarts ne viole les contraintes §2.0.1 (le squelette, le slug regex et les champs core sont préservés) : ils portent sur le **vocabulaire standardisé**, pas sur le contrat. À arbitrer dans un sens ou dans l'autre — aligner le plugin sur l'annexe, ou étendre l'annexe par PR comme le prévoit §2.0.1.
 
 **Extensions au-delà du contrat** :
 - `featured: boolean` (boost ranking) — pattern utile, officialisé en §1.3 v2.1
 - `tags: string[]` — pattern utile, officialisé en §1.3 v2.1
 - `published: boolean` — redondant avec `draft`, à arbitrer
-- Presets de domaine (`series`, `recipe`, `brands`, `products`, etc.) — officialisé en §2.0.1 v2.1
-- Module virtuel Vite `virtual:hyperfocale/collection` — pattern d'implémentation Astro 6
+- Module virtuel Vite `virtual:hyperfocale/collection` — pattern d'implémentation Astro
 
 ### Site `mathieu-drouet.com`
 
