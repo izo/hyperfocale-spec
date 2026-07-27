@@ -2,9 +2,9 @@
 
 > **Source de vérité canonique.** Ce document définit le format Hyperfocale — un standard de gestion de **séries photo** portable entre SSG (Astro, Next.js, Hugo, 11ty...), vaults Obsidian, et CMS headless (Strapi, Sanity, Payload...). Toute évolution du format doit être proposée d'abord ici, dans ce dépôt.
 
-**Version** : 2.6-draft
+**Version** : 2.7-draft
 **Statut** : spécification active — source de vérité canonique
-**Dernière révision** : 2026-07-26
+**Dernière révision** : 2026-07-27
 
 ### Implémentations de référence
 
@@ -848,7 +848,7 @@ Exemple (plugin Astro `@izo/hyperfocale`) :
 ```ts
 hyperfocale({ preset: 'series' })   // séries photo, prefix /series, date requise
 hyperfocale({ preset: 'recipe' })   // recettes, prefix /recipes, date optionnelle
-hyperfocale({ preset: 'brands' })   // fiches marque, prefix /brands
+hyperfocale({ preset: 'catalog' })  // fiches produit, prefix /catalog, date optionnelle
 ```
 
 #### Contraintes des presets
@@ -864,7 +864,7 @@ Un preset NE DOIT PAS :
 - Supprimer les obligations du contrat d'adaptateur
 - Renommer les champs core (`title`, `date`, `description`, `cover`, etc.)
 
-Cinq presets non-photo sont standardisés en **Annexe G — Profils de contenu** (`event`, `recipe`, `app`, `book`, `place`). L'ajout de nouveaux profils se discute par PR contre cette spec, en étendant cette annexe.
+Dix presets non-photo sont standardisés en **Annexe G — Profils de contenu** (`event`, `recipe`, `app`, `book`, `place`, `screen`, `portfolio`, `music`, `catalog`, `press`). L'ajout de nouveaux profils se discute par PR contre cette spec, en étendant cette annexe.
 
 ### 2.1 — Adaptateur Astro
 
@@ -1625,6 +1625,11 @@ Ces règles garantissent qu'un profil reste un contenu Hyperfocale valide au sen
 | Application | une app | `app` | `/apps` | optionnelle (= sortie) | `app:` | schema.org/SoftwareApplication |
 | Livre | un livre | `book` | `/books` | optionnelle | `book:` | schema.org/Book |
 | Lieu | un lieu | `place` | `/places` | optionnelle | `place:` | schema.org/Place |
+| Écran | un écran | `screen` | `/screens` | optionnelle | `screen:` | schema.org/HowToStep |
+| Portfolio | un projet | `portfolio` | `/portfolio` | optionnelle (= livraison) | `portfolio:` | schema.org/CreativeWork |
+| Musique | une sortie | `music` | `/music` | optionnelle (= sortie) | `music:` | schema.org/MusicAlbum |
+| Catalogue | un produit | `catalog` | `/catalog` | optionnelle | `catalog:` | schema.org/Product |
+| Presse | une parution | `press` | `/press` | requise (= parution) | `press:` | schema.org/NewsArticle |
 
 ---
 
@@ -2139,7 +2144,324 @@ hyperfocale({ preset: 'screen' })  // collection 'screens', prefix /screens, dat
 
 ---
 
-### G.7 — Créer un nouveau profil
+### G.7 — Profil Portfolio (`portfolio`)
+
+**Cas d'usage** : book de créatif, agence, studio, indépendant — présenter des réalisations livrées. L'atome est **un projet** : une réalisation, pour un commanditaire ou en propre, dont les visuels sont la trace.
+
+> **Distinction avec la série canonique.** Une série documente un **corpus d'images** — les images *sont* le contenu. Un projet documente une **réalisation** dont les images sont la *preuve*. Un book de photographe reste donc une collection de séries ; un book de graphiste ou de développeur relève de `portfolio`.
+
+#### Mapping du core
+
+| Champ core | Sens dans le profil |
+|------------|---------------------|
+| `title` | Nom du projet |
+| `date` | Date de livraison ou de mise en ligne — sert au tri. Optionnelle : un travail en cours ou un projet ancien non daté reste valide. |
+| `description` | Accroche / pitch du projet |
+| `cover` | Visuel principal (fallback : première image de `media/`) |
+| `location` | Lieu de réalisation, si pertinent |
+| `media/` | Visuels du projet : rendus, captures, photos de mise en situation, planches |
+
+#### Bloc d'extension `portfolio:`
+
+Tous les champs sont optionnels. Un adaptateur DOIT les ignorer sans erreur s'il ne les supporte pas.
+
+| Clé | Type | Description |
+|-----|------|-------------|
+| `client` | `string` | Commanditaire |
+| `role` | `string[]` | Rôles tenus (« direction artistique », « développement », « photographie ») |
+| `discipline` | `string[]` | Champs d'intervention (« identité visuelle », « web », « édition », « motion ») |
+| `team` | `string[]` | Collaborateurs, studio, agence |
+| `year` | `number` | Année, quand `date` est absente et que seule l'année est connue |
+| `status` | `string` | `delivered` (défaut) · `wip` · `concept` · `archived` |
+| `url` | `string` (URL) | Projet en ligne |
+| `repository` | `string` (URL) | Dépôt public, le cas échéant |
+| `awards` | `string[]` | Distinctions |
+| `tools` | `string[]` | Outils et technologies |
+| `duration` | `string` | Durée en texte libre (« 6 semaines ») |
+| `confidential` | `boolean` | Si `true`, l'adaptateur DEVRAIT masquer `client` au rendu |
+
+#### Exemple
+
+```yaml
+---
+title: "Identité visuelle — Librairie Ptyx"
+date: 2026-03-14
+description: "Refonte complète : logotype, signalétique, site"
+cover: "./media/logotype.jpg"
+draft: false
+lang: fr
+tags: [identite, edition]
+
+portfolio:
+  client: "Librairie Ptyx"
+  role: ["direction artistique", "design graphique"]
+  discipline: ["identité visuelle", "signalétique"]
+  team: ["Studio Corbeau"]
+  status: delivered
+  url: "https://ptyx.example.com"
+  tools: ["Illustrator", "Astro"]
+  duration: "6 semaines"
+---
+
+Contexte, contraintes, parti pris. Le body s'affiche **avant** la galerie.
+```
+
+#### Preset & règles métier spécifiques
+
+```ts
+hyperfocale({ preset: 'portfolio' })  // collection 'portfolio', prefix /portfolio, dateRequired: false
+```
+
+| Règle | Description |
+|-------|-------------|
+| Tri | Date décroissante (§1.6). Les projets sans `date` se rangent après les projets datés, `portfolio.year` servant de clé secondaire. |
+| Statut | Un adaptateur DEVRAIT distinguer visuellement `wip` et `concept` d'un projet `delivered`. Un projet `archived` reste publié (≠ `draft`). |
+| Confidentialité | Si `confidential: true`, `portfolio.client` NE DOIT PAS être rendu ni émis dans le balisage. |
+| Balisage | Un adaptateur web DEVRAIT émettre du JSON-LD `schema.org/CreativeWork` depuis `portfolio.*`. |
+
+---
+
+### G.8 — Profil Musique (`music`)
+
+**Cas d'usage** : discographie d'artiste, catalogue de label, page de sortie. L'atome est **une sortie** : un album, un EP, un single ou une compilation.
+
+#### Mapping du core
+
+| Champ core | Sens dans le profil |
+|------------|---------------------|
+| `title` | Titre de la sortie |
+| `date` | Date de sortie — sert au tri. Optionnelle : démos et sorties non datées restent valides. |
+| `description` | Note d'intention, présentation |
+| `cover` | Pochette (fallback : première image de `media/`) |
+| `location` | Lieu d'enregistrement, si pertinent |
+| `media/` | Pochette, verso, photos de studio, pages de livret |
+
+#### Bloc d'extension `music:`
+
+Tous les champs sont optionnels.
+
+| Clé | Type | Description |
+|-----|------|-------------|
+| `artist` | `string` | Artiste principal |
+| `album_type` | `string` | `album` · `ep` · `single` · `compilation` · `live` · `demo` |
+| `label` | `string` | Label |
+| `catalog_number` | `string` | Référence catalogue du label |
+| `release_date` | `date` | Date de sortie, si `date` porte autre chose (réédition, enregistrement) |
+| `formats` | `string[]` | `vinyl` · `cd` · `cassette` · `digital` |
+| `genre` | `string[]` | Genres |
+| `tracks` | `object[]` | `{ position, title, duration?, isrc? }` — voir la règle de tri |
+| `duration` | `string` | Durée totale, ISO 8601 (`PT42M13S`) |
+| `upc` | `string` | Code-barres |
+| `credits` | `string[]` | Musiciens, production, mastering |
+| `streaming` | `object` | URLs par plateforme (`{ bandcamp?, spotify?, apple? }`) |
+
+> **Les pistes ne sont pas des contenus.** `music.tracks` est une liste de métadonnées, pas une arborescence : une sortie reste **un** dossier. Un coffret ou une intégrale qui justifie une page par disque relève du conteneur §1.8, chaque disque étant alors une sortie à part entière.
+
+#### Exemple
+
+```yaml
+---
+title: "Fragments"
+date: 2026-05-02
+description: "Second album, enregistré en deux sessions hivernales"
+cover: "./media/pochette.jpg"
+location: "Studio Nord, Lille"
+lang: fr
+tags: [ambient, drone]
+
+music:
+  artist: "Hélène Varn"
+  album_type: album
+  label: "Nord Records"
+  catalog_number: "NR-042"
+  formats: [vinyl, digital]
+  genre: ["ambient", "drone"]
+  duration: "PT42M13S"
+  tracks:
+    - { position: 1, title: "Seuil", duration: "PT7M04S" }
+    - { position: 2, title: "Fragments", duration: "PT12M31S" }
+  credits: ["Mastering : A. Rouvier"]
+  streaming: { bandcamp: "https://helenevarn.bandcamp.com/album/fragments" }
+---
+
+Genèse du disque, intentions, matériel. Body avant galerie.
+```
+
+#### Preset & règles métier spécifiques
+
+```ts
+hyperfocale({ preset: 'music' })  // collection 'music', prefix /music, dateRequired: false
+```
+
+| Règle | Description |
+|-------|-------------|
+| Tri des sorties | Date décroissante (§1.6). `music.release_date` prime sur `date` s'il est présent. |
+| Tri des pistes | `music.tracks` est rendu par `position` **ascendant**, jamais dans l'ordre du fichier ni alphabétique. |
+| Balisage | Un adaptateur web DEVRAIT émettre du JSON-LD `schema.org/MusicAlbum`, chaque piste en `schema.org/MusicRecording`. |
+
+---
+
+### G.9 — Profil Catalogue (`catalog`)
+
+**Cas d'usage** : catalogue de gamme, showroom, matériauthèque, fiches produit d'un fabricant. L'atome est **un produit**.
+
+> **Hors périmètre.** Ce profil décrit un produit, pas une boutique : la spec ne définit ni panier, ni stock temps réel, ni paiement (§0 — « ce que cette spec NE définit PAS »). `availability` et `price` sont des métadonnées éditoriales, pas une source de vérité transactionnelle.
+
+#### Mapping du core
+
+| Champ core | Sens dans le profil |
+|------------|---------------------|
+| `title` | Nom du produit |
+| `date` | Mise au catalogue — sert au tri. Optionnelle : un catalogue se range plus souvent par gamme que par date. |
+| `description` | Accroche produit |
+| `cover` | Visuel principal (fallback : première image de `media/`) |
+| `location` | Lieu de fabrication, si revendiqué |
+| `media/` | Photos produit, détails, plans, échantillons de matière, fiche technique (§1.9) |
+
+#### Bloc d'extension `catalog:`
+
+Tous les champs sont optionnels.
+
+| Clé | Type | Description |
+|-----|------|-------------|
+| `sku` | `string` | Référence interne |
+| `brand` | `string` | Marque |
+| `category` | `string[]` | Catégories, du général au spécifique |
+| `price` | `string` | Tarif en texte libre (« 240 € », « sur devis ») |
+| `currency` | `string` | Code ISO 4217 |
+| `availability` | `string` | `in_stock` · `out_of_stock` · `preorder` · `made_to_order` · `discontinued` |
+| `materials` | `string[]` | Matériaux |
+| `dimensions` | `object` | `{ width?, height?, depth?, unit }` |
+| `weight` | `object` | `{ value, unit }` |
+| `colors` | `string[]` | Coloris disponibles |
+| `gtin` | `string` | Code-barres (EAN / UPC) |
+| `url` | `string` (URL) | Fiche ou point de vente externe |
+| `datasheet` | `string` | Nom d'un document joint de `media/` (§1.9) |
+
+> **Synergie avec les documents joints (§1.9).** Une fiche technique PDF vit dans `media/` et se référence via `catalog.datasheet` ; elle est rendue par `<SeriesAttachments>` ou équivalent, après la galerie.
+
+#### Exemple
+
+```yaml
+---
+title: "Étagère Ligne — chêne massif"
+description: "Étagère murale, trois plateaux, assemblage sans vis apparentes"
+cover: "./media/etagere-face.jpg"
+location: "Atelier de Roubaix"
+lang: fr
+tags: [mobilier, chene]
+
+catalog:
+  sku: "ETG-LIG-03"
+  brand: "Atelier Ligne"
+  category: ["mobilier", "rangement", "étagère"]
+  price: "340 €"
+  currency: EUR
+  availability: made_to_order
+  materials: ["chêne massif", "huile-cire"]
+  dimensions: { width: 90, height: 32, depth: 22, unit: cm }
+  weight: { value: 6.4, unit: kg }
+  colors: ["naturel", "fumé"]
+  datasheet: "fiche-technique.pdf"
+---
+
+Fabrication, finitions, entretien. Body avant galerie.
+```
+
+#### Preset & règles métier spécifiques
+
+```ts
+hyperfocale({ preset: 'catalog' })  // collection 'catalog', prefix /catalog, dateRequired: false
+```
+
+| Règle | Description |
+|-------|-------------|
+| Tri | Date décroissante par défaut (§1.6). Un adaptateur « catalogue » PEUT exposer un tri par `catalog.category` puis `title` alphabétique, plus pertinent pour une gamme. |
+| Disponibilité | Un adaptateur DEVRAIT signaler `discontinued` et `out_of_stock`. Un produit arrêté reste publié (≠ `draft`) — le catalogue fait mémoire. |
+| Prix | `catalog.price` est **informatif**. Un adaptateur NE DOIT PAS le présenter comme un prix transactionnel engageant. |
+| Balisage | Un adaptateur web DEVRAIT émettre du JSON-LD `schema.org/Product`, `availability` mappé sur `schema.org/ItemAvailability`. |
+
+---
+
+### G.10 — Profil Presse (`press`)
+
+**Cas d'usage** : revue de presse, retombées médias, communiqués. L'atome est **une parution** : un article publié dans un média, ou un communiqué émis.
+
+#### Mapping du core
+
+| Champ core | Sens dans le profil |
+|------------|---------------------|
+| `title` | Titre de la parution |
+| `date` | Date de parution — **requise**, sert au tri. Une retombée sans date n'est pas exploitable. |
+| `description` | Chapô ou résumé |
+| `cover` | Une du média, capture de l'article (fallback : première image de `media/`) |
+| `location` | Zone de diffusion, si pertinent |
+| `media/` | Scans, captures d'écran, PDF de la parution (§1.9) |
+
+#### Bloc d'extension `press:`
+
+Tous les champs sont optionnels.
+
+| Clé | Type | Description |
+|-----|------|-------------|
+| `publication` | `string` | Nom du média |
+| `author` | `string` | Signature de l'article |
+| `kind` | `string` | `article` · `interview` · `review` · `mention` · `broadcast` · `press_release` |
+| `url` | `string` (URL) | Article en ligne |
+| `archive_url` | `string` (URL) | Copie archivée, contre la disparition du lien |
+| `issue` | `string` | Numéro ou édition |
+| `page` | `string` | Pagination (« p. 34-36 ») |
+| `language` | `string` | Langue de la parution, si différente de `lang` |
+| `paywall` | `boolean` | L'article en ligne est-il payant |
+| `excerpt` | `string` | Citation courte de la parution |
+| `clipping` | `string` | Nom d'un document joint de `media/` (§1.9) |
+
+> **Émis ou subi.** `kind: press_release` désigne un contenu **émis par soi** ; toutes les autres valeurs désignent une **retombée**, écrite par un tiers. Un adaptateur PEUT séparer les deux flux — ils ne se valent pas éditorialement.
+
+#### Exemple
+
+```yaml
+---
+title: "Le silence photographié"
+date: 2026-04-18
+description: "Portrait dans la rubrique Culture"
+cover: "./media/une.jpg"
+lang: fr
+tags: [presse, portrait]
+
+press:
+  publication: "La Voix du Nord"
+  author: "C. Delmas"
+  kind: interview
+  url: "https://lavoixdunord.example.com/le-silence-photographie"
+  archive_url: "https://web.archive.org/web/2026/https://lavoixdunord.example.com/le-silence-photographie"
+  issue: "n° 24 812"
+  page: "p. 18"
+  paywall: true
+  excerpt: "Une écriture du vide qui refuse l'anecdote."
+  clipping: "parution-2026-04-18.pdf"
+---
+
+Contexte de la parution. Body avant galerie.
+```
+
+#### Preset & règles métier spécifiques
+
+```ts
+hyperfocale({ preset: 'press' })  // collection 'press', prefix /press, dateRequired: true
+```
+
+| Règle | Description |
+|-------|-------------|
+| Tri | Date décroissante (§1.6) — la retombée la plus récente en premier. |
+| Lien mort | Si `press.url` et `press.archive_url` sont tous deux présents, un adaptateur DEVRAIT exposer le second en secours. La presse en ligne disparaît. |
+| Paywall | Un adaptateur DEVRAIT signaler `paywall: true` avant d'envoyer le lecteur sur un mur payant. |
+| Citation | `press.excerpt` reste une **citation courte**, au sens du droit de citation. Un adaptateur NE DOIT PAS reproduire un article intégral dans le body sans droits. |
+| Balisage | Un adaptateur web DEVRAIT émettre du JSON-LD `schema.org/NewsArticle` pour les retombées ; `press_release` relève de `schema.org/PressRelease`. |
+
+---
+
+### G.11 — Créer un nouveau profil
 
 Pour proposer un profil supplémentaire (livre, lieu, produit e-commerce...), une PR contre cette annexe DOIT préciser :
 
@@ -2155,6 +2477,28 @@ Un profil ne DOIT jamais : renommer un champ core, modifier le slug regex, suppr
 ---
 
 ## Changelog
+
+### 2.7-draft — 2026-07-27
+
+#### Quatre profils de contenu (Annexe G)
+
+**Ajouts** :
+- **G.7 — Portfolio** (`portfolio`, `/portfolio`, `schema.org/CreativeWork`) : l'atome est un projet livré, pas un corpus d'images.
+- **G.8 — Musique** (`music`, `/music`, `schema.org/MusicAlbum`) : l'atome est une sortie (album, EP, single).
+- **G.9 — Catalogue** (`catalog`, `/catalog`, `schema.org/Product`) : l'atome est un produit, sans dimension transactionnelle.
+- **G.10 — Presse** (`press`, `/press`, `schema.org/NewsArticle`) : l'atome est une parution, émise ou subie.
+- « Créer un nouveau profil » passe de G.7 à **G.11**.
+- Vue d'ensemble de l'Annexe G complétée : les quatre nouveaux profils, **et `screen` (G.6) qui y manquait** depuis son ajout.
+
+**Décisions normatives** :
+- Ces quatre profils ne touchent ni au squelette, ni au slug regex, ni aux champs core : ils n'ajoutent qu'un bloc d'extension namespacé, conformément aux règles communes de l'Annexe G. Un lecteur qui les ignore lit le contenu comme une série standard.
+- **Portfolio n'est pas la série canonique.** Une série documente un corpus d'images — les images *sont* le contenu ; un projet documente une réalisation dont les images sont la *trace*. Un book de photographe reste une collection de séries.
+- **Les pistes d'une sortie ne sont pas des contenus** : `music.tracks` est une liste de métadonnées, pas une arborescence. Un coffret justifiant une page par disque relève du conteneur §1.8.
+- **Le profil catalogue ne fait pas de commerce** : `price` et `availability` sont éditoriaux, jamais une source de vérité transactionnelle (§0 — ce que la spec ne définit pas).
+- **Presse distingue l'émis du subi** : `kind: press_release` est produit par soi, toute autre valeur est une retombée tierce. `excerpt` reste une citation courte, au sens du droit de citation.
+- Deux dérogations de tri sont explicitées : `music.tracks` se rend par `position` ascendant, et un adaptateur catalogue PEUT trier par catégorie plutôt que par date.
+
+**Justification** : le plugin Astro `@izo/hyperfocale` a livré en v0.8.0 six presets de domaine dont quatre — `portfolio`, `music`, `catalog`, `press` — ne correspondaient à aucun profil standardisé, l'annexe n'en décrivant aucun équivalent. §2.0.1 prévoit explicitement cette voie (« L'ajout de nouveaux profils se discute par PR contre cette spec ») : plutôt que de laisser une implémentation de référence diverger en silence, les quatre profils sont décrits ici. Les deux écarts restants du plugin (`photo` au lieu de `series`, `/recettes` au lieu de `/recipes`) portent sur des profils **déjà** standardisés et relèvent donc d'une correction côté plugin, pas d'une évolution de la spec.
 
 ### 2.6-draft — 2026-07-26
 
