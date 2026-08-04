@@ -10,7 +10,7 @@
 
 | Implémentation | Dépôt | Rôle | Conformité |
 |----------------|-------|------|------------|
-| Plugin Astro `@regrets/hyperfocale` | https://github.com/izo/hyperfocale-astro-plugins | Adaptateur Astro (couche 2) | ⚠️ Conforme au contrat ; preset `photo` à renommer `series` |
+| Plugin Astro `@regrets/hyperfocale` | https://github.com/izo/hyperfocale-astro-plugins | Adaptateur Astro (couche 2) | ✅ Conforme au contrat et aligné sur l'Annexe G (v0.12.0) |
 | Site `mathieu-drouet.com` | https://github.com/izo/mathieu-drouet.com | Consommateur grandeur nature (Astro) | ⚠️ Migration v2.1 prévue |
 | Exporter Lightroom | https://github.com/izo/hyperfocale-exporter-app | Source de contenu : LR → format Hyperfocale | ✅ Conforme |
 
@@ -151,9 +151,9 @@ Toute implémentation (adaptateur, script, outil) qui lit du contenu Hyperfocale
 
 Section informative — un audit de conformité des implémentations connues, mis à jour à chaque révision majeure de la spec.
 
-### Plugin Astro `@regrets/hyperfocale` (v0.10.0)
+### Plugin Astro `@regrets/hyperfocale` (v0.12.0)
 
-**Conformité** : ✅ Conforme sur le contrat d'adaptateur (§2.0), obligations v2.6 comprises ; **écart résiduel de nommage sur les profils de contenu** (Annexe G) — détaillé plus bas.
+**Conformité** : ✅ Conforme sur le contrat d'adaptateur (§2.0), obligations v2.6 comprises, et aligné sur les profils de l'Annexe G depuis la v0.12.0.
 
 > Le paquet s'appelait `@izo/hyperfocale` jusqu'au 2026-08-04. Le scope `@izo` ne correspondait à aucun compte npm et aucune version n'avait jamais été publiée sous ce nom : le renommage n'a rien cassé.
 
@@ -169,7 +169,8 @@ Section informative — un audit de conformité des implémentations connues, mi
 | Documents joints (§1.9) | ✅ | Implémenté en **v0.7.0** : `classifyAttachment()`, `getSeriesAttachments()`, bloc `attachments:`, `files[]` en mode distant, `<SeriesAttachments>` rendu après la galerie (invariant §1.9) |
 | Manifeste d'images (§1.5.1) | ✅ | Implémenté en **v0.10.0** : priorité `images:` > `images.json` > `media/`, formes courte et longue, résolution des trois formes d'URL, clé `files`. Le manifeste est lu en `?raw` puis parsé dans un `try` — un import JSON ferait échouer le bundler au parsing, là où §1.5.1 impose un repli sur `media/` sans échec de build |
 | Page d'index de section (§1.10) | ✅ | Implémentée en **v0.9.0** : champ `type`, exclusion des listings, `date` non requise pour une section. `isSection()` ne teste que `type` — jamais l'absence de date (« discriminant explicite »). Helpers `isSection()` / `getSections()` exposés ; la route de section reste au site consommateur (§1.10 la donne en PEUT) |
-| Profils de contenu (Annexe G) | ⚠️ | 6 presets exposés, 5 alignés sur l'annexe depuis la v2.7 — voir l'écart ci-dessous |
+| Séries imbriquées (§1.8) | ✅ | Implémentées en **v0.12.0** : `getSubSeries()` et line-up rendu sur la page du conteneur, tri par `lineup_order` puis date décroissante. Le helper ne retient que les entrées situées exactement un segment plus bas — une série rangée plus profond (§1.2) n'est pas une sous-série |
+| Profils de contenu (Annexe G) | ✅ | Les 6 presets exposés portent les noms de l'annexe depuis la **v0.12.0** ; leurs prefix restent localisés en français, ce que §2.0.1 autorise |
 | Passthrough racine (champs inconnus) | ✅ | `z.looseObject()` racine — les extensions site-spécifiques ne sont jamais rejetées (v0.4.0) |
 | Tri date desc | ✅ | |
 
@@ -178,15 +179,17 @@ Section informative — un audit de conformité des implémentations connues, mi
 - **v0.8.0** — presets de domaine (option `preset`) ; option `listRoute` (désactive l'injection de la route d'index) ; correctif de packaging : `<SeriesFilter>`, `<SeriesMap>` et `<SeriesMasonry>` étaient livrés mais absents du champ `exports`, donc non importables.
 - **v0.9.0** — page d'index de section (§1.10) ; renommage du paquet en `@regrets/hyperfocale`. Correctif structurel associé : le module virtuel `virtual:hyperfocale/collection` redéclarait le schéma en dur et avait divergé de la source sur §1.9. Il délègue désormais au schéma exporté — sans quoi le correctif §1.10 n'aurait atteint aucun site installé par `hyperfocale init`.
 - **v0.10.0** — manifeste d'images externalisé (§1.5.1).
+- **v0.11.0** — `pageSize` exposé dans le résultat de pagination (§3.2).
+- **v0.12.0** — séries imbriquées (§1.8) : `getSubSeries()`, line-up, champ `lineup_order` ; preset canonique renommé `series` (`photo` conservé en alias déprécié, retiré en 1.0) ; option `imageOptimization` et `srcset` omis en développement, où les endpoints d'optimisation d'un hébergeur n'existent pas.
 - Socle : **Astro 7.1.6**, TypeScript 7, Zod 4.
 
-**Écart ouvert — presets vs Annexe G** :
+**Presets vs Annexe G — écart refermé en v0.12.0** :
 
-Le plugin expose `photo`, `portfolio`, `music`, `catalog`, `press`, `recipe`. Quatre d'entre eux — `portfolio`, `music`, `catalog`, `press` — ont été standardisés en Annexe G par la v2.7 ; il reste un écart de nommage.
+Le plugin expose `series`, `portfolio`, `music`, `catalog`, `press`, `recipe` : les six portent les noms de l'annexe. Quatre d'entre eux — `portfolio`, `music`, `catalog`, `press` — y ont été standardisés par la v2.7, à partir de cette implémentation ; le sixième, `series`, s'appelait `photo` jusqu'à la v0.12.0.
 
 | Preset plugin | Prefix plugin | Profil Annexe G | État |
 |---------------|---------------|-----------------|------|
-| `photo` | `/series` | `series` → `/series` | ⚠️ **nom divergent** — `series` est l'identifiant standardisé |
+| `series` | `/series` | `series` → `/series` | ✅ nom conforme depuis la v0.12.0 ; `photo` reste un alias déprécié, retiré en 1.0 |
 | `recipe` | `/recettes` | `recipe` → `/recipes` | ✅ nom conforme ; prefix localisé |
 | `portfolio` | `/projets` | `portfolio` → `/portfolio` | ✅ nom conforme ; prefix localisé |
 | `music` | `/discographie` | `music` → `/music` | ✅ nom conforme ; prefix localisé |
@@ -194,9 +197,9 @@ Le plugin expose `photo`, `portfolio`, `music`, `catalog`, `press`, `recipe`. Qu
 | `press` | `/presse` | `press` → `/press` | ✅ nom conforme ; prefix localisé |
 | — | — | `event`, `app`, `book`, `place`, `screen` | non implémentés |
 
-Aucun de ces écarts ne viole les contraintes §2.0.1 : le squelette, le slug regex et les champs core sont préservés. Les prefix divergents ne sont pas des non-conformités — la colonne de l'Annexe G est un **prefix recommandé**, et un preset PEUT fixer le sien (§2.0.1) ; le plugin les a simplement localisés en français.
+Les prefix divergents ne sont pas des non-conformités — la colonne de l'Annexe G est un **prefix recommandé**, et un preset PEUT fixer le sien (§2.0.1) ; le plugin les a simplement localisés en français. Le squelette, le slug regex et les champs core sont préservés, conformément aux interdits de §2.0.1.
 
-Reste un seul écart réel : le preset `photo` devrait s'appeler **`series`**, nom standardisé du profil canonique. Correction à porter côté plugin — changement cassant, donc à cadrer dans une version majeure de son cycle.
+Restent non implémentés les cinq profils que le plugin ne couvre pas : `event`, `app`, `book`, `place`, `screen`. C'est une couverture partielle de l'annexe, pas un écart de conformité — §2.0.1 donne les profils en COULD.
 
 **Extensions au-delà du contrat** :
 - `featured: boolean` (boost ranking) — pattern utile, officialisé en §1.3 v2.1
@@ -2508,7 +2511,7 @@ Un profil ne DOIT jamais : renommer un champ core, modifier le slug regex, suppr
 - **Presse distingue l'émis du subi** : `kind: press_release` est produit par soi, toute autre valeur est une retombée tierce. `excerpt` reste une citation courte, au sens du droit de citation.
 - Deux dérogations de tri sont explicitées : `music.tracks` se rend par `position` ascendant, et un adaptateur catalogue PEUT trier par catégorie plutôt que par date.
 
-**Justification** : le plugin Astro `@izo/hyperfocale` a livré en v0.8.0 six presets de domaine dont quatre — `portfolio`, `music`, `catalog`, `press` — ne correspondaient à aucun profil standardisé, l'annexe n'en décrivant aucun équivalent. §2.0.1 prévoit explicitement cette voie (« L'ajout de nouveaux profils se discute par PR contre cette spec ») : plutôt que de laisser une implémentation de référence diverger en silence, les quatre profils sont décrits ici. L'écart restant du plugin — `photo` au lieu de `series` — porte sur un profil **déjà** standardisé et relève donc d'une correction côté plugin, pas d'une évolution de la spec. Son préfixe francisé (`/recettes` là où l'annexe recommande `/recipes`) n'en est pas un : la colonne `prefix` est une recommandation, et §2.0.1 autorise un preset à fixer le sien — voir §0.5.
+**Justification** : le plugin Astro `@izo/hyperfocale` a livré en v0.8.0 six presets de domaine dont quatre — `portfolio`, `music`, `catalog`, `press` — ne correspondaient à aucun profil standardisé, l'annexe n'en décrivant aucun équivalent. §2.0.1 prévoit explicitement cette voie (« L'ajout de nouveaux profils se discute par PR contre cette spec ») : plutôt que de laisser une implémentation de référence diverger en silence, les quatre profils sont décrits ici. L'écart qui subsistait alors — `photo` au lieu de `series` — portait sur un profil **déjà** standardisé et relevait donc d'une correction côté plugin, pas d'une évolution de la spec ; elle a été livrée en v0.12.0. Son préfixe francisé (`/recettes` là où l'annexe recommande `/recipes`) n'a jamais été un écart : la colonne `prefix` est une recommandation, et §2.0.1 autorise un preset à fixer le sien — voir §0.5.
 
 ### 2.6-draft — 2026-07-26
 
