@@ -2,15 +2,16 @@
 
 > **Source de vérité canonique.** Ce document définit le format Hyperfocale — un standard de gestion de **séries photo** portable entre SSG (Astro, Next.js, Hugo, 11ty...), vaults Obsidian, et CMS headless (Strapi, Sanity, Payload...). Toute évolution du format doit être proposée d'abord ici, dans ce dépôt.
 
-**Version** : 2.7-draft
+**Version** : 2.8-draft
 **Statut** : spécification active — source de vérité canonique
-**Dernière révision** : 2026-07-27
+**Dernière révision** : 2026-08-12
 
 ### Implémentations de référence
 
 | Implémentation | Dépôt | Rôle | Conformité |
 |----------------|-------|------|------------|
-| Plugin Astro `@regrets/hyperfocale` | https://github.com/izo/hyperfocale-astro-plugins | Adaptateur Astro (couche 2) | ✅ Conforme au contrat et aligné sur l'Annexe G (v0.12.0) |
+| Plugin Astro `@regrets/hyperfocale` | https://github.com/izo/hyperfocale-astro-plugins | Adaptateur Astro (couche 2) | ✅ Conforme au contrat, Annexe G couverte (v0.15.0) · ❌ §1.11 ouverte |
+| Site `laurenceguenoun.com` | https://github.com/izo/laurenceguenoun | Consommateur en **couche data seule** (Astro) | ⚠️ Porte les embeds §1.11 dans un bloc `videos[]` local, en attente de l'implémentation |
 | Site `mathieu-drouet.com` | https://github.com/izo/mathieu-drouet.com | Consommateur grandeur nature (Astro) | ⚠️ Migration v2.1 prévue |
 | Exporter Lightroom | https://github.com/izo/hyperfocale-exporter-app | Source de contenu : LR → format Hyperfocale | ✅ Conforme |
 
@@ -151,9 +152,9 @@ Toute implémentation (adaptateur, script, outil) qui lit du contenu Hyperfocale
 
 Section informative — un audit de conformité des implémentations connues, mis à jour à chaque révision majeure de la spec.
 
-### Plugin Astro `@regrets/hyperfocale` (v0.12.0)
+### Plugin Astro `@regrets/hyperfocale` (v0.15.0)
 
-**Conformité** : ✅ Conforme sur le contrat d'adaptateur (§2.0), obligations v2.6 comprises, et aligné sur les profils de l'Annexe G depuis la v0.12.0.
+**Conformité** : ✅ Conforme sur le contrat d'adaptateur (§2.0), obligations v2.6 comprises, et aligné sur les profils de l'Annexe G depuis la v0.12.0. ❌ **§1.11 (contenus embarqués) n'est pas implémentée** — c'est la seule obligation v2.8, et elle est ouverte.
 
 > Le paquet s'appelait `@izo/hyperfocale` jusqu'au 2026-08-04. Le scope `@izo` ne correspondait à aucun compte npm et aucune version n'avait jamais été publiée sous ce nom : le renommage n'a rien cassé.
 
@@ -170,7 +171,8 @@ Section informative — un audit de conformité des implémentations connues, mi
 | Manifeste d'images (§1.5.1) | ✅ | Implémenté en **v0.10.0** : priorité `images:` > `images.json` > `media/`, formes courte et longue, résolution des trois formes d'URL, clé `files`. Le manifeste est lu en `?raw` puis parsé dans un `try` — un import JSON ferait échouer le bundler au parsing, là où §1.5.1 impose un repli sur `media/` sans échec de build |
 | Page d'index de section (§1.10) | ✅ | Implémentée en **v0.9.0** : champ `type`, exclusion des listings, `date` non requise pour une section. `isSection()` ne teste que `type` — jamais l'absence de date (« discriminant explicite »). Helpers `isSection()` / `getSections()` exposés ; la route de section reste au site consommateur (§1.10 la donne en PEUT) |
 | Séries imbriquées (§1.8) | ✅ | Implémentées en **v0.12.0** : `getSubSeries()` et line-up rendu sur la page du conteneur, tri par `lineup_order` puis date décroissante. Le helper ne retient que les entrées situées exactement un segment plus bas — une série rangée plus profond (§1.2) n'est pas une sous-série |
-| Profils de contenu (Annexe G) | ✅ | Les 6 presets exposés portent les noms de l'annexe depuis la **v0.12.0** ; leurs prefix restent localisés en français, ce que §2.0.1 autorise |
+| Profils de contenu (Annexe G) | ✅ | Les **11 profils** de l'annexe sont couverts depuis la **v0.14.0** ; leurs prefix restent localisés en français, ce que §2.0.1 autorise |
+| Contenus embarqués (§1.11) | ❌ | **Non implémenté.** Aucune notion de média hébergé chez un tiers : `attachments[]` ne couvre que `media/`, `files[]` n'a ni poster ni dimensions, et `SeriesAttachments` rend un `<video>` natif. C'est ce manque qui a motivé §1.11 — voir la justification au changelog v2.8 |
 | Passthrough racine (champs inconnus) | ✅ | `z.looseObject()` racine — les extensions site-spécifiques ne sont jamais rejetées (v0.4.0) |
 | Tri date desc | ✅ | |
 
@@ -181,7 +183,10 @@ Section informative — un audit de conformité des implémentations connues, mi
 - **v0.10.0** — manifeste d'images externalisé (§1.5.1).
 - **v0.11.0** — `pageSize` exposé dans le résultat de pagination (§3.2).
 - **v0.12.0** — séries imbriquées (§1.8) : `getSubSeries()`, line-up, champ `lineup_order` ; preset canonique renommé `series` (`photo` conservé en alias déprécié, retiré en 1.0) ; option `imageOptimization` et `srcset` omis en développement, où les endpoints d'optimisation d'un hébergeur n'existent pas.
-- Socle : **Astro 7.1.6**, TypeScript 7, Zod 4.
+- **v0.13.0** — `images[]` valide enfin les trois formes que `getSeriesImages()` traitait déjà : une entrée `{ file: '01.jpg' }` était rejetée par Zod avant d'atteindre le helper qui savait la lire.
+- **v0.14.0** — les cinq profils manquants de l'Annexe G (`event`, `app`, `book`, `place`, `screen`) ; `music` aligné sur G.8, qui donne la date de sortie optionnelle ; `published` déprécié au profit de `draft`.
+- **v0.15.0** — `theme: 'none'`, qui n'injecte aucune feuille. Remonté par `laurenceguenoun.com`, premier site à monter le plugin en **couche data seule** — schéma et helpers, pages entièrement maison : il embarquait les 30 custom properties du thème sur toutes ses pages sans qu'une règle les lise. Cet usage-là n'était pas prévu ; il est désormais un cas pris en charge.
+- Socle : **Astro 7.2.0**, TypeScript 7, Zod 4.
 
 **Presets vs Annexe G — écart refermé en v0.12.0** :
 
@@ -204,7 +209,7 @@ Restent non implémentés les cinq profils que le plugin ne couvre pas : `event`
 **Extensions au-delà du contrat** :
 - `featured: boolean` (boost ranking) — pattern utile, officialisé en §1.3 v2.1
 - `tags: string[]` — pattern utile, officialisé en §1.3 v2.1
-- `published: boolean` — redondant avec `draft`, à arbitrer
+- `published: boolean` — redondant avec `draft` ; arbitré en v0.14.0 au profit de `draft`, seul champ standardisé par §1.3. Déprécié, retiré en 1.0
 - Module virtuel Vite `virtual:hyperfocale/collection` — pattern d'implémentation Astro
 
 ### Site `mathieu-drouet.com`
@@ -374,6 +379,7 @@ Le frontmatter est en YAML, délimité par `---`. Il se divise en deux niveaux :
 | `featured` | `boolean` | non | `true` = série mise en avant (boost dans les listings, sections "à la une"). Défaut : `false`. *Officialisé en v2.1 à partir du pattern observé dans plusieurs implémentations.* |
 | `tags` | `string[]` | non | Tags éditoriaux libres. **Distincts** de `iptc.keywords` (qui suit le vocabulaire IPTC normalisé). Voir note ci-dessous. *Officialisé en v2.1.* |
 | `type` | `string` | non | Nature du contenu. Défaut : `series`. Seule autre valeur normative : `section` — le fichier est alors une page d'index de section et non une série (§1.10). *Introduit en v2.6.* |
+| `embeds` | `object[]` | non | Médias hébergés par une plateforme tierce et joués dans la page (Vimeo, YouTube, SoundCloud…). Distincts des documents joints §1.9, qui vivent dans `media/`. Voir §1.11. *Introduit en v2.8.* |
 
 > **Relation `tags` ↔ `iptc.keywords`** : `tags` est un vocabulaire éditorial libre, géré par l'auteur (ex : `featured`, `portrait`, `intimite`). `iptc.keywords` suit le standard IPTC et peut être peuplé automatiquement depuis les métadonnées image (ex : depuis Lightroom). Les deux peuvent coexister. Les adaptateurs DEVRAIENT permettre la recherche par les deux.
 
@@ -818,6 +824,79 @@ Les deux formes rassemblent des séries ; elles ne sont pas interchangeables.
 
 Le champ `type` est nouveau : aucun contenu antérieur ne le porte, donc tout contenu antérieur reste une série. Un adaptateur antérieur à v2.6 qui rencontre un `type: section` le traite comme un champ inconnu (passthrough §1.3) et échoue sur `date` — c'est précisément le comportement que cette section corrige, et la raison pour laquelle la prise en charge de §1.10 est requise pour la conformité v2.6 (§2.0).
 
+### 1.11 — Contenus embarqués *(introduit v2.8)*
+
+§1.9 couvre le média qu'on **possède** : un fichier posé dans `media/`. Il ne dit rien du média qu'on **héberge ailleurs** — une vidéo Vimeo ou YouTube, un morceau SoundCloud, un set Bandcamp. Or c'est le cas majoritaire dès qu'il y a de la vidéo : un documentaire de 74 minutes ne vit pas dans un dépôt Git.
+
+Rien dans le format ne savait le décrire. Les trois formes existantes échouent chacune pour une raison différente :
+
+| Forme | Pourquoi elle ne convient pas |
+|-------|-------------------------------|
+| `attachments:` (§1.9) | Ne référence que des fichiers de `media/`. Une URL Vimeo n'en est pas un. |
+| `files:` (§1.9 mode distant) | Accepte une URL, mais n'a ni vignette, ni dimensions, ni identifiant de plateforme. Un adaptateur ne peut qu'en faire un lien. |
+| `images:` (§1.5) | Une vidéo n'est pas une image et n'a rien à faire dans la galerie ni dans la lightbox. |
+
+Un **contenu embarqué** (*embed*) est un média hébergé par une plateforme tierce, désigné par son URL et destiné à être joué **dans** la page.
+
+#### Frontmatter
+
+```yaml
+embeds:
+  - url: "https://vimeo.com/123831041"
+    platform: vimeo
+    id: "123831041"
+    title: "O Jardim da Esperança"
+    description: "Documentaire, 74 min"
+    poster: "./media/o-jardim-poster.jpg"
+    width: 1920
+    height: 1080
+```
+
+| Champ | Type | Requis | Description |
+|-------|------|--------|-------------|
+| `url` | `string` | **oui** | URL canonique du média chez son hébergeur. Toujours suffisante pour faire un lien, ce qui garantit la dégradation (voir *Règles*). |
+| `platform` | `string` | non | Identifiant d'hébergeur en minuscules. Vocabulaire reconnu : `vimeo` · `youtube` · `dailymotion` · `soundcloud` · `bandcamp` · `spotify`. Toute autre valeur est licite et traitée comme inconnue. |
+| `id` | `string` | non | Identifiant du média **chez cet hébergeur** (`123831041`), pas l'URL. |
+| `title` | `string` | non | Libellé. À défaut, l'adaptateur PEUT afficher l'URL. |
+| `description` | `string` | non | Texte court accompagnant le média. |
+| `poster` | `string` | non | Vignette. Même résolution d'URL qu'en §1.5.1 : URL absolue, chemin absolu au site, ou chemin relatif à `index.md`. |
+| `width`, `height` | `number` | non | Dimensions natives, en pixels. Servent à réserver le ratio et éviter un décalage de mise en page au chargement. |
+
+#### Règles
+
+| Règle | Description |
+|-------|-------------|
+| Hors galerie | Un embed n'alimente **ni la galerie ni la lightbox** (§1.6). Il se rend dans sa propre zone, après le body. Un adaptateur PEUT l'intercaler dans la galerie s'il sait le faire proprement, mais ne DOIT jamais le compter comme une image. |
+| **Le poster n'est pas une photo de la série** | Une image de `media/` référencée par un `poster` est **exclue** du scan de galerie (§1.6). Sans cette règle, une série de trois vidéos afficherait trois vignettes parasites dans sa galerie. C'est la seule exception au principe « toute image de `media/` alimente la galerie ». |
+| Dégradation | `url` seule suffit à un rendu valide : un lien. Construire un lecteur exige `platform` **et** `id` ; à défaut l'adaptateur DOIT se rabattre sur le lien, sans erreur. |
+| Construction de l'URL de lecture | Elle appartient à l'adaptateur, pas au format. La spec ne fige aucun gabarit d'iframe : les hébergeurs changent les leurs, une spec ne se réédite pas au même rythme. |
+| Restriction de domaine | Beaucoup d'hébergeurs restreignent leurs lecteurs au domaine déclaré. Un embed qui ne se lance pas en local n'est pas nécessairement un défaut de contenu — c'est un point à vérifier en production, pas au build. |
+| Couverture | `cover` DOIT rester une image (§1.9). Le `poster` d'un embed est un candidat légitime, à condition d'être désigné explicitement. |
+| Série sans image | Une série PEUT ne porter que des embeds : ni `media/` d'images, ni `images:`. Elle s'affiche alors sans galerie, ce qui n'est pas une erreur. |
+| Ordre | L'ordre du tableau fait foi. Aucun tri n'est appliqué. |
+| Robustesse | Une entrée sans `url` DOIT être ignorée et signalée par le lint. Une `platform` inconnue ne DOIT jamais faire échouer un build. |
+
+#### Frontière avec §1.9
+
+Le critère est **où vit l'octet**, pas ce que le média représente.
+
+| | Document joint §1.9 | Contenu embarqué §1.11 |
+|---|---|---|
+| Emplacement | Fichier dans `media/`, ou `files:` en mode distant | Chez un hébergeur tiers |
+| Désignation | Nom de fichier, ou URL du CDN | URL canonique de la plateforme |
+| Une vidéo `.mp4` locale | ✅ classe `video` | ✗ |
+| Une vidéo Vimeo | ✗ | ✅ |
+| Un `.mp4` sur son propre CDN | ✅ `files:` avec `kind: video` | ✗ — on sert le fichier, pas un lecteur tiers |
+| Rendu | `<video>` / `<audio>` natif, ou lien | Lecteur de la plateforme, ou lien |
+
+Un `.mp4` posé sur son propre CDN reste un document joint : on en sert l'octet et on le lit avec une balise native. L'embed commence là où c'est **le lecteur de quelqu'un d'autre** qui rend le média.
+
+#### Compatibilité
+
+`embeds` est un champ nouveau. Aucun contenu antérieur ne le porte, et un adaptateur antérieur à v2.8 le traite en champ inconnu (passthrough §1.3) : il ne rend rien, sans erreur. Aucun contenu existant n'est cassé.
+
+L'exclusion des posters du scan de galerie ne s'applique qu'aux séries portant un `embeds:` — donc à aucun contenu antérieur. Un adaptateur qui ignore §1.11 et rencontre une série d'embeds affichera les posters comme des photos : dégradation visible mais non destructrice, et raison pour laquelle la prise en charge de §1.11 est requise pour la conformité v2.8 (§2.0).
+
 ---
 
 ## Couche 2 — Adaptateurs plateforme
@@ -838,6 +917,7 @@ Tout adaptateur Hyperfocale **DOIT** :
 | Supporter le mode distant | Si `images` est présent, l'utiliser à la place de `media/` ; si `files` est présent, l'utiliser pour les pièces jointes |
 | Distinguer les sections | Ne pas valider comme série un `index.md` portant `type: section` ; l'exclure des listings de séries (§1.10) — *conformité v2.6* |
 | Supporter le manifeste d'images | Si un `images.json` accompagne `index.md`, l'utiliser à la place de `media/` en respectant l'ordre du tableau (§1.5.1) — *conformité v2.6* |
+| Exposer les contenus embarqués | Rendre `embeds` accessible aux templates, et **exclure les images désignées par un `poster` du scan de galerie** (§1.11) — *conformité v2.8* |
 | Respecter `draft` | Exclure les drafts en production |
 | Trier par date desc | Listing par défaut : date décroissante |
 | Exposer le body | Rendre le Markdown du body en HTML |
@@ -1504,6 +1584,9 @@ Vérifications :
 - [ ] Pas de mélange mode local / mode distant / manifeste dans la même série
 - [ ] `images.json` (si présent) est un JSON valide dont la clé `images` est un tableau (§1.5.1)
 - [ ] Aucune série imbriquée au-delà d'un niveau — un conteneur §1.8 n'est jamais lui-même une sous-série (la profondeur de rangement §1.2, elle, n'est pas contrainte)
+- [ ] Chaque entrée `embeds:` porte une `url` (§1.11)
+- [ ] Chaque `embeds[].poster` en chemin relatif pointe vers un fichier existant de `media/`
+- [ ] Aucun `poster` d'embed n'est aussi listé dans `images:` ou `attachments:` — une image est une photo de la série ou la vignette d'un embed, pas les deux
 
 ### B — Migration depuis la spec v1 (Astro-only)
 
@@ -2490,6 +2573,23 @@ Un profil ne DOIT jamais : renommer un champ core, modifier le slug regex, suppr
 ---
 
 ## Changelog
+
+### 2.8-draft — 2026-08-12
+
+#### §1.11 — Contenus embarqués
+
+**Ajout** :
+- **§1.11 — Contenus embarqués** : le champ `embeds`, pour les médias hébergés par une plateforme tierce (Vimeo, YouTube, SoundCloud…) et joués dans la page. `url` est le seul champ requis ; `platform`, `id`, `title`, `description`, `poster`, `width` et `height` sont optionnels.
+- `embeds` rejoint la table des champs de workflow (§1.3), le contrat d'adaptateur (§2.0) et la liste de vérifications du lint (Annexe A).
+
+**Décisions normatives** :
+- **La frontière avec §1.9 est l'emplacement de l'octet, pas la nature du média.** Un `.mp4` dans `media/` — ou sur son propre CDN via `files:` — reste un document joint : on en sert le fichier et une balise native le lit. L'embed commence là où c'est le lecteur d'un tiers qui rend le média. Un même documentaire relève donc de §1.9 ou de §1.11 selon qui l'héberge.
+- **Un poster n'est pas une photo de la série.** Une image de `media/` référencée par `embeds[].poster` est exclue du scan de galerie — seule exception au principe « toute image de `media/` alimente la galerie » (§1.6). Sans elle, une série de trois vidéos afficherait trois vignettes parasites. Le lint interdit aussi qu'une image soit à la fois poster et entrée d'`images:`.
+- **`url` seule doit suffire.** Construire un lecteur exige `platform` et `id` ; à défaut l'adaptateur se rabat sur un lien. C'est ce qui rend le champ utilisable avec un hébergeur que la spec ne connaît pas.
+- **La spec ne fige aucun gabarit d'iframe.** Les hébergeurs changent les leurs plus vite qu'une spec ne se réédite : la construction de l'URL de lecture appartient à l'adaptateur. Le vocabulaire de `platform` est une liste reconnue, pas une énumération fermée.
+- **Une série peut n'avoir aucune image.** Ni `media/` d'images, ni `images:` — elle s'affiche sans galerie, ce n'est pas une erreur. Le format supposait jusqu'ici qu'une série était d'abord un corpus d'images.
+
+**Justification** : le site `laurenceguenoun.com`, premier consommateur du plugin Astro à monter le format en couche data, porte **onze vidéos Vimeo réparties sur trois de ses huit séries** — des pages entières dont le média n'est pas une image. Aucune des trois formes existantes ne les décrit : `attachments:` ne référence que `media/`, `files:` n'a ni vignette ni dimensions, `images:` mettrait une vidéo dans la lightbox. Le site a donc dû étendre le schéma localement, avec un bloc `videos[]` propriétaire — exactement la divergence en silence que §2.0.1 cherche à éviter. Le cas n'a rien de particulier à ce site : dès qu'une série documente de la vidéo, l'octet est ailleurs.
 
 ### 2.7-draft — 2026-07-27
 
