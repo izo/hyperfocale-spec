@@ -2,16 +2,16 @@
 
 > **Source de vérité canonique.** Ce document définit le format Hyperfocale — un standard de gestion de **séries photo** portable entre SSG (Astro, Next.js, Hugo, 11ty...), vaults Obsidian, et CMS headless (Strapi, Sanity, Payload...). Toute évolution du format doit être proposée d'abord ici, dans ce dépôt.
 
-**Version** : 2.8-draft
+**Version** : 2.9-draft
 **Statut** : spécification active — source de vérité canonique
-**Dernière révision** : 2026-08-12
+**Dernière révision** : 2026-08-22
 
 ### Implémentations de référence
 
 | Implémentation | Dépôt | Rôle | Conformité |
 |----------------|-------|------|------------|
-| Plugin Astro `@regrets/hyperfocale` | https://github.com/izo/hyperfocale-astro-plugins | Adaptateur Astro (couche 2) | ✅ Conforme au contrat, Annexe G couverte (v0.15.0) · ❌ §1.11 ouverte |
-| Site `laurenceguenoun.com` | https://github.com/izo/laurenceguenoun | Consommateur en **couche data seule** (Astro) | ⚠️ Porte les embeds §1.11 dans un bloc `videos[]` local, en attente de l'implémentation |
+| Plugin Astro `@regrets/hyperfocale` | https://github.com/izo/hyperfocale-astro-plugins | Adaptateur Astro (couche 2) | ✅ Conforme au contrat, Annexe G couverte, §1.11 implémentée (v0.18.0) |
+| Site `laurenceguenoun.com` | https://github.com/izo/laurenceguenoun | Consommateur en **couche data seule** (Astro) | ⚠️ Bloc `videos[]` local à migrer vers `embeds:` — §1.11 est implémentée par le plugin depuis la v0.17.0 |
 | Site `mathieu-drouet.com` | https://github.com/izo/mathieu-drouet.com | Consommateur grandeur nature (Astro) | ⚠️ Migration v2.1 prévue |
 | Exporter Lightroom | https://github.com/izo/hyperfocale-exporter-app | Source de contenu : LR → format Hyperfocale | ✅ Conforme |
 
@@ -122,7 +122,7 @@ Ces règles s'appliquent quel que soit l'adaptateur ou la plateforme :
 | **Couverture** | `cover` du frontmatter, sinon première image alphabétique |
 | **Tri des séries** | Date décroissante dans les listings |
 | **Brouillons** | `draft: true` → exclu des listings en production |
-| **Formats images** | `.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`, `.tiff` — seuls formats alimentant la galerie |
+| **Formats images** | `.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`, `.tif`, `.tiff` — seuls formats alimentant la galerie |
 | **Documents joints** | Tout autre fichier de `media/` est un document joint (§1.9), listé après la galerie |
 | **Pas de récursion** | `media/` est plat, pas de sous-dossiers |
 | **Passthrough** | Les champs inconnus du frontmatter ne provoquent pas d'erreur |
@@ -152,9 +152,9 @@ Toute implémentation (adaptateur, script, outil) qui lit du contenu Hyperfocale
 
 Section informative — un audit de conformité des implémentations connues, mis à jour à chaque révision majeure de la spec.
 
-### Plugin Astro `@regrets/hyperfocale` (v0.15.0)
+### Plugin Astro `@regrets/hyperfocale` (v0.18.0)
 
-**Conformité** : ✅ Conforme sur le contrat d'adaptateur (§2.0), obligations v2.6 comprises, et aligné sur les profils de l'Annexe G depuis la v0.12.0. ❌ **§1.11 (contenus embarqués) n'est pas implémentée** — c'est la seule obligation v2.8, et elle est ouverte.
+**Conformité** : ✅ Conforme sur le contrat d'adaptateur (§2.0), obligations v2.6 comprises, aligné sur les profils de l'Annexe G depuis la v0.12.0, et **§1.11 (contenus embarqués) implémentée depuis la v0.17.0** — plus aucune obligation ouverte.
 
 > Le paquet s'appelait `@izo/hyperfocale` jusqu'au 2026-08-04. Le scope `@izo` ne correspondait à aucun compte npm et aucune version n'avait jamais été publiée sous ce nom : le renommage n'a rien cassé.
 
@@ -172,7 +172,7 @@ Section informative — un audit de conformité des implémentations connues, mi
 | Page d'index de section (§1.10) | ✅ | Implémentée en **v0.9.0** : champ `type`, exclusion des listings, `date` non requise pour une section. `isSection()` ne teste que `type` — jamais l'absence de date (« discriminant explicite »). Helpers `isSection()` / `getSections()` exposés ; la route de section reste au site consommateur (§1.10 la donne en PEUT) |
 | Séries imbriquées (§1.8) | ✅ | Implémentées en **v0.12.0** : `getSubSeries()` et line-up rendu sur la page du conteneur, tri par `lineup_order` puis date décroissante. Le helper ne retient que les entrées situées exactement un segment plus bas — une série rangée plus profond (§1.2) n'est pas une sous-série |
 | Profils de contenu (Annexe G) | ✅ | Les **11 profils** de l'annexe sont couverts depuis la **v0.14.0** ; leurs prefix restent localisés en français, ce que §2.0.1 autorise |
-| Contenus embarqués (§1.11) | ❌ | **Non implémenté.** Aucune notion de média hébergé chez un tiers : `attachments[]` ne couvre que `media/`, `files[]` n'a ni poster ni dimensions, et `SeriesAttachments` rend un `<video>` natif. C'est ce manque qui a motivé §1.11 — voir la justification au changelog v2.8 |
+| Contenus embarqués (§1.11) | ✅ | Implémentés en **v0.17.0** : champ `embeds`, `getSeriesEmbeds()` (résolution dans l'ordre du tableau, `playable` = plateforme reconnue + `id` présent), `<SeriesEmbeds>` rendu **en façade** (le poster s'affiche, l'iframe n'arrive qu'au clic ; sans JavaScript la façade reste un lien fonctionnel), liste de plateformes ouverte (valeur inconnue → repli en lien), posters exclus du scan de galerie. Vocabulaires (`EMBED_PLATFORMS`, `ATTACHMENT_KINDS`) exportés à la racine en v0.17.1 |
 | Passthrough racine (champs inconnus) | ✅ | `z.looseObject()` racine — les extensions site-spécifiques ne sont jamais rejetées (v0.4.0) |
 | Tri date desc | ✅ | |
 
@@ -186,6 +186,10 @@ Section informative — un audit de conformité des implémentations connues, mi
 - **v0.13.0** — `images[]` valide enfin les trois formes que `getSeriesImages()` traitait déjà : une entrée `{ file: '01.jpg' }` était rejetée par Zod avant d'atteindre le helper qui savait la lire.
 - **v0.14.0** — les cinq profils manquants de l'Annexe G (`event`, `app`, `book`, `place`, `screen`) ; `music` aligné sur G.8, qui donne la date de sortie optionnelle ; `published` déprécié au profit de `draft`.
 - **v0.15.0** — `theme: 'none'`, qui n'injecte aucune feuille. Remonté par `laurenceguenoun.com`, premier site à monter le plugin en **couche data seule** — schéma et helpers, pages entièrement maison : il embarquait les 30 custom properties du thème sur toutes ses pages sans qu'une règle les lise. Cet usage-là n'était pas prévu ; il est désormais un cas pris en charge.
+- **v0.16.0** — `theme: 'light'` / `'dark'` agissent enfin sur l'apparence (#FE-012) : l'attribut `data-hf-theme`, sur lequel `base.css` articulait déjà ses trois blocs, est posé par un script inline en `head-inline` — avant le premier paint. Referme le point *Connu* de la v0.15.0.
+- **v0.17.0** — contenus embarqués (§1.11) : champ `embeds`, `getSeriesEmbeds()`, `<SeriesEmbeds>` en façade, posters exclus du scan de galerie. La construction de l'URL de lecture vit dans le composant, pas dans le schéma — §1.11 ne fige aucun gabarit d'iframe.
+- **v0.17.1** — `ATTACHMENT_KINDS`, `EMBED_PLATFORMS` et leurs types exportés par l'entrée racine ; ils n'étaient atteignables que via `/helpers`, sous-chemin qui importe `astro:content` et n'est pas chargeable hors runtime Astro.
+- **v0.18.0** — helpers multi-collections : la plupart des helpers acceptent un nom de collection en argument (`collectionName` pour `querySeries`), `getAllSeries()` expose la collection brute, et le cache — jusqu'ici scalaire, il servait une collection pour une autre sur un site bilingue — est indexé par collection. Besoin remonté par `mathieu-drouet.com` (une collection par locale).
 - Socle : **Astro 7.2.0**, TypeScript 7, Zod 4.
 
 **Presets vs Annexe G — écart refermé en v0.12.0** :
@@ -327,7 +331,7 @@ Chaque série est **autonome** : toutes ses données (métadonnées + médias) v
 | `<slug>` | Identifiant unique. Minuscules, chiffres, tirets uniquement. Regex : `^[a-z0-9]+(-[a-z0-9]+)*$`. Utilisé dans les URLs. |
 | `index.md` | Obligatoire. Contient le frontmatter YAML et le body Markdown. Encodage UTF-8. |
 | `media/` | Obligatoire (peut être vide pour une série en brouillon). Plat — pas de sous-dossiers. |
-| Images | Formats alimentant la galerie : `.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`, `.tiff`. Pas de récursion dans `media/`. |
+| Images | Formats alimentant la galerie : `.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`, `.tif`, `.tiff`. Pas de récursion dans `media/`. |
 | Documents joints | Tout autre type de fichier est accepté dans `media/` (PDF, vidéo, audio, archives…) et traité en document joint — voir §1.9. |
 | Nommage des images | Libre, mais recommandé : `01.jpg`, `02.jpg`... (padding 2+ chiffres pour l'ordre). |
 
@@ -571,7 +575,7 @@ Un adaptateur antérieur à v2.6 ignore le fichier et ne trouve aucune image (`m
 
 | Règle | Description |
 |-------|-------------|
-| Scan | Mode local : glob `media/*.{jpg,jpeg,png,webp,avif,tiff}`. Pas de récursion. |
+| Scan | Mode local : glob `media/*.{jpg,jpeg,png,webp,avif,tif,tiff}`. Pas de récursion. |
 | Tri | Alphabétique par nom de fichier. D'où le nommage recommandé `01.jpg`, `02.jpg`. |
 | Couverture | `cover` du frontmatter. Fallback : première image par ordre alphabétique. |
 | Alt text | Mode local : l'adaptateur PEUT extraire depuis EXIF/IPTC embarqué ou utiliser le nom de fichier. Mode distant : champ `alt` de chaque image. |
@@ -703,7 +707,7 @@ La classification se fait par extension de fichier, en minuscules. Un adaptateur
 
 | Classe | Extensions | Rendu recommandé |
 |--------|-----------|------------------|
-| `image` | `.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`, `.tiff` | Galerie (comportement §1.6, inchangé) |
+| `image` | `.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`, `.tif`, `.tiff` | Galerie (comportement §1.6, inchangé) |
 | `video` | `.mp4`, `.webm`, `.mov`, `.m4v` | Lecteur intégré (`<video>`) dans ou après la galerie |
 | `audio` | `.mp3`, `.m4a`, `.ogg`, `.wav`, `.flac` | Lecteur intégré (`<audio>`) après la galerie |
 | `document` | `.pdf`, `.epub`, `.txt`, `.md` (hors `index.md`) | Lien de téléchargement / visionneuse |
@@ -2573,6 +2577,21 @@ Un profil ne DOIT jamais : renommer un champ core, modifier le slug regex, suppr
 ---
 
 ## Changelog
+
+### 2.9-draft — 2026-08-22
+
+#### Extension `.tif` reconnue comme image
+
+**Ajout** :
+- `.tif` rejoint les extensions d'image partout où la liste apparaît : contrat minimum (§0 — Règles invariantes), règles de structure (§1.2), glob de scan (§1.6 — `media/*.{jpg,jpeg,png,webp,avif,tif,tiff}`) et classe `image` des documents joints (§1.9).
+
+**Décision normative** :
+- `.tif` et `.tiff` désignent le même format (TIFF) et sont traités identiquement. La liste ne portait que la graphie longue : un fichier `.tif` — graphie par défaut de nombreux outils, dont l'export TIFF de Lightroom — tombait en classe `file` (§1.9) au lieu d'alimenter la galerie. Non cassant : aucun fichier valide ne change de classe, des fichiers jusqu'ici mal classés en gagnent une meilleure. (Issue [#8](https://github.com/izo/hyperfocale-spec/issues/8).)
+
+#### §0.5 — plugin en v0.18.0, §1.11 refermée
+
+- Le plugin Astro `@regrets/hyperfocale` implémente **§1.11 (contenus embarqués) depuis la v0.17.0** — la dernière obligation ouverte du contrat est refermée. La v0.17.1 exporte les vocabulaires à la racine, la v0.18.0 apporte les helpers multi-collections (besoin de `mathieu-drouet.com`, une collection par locale), la v0.16.0 avait rendu `theme: 'light'`/`'dark'` effectifs.
+- `laurenceguenoun.com` reste ⚠️ : son bloc `videos[]` local est à migrer vers `embeds:` maintenant que le plugin le porte.
 
 ### 2.8-draft — 2026-08-12
 

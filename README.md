@@ -39,8 +39,10 @@ Le reste (métadonnées IPTC, GPS, couverture, mots-clés...) est optionnel et s
 
 | Outil | Dépôt | Rôle |
 |-------|-------|------|
-| `@izo/hyperfocale` (v0.4.0) | https://github.com/izo/hyperfocale-astro-plugins | Plugin Astro 6 — schéma Zod, collections, presets, composants |
+| `@regrets/hyperfocale` (v0.18.0) | https://github.com/izo/hyperfocale-astro-plugins | Plugin Astro 7 — schéma Zod, collections, presets, composants |
 | Exporter Lightroom | https://github.com/izo/hyperfocale-exporter-app | Export LR → format Hyperfocale avec métadonnées IPTC |
+
+> **Pas de site vitrine dédié.** Un dépôt `hyperfocale-site` a existé puis a disparu (introuvable sur GitHub comme en local — constat du 2026-08-22, issue [#18](https://github.com/izo/hyperfocale-spec/issues/18)). Les sites `mathieu-drouet.com` et `laurenceguenoun.com` servent de démonstrateurs grandeur nature du format.
 
 ## Lire la spec
 
@@ -55,8 +57,8 @@ La spec est organisée en trois couches :
 | **2 — Adaptateurs** | Astro, Next.js, Hugo, 11ty, Obsidian (+ plugin), CMS headless, Lightroom |
 | **3 — Composants UI** | Vocabulaire partagé (SeriesCard, Gallery, Lightbox...) |
 
-Au-delà de la série photo, l'**Annexe G** standardise des **profils de contenu** réutilisant le même squelette : Événement (`event`), Recette (`recipe`), Application (`app`), Livre (`book`), Lieu (`place`).
+Au-delà de la série photo, l'**Annexe G** standardise **onze profils de contenu** réutilisant le même squelette : Série (`series`), Événement (`event`), Recette (`recipe`), Application (`app`), Livre (`book`), Lieu (`place`), Écran (`screen`), Portfolio (`portfolio`), Musique (`music`), Catalogue (`catalog`), Presse (`press`).
 
 ## Statut
 
-`v2.3-draft` — spécification active, source de vérité canonique. Voir le **Changelog** en fin de `spec-hyperfocale.md` pour l'historique des révisions.
+`v2.9-draft` — spécification active, source de vérité canonique. Voir le **Changelog** en fin de `spec-hyperfocale.md` pour l'historique des révisions.
