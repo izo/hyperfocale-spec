@@ -1826,12 +1826,20 @@ Vocabulaire commun de l'état d'une publication. Un CMS et un site PEUVENT affic
 
 `format`, `version` (`1`), `state` et `updatedAt` (ISO 8601 UTC) sont requis. `sourceProvider` et `sourceRevision` décrivent la source ; `snapshot` est l'`id` du snapshot concerné ; `publishedRevision` est défini par le consommateur (commit Git, identifiant de déploiement). `error` accompagne `failed` et `conflict` ; son `code` reprend un code de diagnostic (§4.10, §4.11) quand il y en a un.
 
-Transitions :
+Transitions — la liste est **exhaustive** : toute autre transition est interdite.
 
-- chemin nominal : `sourceDirty` → `snapshotPending` → `validating` → `publishing` → `published`, puis `published` → `sourceSynced` tant que la source ne bouge pas ;
-- tout état → `failed`. Un échec — `validating` → `failed` compris — n'altère jamais la révision publiée précédente ;
-- tout état → `conflict` quand le provider signale un conflit ; aucune publication n'a lieu tant qu'il persiste ;
-- depuis `sourceSynced`, `published`, `failed` ou `conflict`, toute divergence de la source ramène à `sourceDirty`.
+| Depuis | Vers | Quand |
+|---|---|---|
+| — | `sourceDirty` | état initial, avant toute publication |
+| `sourceDirty` | `snapshotPending` | une ingestion démarre |
+| `snapshotPending` | `validating` | le snapshot est construit |
+| `validating` | `publishing` | validation et garde sans erreur |
+| `publishing` | `published` | la bascule a réussi |
+| `published` | `sourceSynced` | la source n'a pas bougé depuis la publication |
+| `sourceSynced`, `published`, `failed`, `conflict` | `sourceDirty` | la source diverge du dernier snapshot publié |
+| `failed` | `snapshotPending` | nouvel essai, source inchangée (erreur transitoire du provider, par exemple) |
+| tout état | `failed` | la tentative échoue — `validating` → `failed` compris ; la révision publiée précédente n'est jamais altérée |
+| tout état | `conflict` | le provider signale un conflit ; aucune publication n'a lieu tant qu'il persiste |
 
 ### 4.10 — Diagnostics
 
@@ -3011,6 +3019,7 @@ Un profil ne DOIT jamais : renommer un champ core, modifier le slug regex, suppr
 - **Le diff est prudent.** Sans algorithme de hash commun, une entrée est `modified`, jamais « inchangée ». Les déplacements s'infèrent par identité, puis par contenu, et seulement sur appariement unique.
 - **Minuscule simple pour les collisions, octets UTF-8 pour le tri** : les deux points où JavaScript et Swift divergent si l'on s'en remet à leurs bibliothèques (`toLowerCase()` applique le sigma final, les chaînes JavaScript se comparent en UTF-16).
 - **Le frontmatter se lit sous le schéma YAML 1.2 core.** Une date non guillemetée reste une chaîne, validée par un motif ISO 8601 et par le calendrier. Sans cette règle, `2024-02-30` passait avec le schéma par défaut de js-yaml (débordement silencieux vers le 1ᵉʳ mars) et échouait avec d'autres parseurs.
+- **Les transitions de `PublicationState` sont exhaustives** : état initial `sourceDirty`, et `failed` → `snapshotPending` pour un nouvel essai sur une source inchangée ; toute transition absente de la table est interdite.
 - **La garde connaît la confidentialité** : signature `guardChangeSet(changeSet, base, target, { read, policy })` ; une série est privée si au moins un de ses fichiers index déclare `private: true` (booléen YAML, la chaîne `"true"` ne compte pas) ; l'exposition suppose une série présente dans `target`, au même chemin ou déplacée — une série privée supprimée n'est pas exposée. `private` reste une extension de site.
 - **Les octets lus se vérifient** : un outil DOIT comparer ce qu'il lit au hash de l'entrée (premier algorithme enregistré qu'elle porte). Un écart (`entry-hash-mismatch`) signe un fichier modifié entre le listing et la lecture : le snapshot n'est pas publiable, il faut un nouveau listing.
 - **Un fichier en conflit bloque la publication** : `state` admet `"conflict"` (copie conflictuelle Dropbox, versions concurrentes iCloud) ; l'entrée n'est jamais lue et produit `entry-conflict`.
