@@ -56,7 +56,7 @@ Comparaison : `format`, `version`, `id`, `complete`, et pour chaque entrée `pat
 ```
 
 - Avec `corpus` : le snapshot validé est `snapshots/<corpus>.json`, et `read(path)` rend les octets de `corpora/<corpus>/<path>`.
-- Avec `snapshot` + `files` (au lieu de `corpus`) : le snapshot est donné inline, et `read(path)` rend les octets UTF-8 de `files[path]`. `files` contient tout ce que la validation a le droit de lire ; une lecture hors de `files` est un défaut d'implémentation (par exemple lire un fichier `placeholder`). Cette forme couvre les diagnostics qui ne dépendent que du snapshot (`snapshot-*`, `entry-*`) et le cas de collision de casse.
+- Avec `snapshot` + `files` (au lieu de `corpus`) : le snapshot est donné inline, et `read(path)` rend les octets UTF-8 de `files[path]`. Ces octets correspondent au hash de l'entrée, sauf dans `validation/entry-hash-mismatch.json`, qui teste précisément l'écart. `files` contient tout ce que la validation a le droit de lire ; une lecture hors de `files` est un défaut d'implémentation (par exemple lire un fichier `placeholder`). Cette forme couvre les diagnostics qui ne dépendent que du snapshot (`snapshot-*`, `entry-*`) et le cas de collision de casse.
 - `roots` est toujours explicite, même quand c'est la racine par défaut.
 
 ### `diff/<cas>.json`
@@ -132,6 +132,7 @@ Pour la même raison, aucun corpus ne contient deux noms égaux après repli de 
 | `entry-hash-missing` | `validation/entry-hash-missing.json` |
 | `entry-not-materialized` | `validation/entry-not-materialized.json` |
 | `entry-conflict` | `validation/entry-conflict.json` |
+| `entry-hash-mismatch` | `validation/entry-hash-mismatch.json` |
 | `slug-invalid` … `embed-url-missing` | `validation/invalid-<code>.json` (corpus `invalid-<code>`), plus `validation/roots-default.json` |
 | `hash-incomparable` | `diff/incomparable.json` |
 | `move-ambiguous` | `diff/ambiguous.json` |
