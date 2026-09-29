@@ -1653,7 +1653,7 @@ Chaque entrée porte un `kind`, déterminé par son seul chemin, par la premièr
 | 3 | extension `md` ou `mdx` (casse ignorée) | `content` |
 | 4 | tout le reste | `other` |
 
-L'ordre compte : `media/images.json` est `derived`, `media/index.md` est `media`, `media/raw/01.tif` est `other` (son parent immédiat est `raw`), `Media/01.jpg` est `other`. Le `kind` d'une entrée DOIT être égal à la classification de son chemin ; les règles de validation (§4.10) s'appuient sur cette classification.
+L'ordre compte : `media/images.json` est `derived`, `media/index.md` est `media`, `media/raw/01.tif` est `other` (son parent immédiat est `raw`), `Media/01.jpg` est `other`. Le `kind` d'une entrée DOIT être égal à la classification de son chemin ; un écart produit `entry-kind-mismatch`, et les règles de validation (§4.10) s'appuient toujours sur la classification recalculée.
 
 ### 4.4 — Hash
 
@@ -1694,13 +1694,13 @@ Un snapshot est la liste complète des fichiers d'un corpus à un instant donné
 |---|---|---|
 | `format` | oui | `"hyperfocale.snapshot"`. Un document qui porte une autre valeur n'est pas un snapshot. |
 | `version` | oui | `1`. Un lecteur DOIT refuser une version inconnue (`snapshot-version-unsupported`). |
-| `id` | oui | Calculé (§4.6). |
+| `id` | oui | Calculé (§4.6). Un `id` qui ne correspond pas aux entrées déclarées produit `snapshot-id-mismatch`. |
 | `createdAt` | oui | ISO 8601 UTC. Informatif, hors `id`. |
 | `complete` | oui | `true` seulement si le listing du provider a abouti sans erreur ni page manquante. Hors `id`. |
 | `source` | non | Opaque ; `provider`, `revision` et `root` facultatifs. Hors `id`. Un consommateur d'un snapshot **publié** NE DOIT PAS en dépendre. |
 | `entries` | oui | Triées dans l'ordre canonique (§4.1), chemins uniques, chacun valide et non exclu. |
 | `entries[].path` | oui | Chemin (§4.1). |
-| `entries[].kind` | oui | Classification du chemin (§4.3). |
+| `entries[].kind` | oui | Classification du chemin (§4.3). Un écart produit `entry-kind-mismatch`. |
 | `entries[].size` | oui | Taille en octets, entier ≥ 0. |
 | `entries[].hashes` | oui* | *Sauf `state: "placeholder"` (§4.4). |
 | `entries[].identity` | non | Identifiant stable attribué par le provider, qui survit au renommage. Hors `id`. |
@@ -1835,9 +1835,11 @@ Transitions :
 | Code | Sévérité | Règle | `path` |
 |---|---|---|---|
 | `snapshot-version-unsupported` | error | `version` ≠ 1 | `""` |
+| `snapshot-id-mismatch` | error | `id` déclaré ≠ `id` recalculé (§4.6) à partir des entrées telles que déclarées | `""` |
 | `snapshot-incomplete` | error | `complete: false` — interdit toute publication, donc toute suppression | `""` |
 | `snapshot-empty` | error | aucune entrée `content` | `""` |
 | `entry-path-invalid` | error | chemin non conforme à §4.1, non NFC, ou exclu (§4.2) | l'entrée |
+| `entry-kind-mismatch` | error | `kind` déclaré ≠ classification du chemin (§4.3) | l'entrée |
 | `entry-path-collision` | error | collision (§4.1) | le second chemin dans l'ordre canonique, et chacun des suivants |
 | `entry-hash-missing` | error | entrée matérialisée sans hash (`hashes` absent ou vide) | l'entrée |
 | `entry-not-materialized` | error | `state: "placeholder"` — publication impossible | l'entrée |
@@ -1873,18 +1875,19 @@ La sévérité est celle d'un **outil d'ingestion**, qui décide d'une publicati
 #### Règles d'évaluation
 
 1. **Version.** `version` ≠ 1 : seul `snapshot-version-unsupported` est produit, rien d'autre n'est vérifié.
-2. **Entrées.** Les entrées au chemin invalide (`entry-path-invalid`) sont écartées de tout le reste. Les collisions se cherchent parmi les entrées retenues, `snapshot-empty` aussi. Une entrée `placeholder` produit `entry-not-materialized` et n'est jamais lue : un fichier index placeholder ne produit aucun diagnostic de contenu.
-3. **Lecture.** Seuls sont lus les fichiers index et les `images.json` des racines, matérialisés. Le texte est de l'UTF-8 ; un BOM initial est ignoré ; des octets qui ne forment pas de l'UTF-8 valide rendent le fichier illisible (`frontmatter-invalid`, `images-json-invalid`).
-4. **Bloc de frontmatter.** La première ligne vaut exactement `---` ; le bloc se ferme à la ligne suivante qui vaut exactement `---` (fins de ligne `\n` ou `\r\n`). Sans ligne d'ouverture ou sans ligne de fermeture : `frontmatter-missing`.
-5. **YAML.** Le bloc s'interprète selon le **schéma YAML 1.2 *core*** : une date non guillemetée y reste une chaîne, validée par la règle 7. Une clé dupliquée rend le YAML illisible. Un bloc vide, ou dont la racine n'est pas un mapping : `frontmatter-invalid`. Après `frontmatter-missing` ou `frontmatter-invalid`, aucun diagnostic de champ n'est produit pour ce fichier.
-6. **Champs.** Une clé de valeur `null` vaut absente (`type`, `date`, `cover`, `images`). `title` doit être une chaîne d'au moins un caractère. `type`, s'il est présent, vaut `series` ou `section` ; toute autre valeur produit `type-invalid`, et le fichier est traité en série.
-7. **Date.** Une date valide est une chaîne `AAAA-MM-JJ`, éventuellement suivie de `THH:MM`, de `:SS`, d'une fraction `.S…` et d'un fuseau `Z` ou `±HH:MM`, qui forme une date calendaire réelle (heures 00–23, minutes et secondes 00–59). `2024-02-30` produit `date-invalid`. Pour une section, `date` n'est pas vérifiée (§1.10).
-8. **Références relatives.** Une référence est relative si elle n'est pas vide, ne commence pas par `/` et ne porte pas de schéma (`https:`, `data:`…). Elle se résout depuis le dossier du fichier index : les segments vides et `.` sont ignorés, `..` remonte d'un niveau ; une résolution qui sort de la racine du corpus n'aboutit pas.
-9. **Couverture.** Seul un `cover` relatif est vérifié. `cover-not-image` dépend de la seule extension, que le fichier existe ou non. `cover-not-found` est produit si le chemin résolu n'est pas une entrée du snapshot **et** qu'aucune entrée du manifeste `images.json` de la série (chaîne, ou `url` d'un objet) ne lui correspond : une entrée relative correspond si elle se résout au même chemin ; une entrée absolue, si elle se termine par `/` suivi du chemin résolu (`/content/<chemin résolu>`, `https://cdn.example.com/<chemin résolu>`).
-10. **Manifeste.** `images-conflict` : le frontmatter porte `images` et le dossier contient un `images.json`. `images-json-invalid` s'évalue pour tout `images.json` des racines.
-11. **Documents joints et embeds.** Chaque entrée de `attachments` dont `file` manque, n'est pas relatif, ou ne se résout pas vers une entrée existante située directement dans `<dossier>/media/` produit `attachment-not-found`. Chaque entrée de `embeds` qui n'est pas un objet portant une `url` chaîne non vide produit `embed-url-missing`.
-12. **Type d'un dossier porteur.** Il se lit dans `index.md`, sinon dans `index.mdx`, sinon dans le premier `index.<lang>.md` de l'ordre canonique. Un fichier illisible ou placeholder vaut `series` : la nature de section ne se devine jamais (§1.10).
-13. **Structure.** `slug-invalid` porte sur le dernier segment de chaque dossier porteur, sauf le dossier qui est lui-même la racine de validation : il n'a pas de slug, et un `index.md` à la racine du corpus est licite. `nesting-too-deep` : une série qui compte au moins deux dossiers porteurs de type série parmi ses ancêtres situés dans sa racine (le dossier racine compris) — un diagnostic par série fautive. `media-nested` : pour chaque entrée d'une racine, le dossier situé juste sous le segment `media` ancêtre le moins profond, parent immédiat exclu. `media-orphan` : tout dossier nommé `media` dont le parent ne porte aucun fichier index. Pour ces deux règles, seuls comptent les segments situés sous la racine.
+2. **Identifiant.** L'`id` est recalculé (§4.6) à partir des entrées telles que déclarées — `kind` déclaré compris, entrées au chemin invalide comprises. S'il diffère de l'`id` déclaré : `snapshot-id-mismatch`. La validation continue.
+3. **Entrées.** Les entrées au chemin invalide (`entry-path-invalid`) sont écartées de tout le reste. Pour les entrées retenues, un `kind` déclaré différent de la classification du chemin produit `entry-kind-mismatch` ; l'entrée reste dans la validation avec la classification recalculée. Les collisions se cherchent parmi les entrées retenues, `snapshot-empty` aussi. Une entrée `placeholder` produit `entry-not-materialized` et n'est jamais lue : un fichier index placeholder ne produit aucun diagnostic de contenu.
+4. **Lecture.** Seuls sont lus les fichiers index et les `images.json` des racines, matérialisés. Le texte est de l'UTF-8 ; un BOM initial est ignoré ; des octets qui ne forment pas de l'UTF-8 valide rendent le fichier illisible (`frontmatter-invalid`, `images-json-invalid`).
+5. **Bloc de frontmatter.** La première ligne vaut exactement `---` ; le bloc se ferme à la ligne suivante qui vaut exactement `---` (fins de ligne `\n` ou `\r\n`). Sans ligne d'ouverture ou sans ligne de fermeture : `frontmatter-missing`.
+6. **YAML.** Le bloc s'interprète selon le **schéma YAML 1.2 *core*** : une date non guillemetée y reste une chaîne, validée par la règle 8. Une clé dupliquée rend le YAML illisible. Un bloc vide, ou dont la racine n'est pas un mapping : `frontmatter-invalid`. Après `frontmatter-missing` ou `frontmatter-invalid`, aucun diagnostic de champ n'est produit pour ce fichier.
+7. **Champs.** Une clé de valeur `null` vaut absente (`type`, `date`, `cover`, `images`). `title` doit être une chaîne d'au moins un caractère. `type`, s'il est présent, vaut `series` ou `section` ; toute autre valeur produit `type-invalid`, et le fichier est traité en série.
+8. **Date.** Une date valide est une chaîne `AAAA-MM-JJ`, éventuellement suivie de `THH:MM`, de `:SS`, d'une fraction `.S…` et d'un fuseau `Z` ou `±HH:MM`, qui forme une date calendaire réelle (heures 00–23, minutes et secondes 00–59). `2024-02-30` produit `date-invalid`. Pour une section, `date` n'est pas vérifiée (§1.10).
+9. **Références relatives.** Une référence est relative si elle n'est pas vide, ne commence pas par `/` et ne porte pas de schéma (`https:`, `data:`…). Elle se résout depuis le dossier du fichier index : les segments vides et `.` sont ignorés, `..` remonte d'un niveau ; une résolution qui sort de la racine du corpus n'aboutit pas.
+10. **Couverture.** Seul un `cover` relatif est vérifié. `cover-not-image` dépend de la seule extension, que le fichier existe ou non. `cover-not-found` est produit si le chemin résolu n'est pas une entrée du snapshot **et** qu'aucune entrée du manifeste `images.json` de la série (chaîne, ou `url` d'un objet) ne lui correspond : une entrée relative correspond si elle se résout au même chemin ; une entrée absolue, si elle se termine par `/` suivi du chemin résolu (`/content/<chemin résolu>`, `https://cdn.example.com/<chemin résolu>`).
+11. **Manifeste.** `images-conflict` : le frontmatter porte `images` et le dossier contient un `images.json`. `images-json-invalid` s'évalue pour tout `images.json` des racines.
+12. **Documents joints et embeds.** Chaque entrée de `attachments` dont `file` manque, n'est pas relatif, ou ne se résout pas vers une entrée existante située directement dans `<dossier>/media/` produit `attachment-not-found`. Chaque entrée de `embeds` qui n'est pas un objet portant une `url` chaîne non vide produit `embed-url-missing`.
+13. **Type d'un dossier porteur.** Il se lit dans `index.md`, sinon dans `index.mdx`, sinon dans le premier `index.<lang>.md` de l'ordre canonique. Un fichier illisible ou placeholder vaut `series` : la nature de section ne se devine jamais (§1.10).
+14. **Structure.** `slug-invalid` porte sur le dernier segment de chaque dossier porteur, sauf le dossier qui est lui-même la racine de validation : il n'a pas de slug, et un `index.md` à la racine du corpus est licite. `nesting-too-deep` : une série qui compte au moins deux dossiers porteurs de type série parmi ses ancêtres situés dans sa racine (le dossier racine compris) — un diagnostic par série fautive. `media-nested` : pour chaque entrée d'une racine, le dossier situé juste sous le segment `media` ancêtre le moins profond, parent immédiat exclu. `media-orphan` : tout dossier nommé `media` dont le parent ne porte aucun fichier index. Pour ces deux règles, seuls comptent les segments situés sous la racine.
 
 ### 4.11 — Garde de publication
 
@@ -2976,7 +2979,7 @@ Un profil ne DOIT jamais : renommer un champ core, modifier le slug regex, suppr
 **Ajouts** :
 - **Couche 4** — contrat des outils d'ingestion : chemins (§4.1), exclusions (§4.2), classification (§4.3), hash dont l'algorithme Dropbox (§4.4), `ContentSnapshot` v1 (§4.5) et son identifiant (§4.6), `ContentChangeSet` v1 et son algorithme (§4.7), `ProviderCapabilities` v1 (§4.8), `PublicationState` (§4.9), table des diagnostics et règles d'évaluation (§4.10), garde de publication (§4.11), fixtures (§4.12), exemples Dropbox, WebDAV et iCloud Drive non normatifs (§4.13).
 - §4.0 — séparation des trois contrats (format, ingestion/snapshot, consommation) et six invariants : provider opaque, aucune lecture runtime, incomplet ≠ suppression, N intact tant que N+1 n'est pas publié, nettoyage après succès, idempotence.
-- `fixtures/ingestion/` — premier contenu du dépôt hors prose : 25 corpus, leurs snapshots, 35 cas de validation, 12 diffs, 7 identifiants, 5 jeux de chemins, vecteurs de hash. Normatives au même titre que le texte.
+- `fixtures/ingestion/` — premier contenu du dépôt hors prose : 25 corpus, leurs snapshots, 37 cas de validation, 12 diffs, 7 identifiants, 5 jeux de chemins, vecteurs de hash. Normatives au même titre que le texte.
 - Architecture en couches (quatre couches), table des matières, « Ce que cette spec définit / NE définit PAS ».
 - §1.2 — un corpus PEUT résider sur un filesystem distant ou synchronisé ; §1.5.1 — `images.json` reste dérivé à l'ingestion ; Annexe A — renvoi vers §4.10.
 
@@ -2988,6 +2991,7 @@ Un profil ne DOIT jamais : renommer un champ core, modifier le slug regex, suppr
 - **Minuscule simple pour les collisions, octets UTF-8 pour le tri** : les deux points où JavaScript et Swift divergent si l'on s'en remet à leurs bibliothèques (`toLowerCase()` applique le sigma final, les chaînes JavaScript se comparent en UTF-16).
 - **Le frontmatter se lit sous le schéma YAML 1.2 core.** Une date non guillemetée reste une chaîne, validée par un motif ISO 8601 et par le calendrier. Sans cette règle, `2024-02-30` passait avec le schéma par défaut de js-yaml (débordement silencieux vers le 1ᵉʳ mars) et échouait avec d'autres parseurs.
 - **L'exclusion précède la validité** ; dans un snapshot, un chemin non NFC ou exclu est invalide.
+- **Un snapshot se vérifie, il ne se croit pas sur parole** : un `id` qui ne correspond pas aux entrées (`snapshot-id-mismatch`) et un `kind` qui contredit le chemin (`entry-kind-mismatch`) sont des erreurs. La validation continue dans les deux cas, et s'appuie sur la classification recalculée.
 - **`cover-not-found` consulte `images.json` en plus du snapshot**, par résolution d'un chemin relatif ou par suffixe d'une URL absolue — sans quoi un corpus dont les médias ne vivent que dans le manifeste produirait un avertissement par série.
 - **La sévérité est celle de l'ingestion**, qui décide d'une publication automatique : une entrée `embeds` sans `url` reste ignorée au rendu (§1.11) mais bloque la publication (`embed-url-missing`, error).
 - **Dropbox n'est jamais normatif.** Son algorithme de hash et ses identifiants sont des cas du contrat, au même titre que ceux de WebDAV, d'iCloud Drive ou de Google Drive.
