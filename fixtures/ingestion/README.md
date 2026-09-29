@@ -105,18 +105,13 @@ Pour chaque chaîne de `input`, dans le même ordre :
 
 ### `hashes/vectors.json`
 
-Vecteurs `sha256` et `dropbox` (§4.4). `input.utf8` désigne les octets UTF-8 d'une chaîne ; `input.repeat` désigne `count` fois l'octet `byte`. **Aucun fichier de plus de 4 Mio n'est versionné** : les vecteurs multi-blocs se génèrent.
-
-| Entrée | Taille | `sha256` | `dropbox` |
-|---|---|---|---|
-| vide | 0 | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` | `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` |
-| `abc` | 3 | `ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad` | `4f8b42c22dd3729b519ba6f68d2da7cc5b2d606d05daed5ad5128cc03e6c6358` |
-| 4 194 304 × `0x00` (un bloc plein) | 4 194 304 | `bb9f8df61474d25e71fa00722318cd387396ca1736605e1248821cc0de3d3af8` | `c7e946d101855255d919ef0c70718633adf77d3dfb3adeeecf5d0cb4e951be58` |
-| 4 194 305 × `0x00` (bloc plein + 1 octet) | 4 194 305 | `95e441ca65cd41fa01b2a71799e79fd60db59ed34f13af32a91e85f90378676c` | `14a4d47f23a30177885d9820122f17d2d3a55fe63f7f5c27b95f689e0b2accd6` |
-| **5 000 000 × `0x00`** | 5 000 000 | `b39781589c4403fb82174c9647a010464cff38bad976547d339899b00053a545` | `2bf4530eab0a0c6da78fe764ce67a6a97163afd2148b379a14c22ff8c45173ce` |
-| 8 388 608 × `0x00` (deux blocs pleins) | 8 388 608 | `2daeb1f36095b44b318410b3f4e8b5d989dcc7bb023d1426c492dab0a3053e74` | `03ae066c707c588592d9e27aa2444ca98423e0999024f1ceaa11a153790b37de` |
+**`hashes/vectors.json` fait foi** pour les vecteurs `sha256` et `dropbox` (§4.4) ; ce README n'en recopie aucune valeur. `input.utf8` désigne les octets UTF-8 d'une chaîne ; `input.repeat` désigne `count` fois l'octet `byte`. Les vecteurs couvrent le fichier vide, `abc`, un bloc Dropbox plein (4 194 304 octets nuls), un bloc plein plus un octet, **5 000 000 octets nuls** et deux blocs pleins. **Aucun fichier de plus de 4 Mio n'est versionné** : les vecteurs multi-blocs se génèrent.
 
 Le hash `dropbox` d'un fichier vide est le SHA-256 de la chaîne vide (aucun bloc) : il est égal à son `sha256`. Pour un fichier non vide d'au plus un bloc, `dropbox` = SHA-256 du digest **binaire** SHA-256 du contenu — jamais du digest hexadécimal.
+
+## Prérequis d'une implémentation conforme
+
+Toute implémentation conforme DOIT savoir calculer `sha256` **et** `dropbox` : les snapshots des fixtures portent les deux, et leurs `id` en dépendent. Elle compare et trie les chemins sur leurs octets UTF-8 (ou leurs points de code) — en Swift, sur `unicodeScalars` ou `utf8`, jamais sur `String`, dont `==` identifie les formes NFC et NFD (§4.1).
 
 ## Pourquoi il n'y a pas de corpus `collision` sur disque
 

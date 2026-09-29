@@ -1631,6 +1631,8 @@ Un chemin d'entrée désigne un fichier relativement à la racine du corpus.
 | Extension | La partie du nom de base qui suit son dernier point, comparée en minuscules. Un nom sans point, ou dont le seul point est initial, n'a pas d'extension. |
 
 > **Minuscule simple, en pratique.** `toLowerCase()` (JavaScript) et `lowercased()` (Swift) appliquent la correspondance **complète** et contextuelle. Appliquées à chaque point de code isolément, elles donnent la correspondance simple, à une exception près : U+0130 `İ` doit donner U+0069 `i`, et non `i` suivi de U+0307. Il n'y a pas de règle du sigma final (`Σ` donne `σ` partout), et `ß` reste `ß`. `fixtures/ingestion/paths/collision.json` couvre ces cas.
+>
+> **Égalité et ordre, en pratique.** En Swift, `String` compare par équivalence canonique : `"é" == "e\u{301}"` est vrai, et `<` ne suit pas l'ordre des octets UTF-8. Comparer, trier et tester la forme NFC sur les vues `unicodeScalars` ou `utf8` (par exemple `Array(chemin.utf8)`), jamais avec `==` ou `<` sur `String` — sinon un chemin non NFC passe pour valide. En JavaScript, `===` compare bien les points de code, mais `<` et `localeCompare` ne suivent pas l'ordre canonique : trier sur les octets UTF-8.
 
 ### 4.2 — Exclusions
 
@@ -1734,7 +1736,7 @@ id = "sha256:" + hex(SHA-256(utf8(L)))
 - les hashes sont triés par nom d'algorithme (octets UTF-8) et séparés par `,` ; une entrée sans hash donne une liste vide (`…\t<size>\t\n`) ;
 - un snapshot sans entrée a pour `L` la chaîne vide : `sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`.
 
-Seuls `path`, `kind`, `size` et `hashes` entrent dans l'identifiant. Conséquence voulue : un même état de source hashé avec les mêmes algorithmes donne le même `id`, quels que soient l'instant, la machine ou l'implémentation. Deux snapshots d'un même état calculés avec des algorithmes différents ont des `id` différents : un changement de provider se voit.
+Seuls `path`, `kind`, `size` et `hashes` entrent dans l'identifiant. Conséquence voulue : un même état de source hashé avec les mêmes algorithmes donne le même `id`, quels que soient l'instant, la machine ou l'implémentation. Deux snapshots d'un même état calculés avec des algorithmes différents ont des `id` différents : un changement de provider se voit. Un pipeline DEVRAIT donc choisir un jeu d'algorithmes et s'y tenir d'une ingestion à l'autre — un snapshot Dropbox (`dropbox` seul) et le même état recalculé avec `sha256` ne partagent pas d'`id`.
 
 ### 4.7 — ContentChangeSet v1
 
@@ -1938,7 +1940,7 @@ guardChangeSet(changeSet, base, target, { read, policy }) → diagnostics
 
 ### 4.12 — Fixtures de conformité
 
-`fixtures/ingestion/`, dans ce dépôt, contient les fixtures de la couche 4 : corpus d'entrée, snapshots, validations, diffs, gardes, identifiants, chemins et vecteurs de hash, avec leurs résultats attendus. Elles sont normatives au même titre que ce texte : une implémentation est conforme si elle les passe toutes. Leur format et leurs règles de comparaison sont décrits dans `fixtures/ingestion/README.md`. Un consommateur les copie à une ref épinglée ; toute évolution du contrat met à jour les fixtures dans la même révision que la prose.
+`fixtures/ingestion/`, dans ce dépôt, contient les fixtures de la couche 4 : corpus d'entrée, snapshots, validations, diffs, gardes, identifiants, chemins et vecteurs de hash, avec leurs résultats attendus. Elles sont normatives au même titre que ce texte : une implémentation est conforme si elle les passe toutes, ce qui suppose de savoir calculer `sha256` **et** `dropbox`. Leur format et leurs règles de comparaison sont décrits dans `fixtures/ingestion/README.md`. Un consommateur les copie à une ref épinglée ; toute évolution du contrat met à jour les fixtures dans la même révision que la prose.
 
 ### 4.13 — Exemples de providers *(non normatif)*
 
@@ -1964,7 +1966,7 @@ Ces exemples montrent comment des providers réels se projettent sur le contrat.
   "identity": "id:a4ayc_80_OEAAAAAAAAAXw", "modifiedAt": "2026-09-28T08:00:00Z" }
 ```
 
-L'identifiant d'un tel snapshot ne porte que l'algorithme `dropbox`. Un pipeline qui recalcule `sha256` à la lecture des octets obtient un autre `id` : il DEVRAIT choisir un jeu d'algorithmes et s'y tenir d'une ingestion à l'autre.
+L'identifiant d'un tel snapshot ne porte que l'algorithme `dropbox` ; recalculer `sha256` à la lecture des octets donne un autre `id` (voir §4.6).
 
 #### WebDAV
 
@@ -3008,11 +3010,12 @@ Un profil ne DOIT jamais : renommer un champ core, modifier le slug regex, suppr
 **Ajouts** :
 - **Couche 4** — contrat des outils d'ingestion : chemins (§4.1), exclusions (§4.2), classification (§4.3), hash dont l'algorithme Dropbox (§4.4), `ContentSnapshot` v1 (§4.5) et son identifiant (§4.6), `ContentChangeSet` v1 et son algorithme (§4.7), `ProviderCapabilities` v1 (§4.8), `PublicationState` (§4.9), table des diagnostics et règles d'évaluation (§4.10), garde de publication (§4.11), fixtures (§4.12), exemples Dropbox, WebDAV et iCloud Drive non normatifs (§4.13).
 - §4.0 — séparation des trois contrats (format, ingestion/snapshot, consommation) et six invariants : provider opaque, aucune lecture runtime, incomplet ≠ suppression, N intact tant que N+1 n'est pas publié, nettoyage après succès, idempotence.
-- `fixtures/ingestion/` — premier contenu du dépôt hors prose : 25 corpus, leurs snapshots, 37 cas de validation, 12 diffs, 7 identifiants, 5 jeux de chemins, vecteurs de hash. Normatives au même titre que le texte.
+- `fixtures/ingestion/` — premier contenu du dépôt hors prose : 26 corpus, leurs snapshots, 44 cas de validation, 15 diffs, 5 cas de garde, 7 identifiants, 5 jeux de chemins, vecteurs de hash. Normatives au même titre que le texte.
 - Architecture en couches (quatre couches), table des matières, « Ce que cette spec définit / NE définit PAS ».
 - §1.2 — un corpus PEUT résider sur un filesystem distant ou synchronisé ; §1.5.1 — `images.json` reste dérivé à l'ingestion ; Annexe A — renvoi vers §4.10.
 
 **Décisions normatives** :
+- **Égalité et ordre sur les octets** : une implémentation Swift compare et trie les chemins sur `unicodeScalars`/`utf8`, jamais sur `String`, qui compare par équivalence canonique. Toute implémentation conforme sait calculer `sha256` et `dropbox` ; un pipeline DEVRAIT garder le même jeu d'algorithmes d'une ingestion à l'autre (§4.6).
 - **La couche 4 ne touche pas au format.** Elle est normative pour les outils d'ingestion et ne change rien à ce qu'un lecteur doit faire. Aucun champ n'est ajouté au frontmatter ; la couche 1 ne reçoit que deux phrases.
 - **Incomplet ≠ suppression.** Seul un snapshot `complete: true` fonde une suppression ; la garde bloque tout snapshot incomplet ou vide, sans désactivation possible.
 - **L'identifiant ne dépend que de `path`, `kind`, `size` et `hashes`** — ni de l'instant, ni de la source, ni de l'identité attribuée par le provider. Même état, mêmes algorithmes, même `id`.

@@ -10,8 +10,9 @@ Dépôt de **spécification uniquement** — pas de code, pas de build, pas de d
 
 ## Contenu
 
-- `spec-hyperfocale.md` — spec complète du format de contenu Hyperfocale
+- `spec-hyperfocale.md` — spec complète du format de contenu Hyperfocale (couches 1 à 4)
 - `README.md` — présentation du projet
+- `fixtures/ingestion/` — fixtures de conformité de la couche 4 ; leur format est dans `fixtures/ingestion/README.md`
 
 ## Ce qu'est ce repo
 
@@ -37,4 +38,4 @@ La version est dans le header de `spec-hyperfocale.md`.
 
 - Mise à jour du AGENTS.md : invoquer le skill `Codex-md-management:revise-Codex-md`
 - Pattern de commit : `type(spec): message` + PR via `gh pr create`
-- Avant toute modification : lire `spec-hyperfocale.md` en entier (fichier unique, ~600+ lignes)
+- Avant toute modification : lire `spec-hyperfocale.md` en entier (~3 250 lignes — lire par tranches de ≤950 lignes)
