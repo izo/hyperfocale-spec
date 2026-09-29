@@ -2,9 +2,9 @@
 
 > **Source de vérité canonique.** Ce document définit le format Hyperfocale — un standard de gestion de **séries photo** portable entre SSG (Astro, Next.js, Hugo, 11ty...), vaults Obsidian, et CMS headless (Strapi, Sanity, Payload...). Toute évolution du format doit être proposée d'abord ici, dans ce dépôt.
 
-**Version** : 2.9-draft
+**Version** : 2.10-draft
 **Statut** : spécification active — source de vérité canonique
-**Dernière révision** : 2026-08-22
+**Dernière révision** : 2026-09-29
 
 ### Implémentations de référence
 
@@ -29,8 +29,10 @@ Le détail de conformité par implémentation est en **§0.5 — État des impl�
 4. [[#Couche 2 — Adaptateurs plateforme]]
    - 2.1 Astro · 2.2 Next.js · 2.3 Hugo · 2.4 11ty · 2.5 Obsidian · 2.6 CMS headless · 2.7 Exporter Lightroom
 5. [[#Couche 3 — Composants UI]]
-6. [[#Annexes]]
-7. [[#Changelog]]
+6. [[#Couche 4 — Ingestion : sources, snapshots et publication]]
+   - 4.0 Trois contrats · 4.1 Chemins · 4.2 Exclusions · 4.3 Classification · 4.4 Hash · 4.5 ContentSnapshot · 4.6 Identifiant · 4.7 ContentChangeSet · 4.8 ProviderCapabilities · 4.9 PublicationState · 4.10 Diagnostics · 4.11 Garde · 4.12 Fixtures · 4.13 Exemples
+7. [[#Annexes]]
+8. [[#Changelog]]
 
 ---
 
@@ -272,12 +274,14 @@ Restent non implémentés les cinq profils que le plugin ne couvre pas : `event`
 - Les **règles métier** (tri, couverture, pagination)
 - Le **contrat d'adaptateur** (ce que chaque plateforme doit implémenter)
 - Le **vocabulaire d'extension** (champs IPTC supportés)
+- Le **contrat d'ingestion** (couche 4) : comment un corpus édité dans une source — locale, synchronisée ou distante — devient un snapshot validé et publié
 
 ### Ce que cette spec NE définit PAS
 
 - L'implémentation des adaptateurs (chacun a sa propre spec)
 - Le design visuel (libre, seul le contrat de données est spécifié)
-- Le workflow d'édition (chaque outil a le sien)
+- Le workflow d'édition (chaque outil a le sien) — la couche 4 fixe seulement ce qui passe d'une source éditoriale à un snapshot publié, pas la façon d'éditer
+- L'infrastructure de production (hébergeur, CDN, stockage des médias) — choix du consommateur
 
 ---
 
@@ -298,9 +302,15 @@ Restent non implémentés les cinq profils que le plugin ne couvre pas : `event`
 │  SeriesCard · Gallery · Lightbox · Map      │
 │  → Par framework (React, Astro, Web Comp.)  │
 └─────────────────────────────────────────────┘
+┌─────────────────────────────────────────────┐
+│  Couche 4 : INGESTION (outils)              │
+│  Source → Snapshot → Diff → Publication     │
+│  → En amont : alimente le filesystem lu     │
+│    par les couches 1 à 3                    │
+└─────────────────────────────────────────────┘
 ```
 
-La couche 1 est normative. Les couches 2 et 3 sont des recommandations.
+La couche 1 est normative. Les couches 2 et 3 sont des recommandations. La couche 4 est normative **pour les outils d'ingestion** — ce qui transforme un état de source éditoriale en snapshot publié — et ne change rien à ce qu'un lecteur doit faire : un adaptateur lit toujours un corpus matérialisé sur un filesystem.
 
 ---
 
@@ -334,6 +344,8 @@ Chaque série est **autonome** : toutes ses données (métadonnées + médias) v
 | Images | Formats alimentant la galerie : `.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`, `.tif`, `.tiff`. Pas de récursion dans `media/`. |
 | Documents joints | Tout autre type de fichier est accepté dans `media/` (PDF, vidéo, audio, archives…) et traité en document joint — voir §1.9. |
 | Nommage des images | Libre, mais recommandé : `01.jpg`, `02.jpg`... (padding 2+ chiffres pour l'ordre). |
+
+Un corpus PEUT résider sur un filesystem distant ou synchronisé (Dropbox, iCloud Drive, WebDAV…) : sa sémantique reste celle d'un filesystem, indépendamment du transport — la couche 4 définit comment un tel corpus devient un snapshot publiable.
 
 #### Profondeur de rangement *(clarifié v2.6)*
 
@@ -552,7 +564,7 @@ Un adaptateur DOIT accepter les deux formes : une entrée de type chaîne équiv
 | Couverture | `cover` du frontmatter, sinon **première entrée du tableau** (et non la première par ordre alphabétique). |
 | Documents joints | Une clé `files` optionnelle complète `images`, avec les mêmes entrées qu'en §1.9 mode distant. |
 | Robustesse | JSON illisible, clé `images` absente ou non-tableau : l'adaptateur DOIT se rabattre sur `media/` et DEVRAIT signaler l'anomalie. Jamais d'échec de build. |
-| `images.json` | N'est jamais un média ni un document joint — c'est un fichier de métadonnées, au même titre qu'`index.md`. |
+| `images.json` | N'est jamais un média ni un document joint — c'est un fichier de métadonnées, au même titre qu'`index.md`. Il reste une donnée dérivée quand le corpus vient d'une source distante : un outil d'ingestion le classe `derived` (§4.3) et PEUT le régénérer depuis le snapshot plutôt que le reprendre de la source. |
 
 ##### Pourquoi un fichier annexe plutôt que le frontmatter
 
@@ -1561,6 +1573,383 @@ interface PaginatedImages {
 
 ---
 
+## Couche 4 — Ingestion : sources, snapshots et publication
+
+La couche 1 décrit un corpus au repos, sur un filesystem. Elle ne dit rien du chemin qui l'y amène quand il s'édite ailleurs — dans un dossier Dropbox, iCloud Drive, Google Drive ou WebDAV — et doit être publié sans que la production dépende de cet ailleurs. Sans contrat commun, chaque outil réinvente le listing, la comparaison et la suppression, et le premier listing incomplet devient une suppression massive en production.
+
+La couche 4 fixe ce contrat : comment un état de source devient un **snapshot** complet, identifié et reproductible, comment deux snapshots se comparent, quels diagnostics bloquent une publication, et quel vocabulaire décrit l'état d'une publication.
+
+> **Portée.** La couche 4 est normative **pour les outils d'ingestion** — ce qui lit une source éditoriale, en tire un snapshot, le compare, le valide et le publie. Elle ne change rien à ce qu'un lecteur doit faire (§0, §2.0) : un adaptateur lit toujours un corpus matérialisé sur un filesystem. Un projet qui édite et construit depuis le même dossier n'a besoin d'aucune de ses règles.
+
+### 4.0 — Trois contrats, une frontière
+
+| Contrat | Objet | Section | Qui l'implémente |
+|---|---|---|---|
+| **Format** | dossier de série, `index.md`, `media/`, frontmatter | §0, couche 1 | tout outil qui écrit ou lit du contenu |
+| **Ingestion / snapshot** | état d'une source éditoriale → snapshot complet, validé, reproductible → publication | couche 4 | outils d'ingestion : plugin, CMS, pipeline d'un site |
+| **Consommation** | lecture du snapshot publié et des artefacts qui en dérivent | couches 2 et 3 | adaptateurs, sites, applications |
+
+La **source éditoriale** est l'endroit où des humains éditent le corpus : Dropbox, iCloud Drive, Google Drive, un partage WebDAV, un disque local, un checkout Git. Le **provider** est l'accès à cette source. Le **snapshot publié** est l'état complet, validé et reproductible que la production sert, indépendamment de la disponibilité de la source. La **révision source** (`sourceRevision`) identifie un état de la source ; la **révision publiée** (`publishedRevision`) identifie ce qui est en production. Les deux sont distinctes et ne se déduisent pas l'une de l'autre.
+
+```
+ source éditoriale (Dropbox · iCloud Drive · Google Drive · WebDAV · filesystem)
+        │   provider : listing, lecture, changements
+        ▼
+ ContentSnapshot N+1  ── diff ──►  ContentChangeSet (contre le snapshot publié N)
+        │   validation (§4.10) + garde (§4.11)
+        ▼
+ publication : matérialisation du corpus + transfert des objets, puis bascule
+        ▼
+ snapshot publié N+1  ──►  consommateurs (couches 2 et 3) — ne voient jamais le provider
+```
+
+Les choix d'infrastructure — dépôt Git pour les textes, stockage objet pour les médias, CDN, hébergeur — appartiennent au consommateur. La spec ne les standardise pas.
+
+#### Invariants
+
+| # | Invariant |
+|---|---|
+| 1 | **Provider opaque.** Un consommateur d'un snapshot publié ne connaît pas le provider qui l'a produit. Changer de provider ne modifie ni les URLs publiques, ni l'API d'un site, ni ses clients. |
+| 2 | **Aucune lecture runtime.** Aucune requête de visiteur ou d'application ne contacte un provider, et aucune URL publiée ne pointe vers lui — lien temporaire compris. Le provider alimente un snapshot : il ne remplace ni le filesystem, ni le chargement de contenu d'un adaptateur. |
+| 3 | **Incomplet ≠ suppression.** Un provider indisponible ou un listing incomplet ne s'interprète jamais comme une suppression. Seul un snapshot `complete: true` peut fonder la suppression d'un objet publié. |
+| 4 | **N reste intact tant que N+1 n'est pas publié.** La production bascule d'un snapshot complet et validé à un autre. Elle ne se modifie jamais progressivement au fil des événements du provider ; un échec laisse N en place. |
+| 5 | **Nettoyage après succès.** Les objets de N devenus inutiles ne sont supprimés qu'après la publication réussie de N+1, selon la politique de rétention du consommateur. |
+| 6 | **Idempotence.** Un même état de source, hashé avec les mêmes algorithmes, donne le même snapshot et le même identifiant (§4.6) ; un événement dupliqué ne produit aucun changement. |
+
+Un provider DOIT préserver les chemins relatifs, les octets des fichiers, les renommages et les suppressions. La sémantique d'un corpus distant est celle d'un filesystem (§1.2) : les règles de la couche 1 s'y appliquent sans exception.
+
+### 4.1 — Chemins
+
+Un chemin d'entrée désigne un fichier relativement à la racine du corpus.
+
+| Règle | Description |
+|---|---|
+| Forme | POSIX, séparateur `/`. Ni `/` initial ni final, aucun segment vide, `.` ou `..`, aucun `\`, aucun caractère de contrôle U+0000–U+001F ni U+007F. Les autres points de code (espace, U+0085, emoji…) sont admis. |
+| Normalisation | Unicode **NFC**. La casse est préservée. La normalisation ne corrige rien d'autre : un chemin à `/` initial reste invalide. |
+| Collision | Deux chemins égaux après NFC puis **minuscule simple** d'Unicode (`Simple_Lowercase_Mapping` de `UnicodeData.txt`, appliquée point de code par point de code, sans contexte ni locale) sont en collision. Motif : Dropbox, APFS et HFS+ dans leur configuration par défaut sont insensibles à la casse — deux tels chemins ne coexistent pas à la source. |
+| Ordre canonique | Tri par la séquence d'octets **UTF-8** du chemin. Ni UTF-16, ni collation locale. |
+| Extension | La partie du nom de base qui suit son dernier point, comparée en minuscules. Un nom sans point, ou dont le seul point est initial, n'a pas d'extension. |
+
+> **Minuscule simple, en pratique.** `toLowerCase()` (JavaScript) et `lowercased()` (Swift) appliquent la correspondance **complète** et contextuelle. Appliquées à chaque point de code isolément, elles donnent la correspondance simple, à une exception près : U+0130 `İ` doit donner U+0069 `i`, et non `i` suivi de U+0307. Il n'y a pas de règle du sigma final (`Σ` donne `σ` partout), et `ß` reste `ß`. `fixtures/ingestion/paths/collision.json` couvre ces cas.
+
+### 4.2 — Exclusions
+
+Certains fichiers n'entrent jamais dans un snapshot, et leur présence n'est jamais une erreur :
+
+- tout chemin dont **un segment** commence par `.` — `.DS_Store`, `.git/`, `.dropbox`, `._01.jpg`, `.gitkeep` ;
+- les noms de base `Thumbs.db`, `desktop.ini` et `Icon\r` (`Icon` suivi de U+000D), comparés exactement, casse comprise ;
+- un consommateur PEUT ajouter ses propres exclusions (`_todo/`, `_drafts/`…). Elles modifient le contenu du snapshot : il DEVRAIT les documenter.
+
+L'exclusion s'évalue **avant** la validité : un chemin exclu disparaît sans diagnostic, même s'il est invalide (`Icon\r` contient un caractère de contrôle). Un chemin non exclu et invalide produit `entry-path-invalid` (§4.10). Dans un snapshot, une entrée dont le chemin relève d'une exclusion est non conforme et produit elle aussi `entry-path-invalid`.
+
+### 4.3 — Classification
+
+Chaque entrée porte un `kind`, déterminé par son seul chemin, par la première règle qui s'applique :
+
+| Ordre | Règle | `kind` |
+|---|---|---|
+| 1 | nom de base exactement `images.json` | `derived` — donnée dérivée, jamais éditoriale par défaut (§1.5.1) |
+| 2 | dossier parent **immédiat** nommé exactement `media` | `media` |
+| 3 | extension `md` ou `mdx` (casse ignorée) | `content` |
+| 4 | tout le reste | `other` |
+
+L'ordre compte : `media/images.json` est `derived`, `media/index.md` est `media`, `media/raw/01.tif` est `other` (son parent immédiat est `raw`), `Media/01.jpg` est `other`. Le `kind` d'une entrée DOIT être égal à la classification de son chemin ; les règles de validation (§4.10) s'appuient sur cette classification.
+
+### 4.4 — Hash
+
+Une entrée porte un objet `hashes` : `{ "<algorithme>": "<valeur>" }`.
+
+| Algorithme | Valeur |
+|---|---|
+| `sha256` | SHA-256 des octets du fichier, en hexadécimal minuscule (64 caractères). |
+| `dropbox` | *Content hash* Dropbox : découper le fichier en blocs de 4 194 304 octets (le dernier peut être plus court), calculer le SHA-256 de chaque bloc, concaténer les **digests binaires** (32 octets chacun), calculer le SHA-256 de cette concaténation ; hexadécimal minuscule. Un fichier vide n'a aucun bloc : son hash est le SHA-256 de la chaîne vide, `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`. |
+| `x-<nom>` | Tout autre algorithme est préfixé `x-` (`x-etag`, `x-md5`) : valeur opaque, comparée à l'identique, comparable seulement à elle-même. Un ETag s'enregistre tel que le serveur le rend, guillemets compris. |
+
+- Une entrée **matérialisée** DOIT porter au moins un hash. Une entrée `placeholder` (présente à la source mais non matérialisée, §4.5) PEUT n'en porter aucun.
+- Pour comparer deux entrées, l'ordre de préférence est `sha256`, puis `dropbox`, puis les `x-*` par ordre alphabétique (octets UTF-8). On retient le **premier algorithme présent sur les deux entrées** : lui seul décide, même si un algorithme suivant diverge. Un nom d'algorithme ni enregistré ni préfixé `x-` n'entre dans aucune comparaison.
+
+Pour un fichier non vide d'au plus un bloc, `dropbox` est le SHA-256 du digest binaire SHA-256 du contenu : il diffère donc de `sha256`. Pour le fichier vide, les deux valeurs sont égales. Vecteurs multi-blocs, dont 5 000 000 octets nuls : `fixtures/ingestion/hashes/vectors.json`.
+
+### 4.5 — ContentSnapshot v1
+
+Un snapshot est la liste complète des fichiers d'un corpus à un instant donné, avec de quoi identifier leur contenu.
+
+```json
+{
+  "format": "hyperfocale.snapshot",
+  "version": 1,
+  "id": "sha256:<hex>",
+  "createdAt": "2026-09-29T10:00:00.000Z",
+  "complete": true,
+  "source": { "provider": "dropbox", "revision": "<opaque>", "root": "/MDR Content" },
+  "entries": [
+    { "path": "archives/music/foo/index.md", "kind": "content", "size": 1234,
+      "hashes": { "sha256": "…", "dropbox": "…" },
+      "identity": "id:a4ayc_80_OEAAAAAAAAAXw", "modifiedAt": "2026-09-28T08:00:00Z", "state": "materialized" }
+  ]
+}
+```
+
+| Champ | Requis | Règle |
+|---|---|---|
+| `format` | oui | `"hyperfocale.snapshot"`. Un document qui porte une autre valeur n'est pas un snapshot. |
+| `version` | oui | `1`. Un lecteur DOIT refuser une version inconnue (`snapshot-version-unsupported`). |
+| `id` | oui | Calculé (§4.6). |
+| `createdAt` | oui | ISO 8601 UTC. Informatif, hors `id`. |
+| `complete` | oui | `true` seulement si le listing du provider a abouti sans erreur ni page manquante. Hors `id`. |
+| `source` | non | Opaque ; `provider`, `revision` et `root` facultatifs. Hors `id`. Un consommateur d'un snapshot **publié** NE DOIT PAS en dépendre. |
+| `entries` | oui | Triées dans l'ordre canonique (§4.1), chemins uniques, chacun valide et non exclu. |
+| `entries[].path` | oui | Chemin (§4.1). |
+| `entries[].kind` | oui | Classification du chemin (§4.3). |
+| `entries[].size` | oui | Taille en octets, entier ≥ 0. |
+| `entries[].hashes` | oui* | *Sauf `state: "placeholder"` (§4.4). |
+| `entries[].identity` | non | Identifiant stable attribué par le provider, qui survit au renommage. Hors `id`. |
+| `entries[].modifiedAt` | non | Informatif. Hors `id`. |
+| `entries[].state` | non | `"materialized"` (défaut) ou `"placeholder"` : présente à la source, contenu non disponible localement (fichier iCloud non téléchargé, par exemple). Hors `id`. |
+
+Champs inconnus : un lecteur les ignore et les transmet (passthrough) ; un écrivain NE DOIT PAS en créer hors préfixe `x-`. Un lecteur ne suppose pas l'ordre des entrées : tout calcul (§4.6, §4.7) les trie d'abord.
+
+### 4.6 — Identifiant de snapshot
+
+```
+id = "sha256:" + hex(SHA-256(utf8(L)))
+```
+
+`L` est la concaténation, dans l'ordre canonique des entrées, d'une ligne par entrée :
+
+```
+<path>\t<kind>\t<size>\t<alg1>=<valeur1>,<alg2>=<valeur2>\n
+```
+
+- `\t` est U+0009, `\n` est U+000A ; `size` s'écrit en décimal, sans signe ni zéro initial ;
+- les hashes sont triés par nom d'algorithme (octets UTF-8) et séparés par `,` ; une entrée sans hash donne une liste vide (`…\t<size>\t\n`) ;
+- un snapshot sans entrée a pour `L` la chaîne vide : `sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`.
+
+Seuls `path`, `kind`, `size` et `hashes` entrent dans l'identifiant. Conséquence voulue : un même état de source hashé avec les mêmes algorithmes donne le même `id`, quels que soient l'instant, la machine ou l'implémentation. Deux snapshots d'un même état calculés avec des algorithmes différents ont des `id` différents : un changement de provider se voit.
+
+### 4.7 — ContentChangeSet v1
+
+Un changeset décrit ce qui sépare un snapshot `base` (le dernier publié, ou `null` pour une première publication) d'un snapshot `target`.
+
+```json
+{
+  "format": "hyperfocale.changeset",
+  "version": 1,
+  "base": "sha256:… | null",
+  "target": "sha256:…",
+  "added":    [ <entrée> ],
+  "modified": [ { "path": "…", "before": <entrée>, "after": <entrée> } ],
+  "deleted":  [ <entrée> ],
+  "moved":    [ { "from": "…", "to": "…", "before": <entrée>, "after": <entrée>, "modified": false } ],
+  "diagnostics": [ <diagnostic> ]
+}
+```
+
+Les entrées y figurent telles qu'en snapshot, champs informatifs compris. L'algorithme est déterministe :
+
+0. Si `base` n'est pas `null` et que les deux snapshots ont le même `id`, le changeset est vide.
+1. **Chemins présents des deux côtés.** L'entrée est `modified` si `kind` ou `size` diffère. Sinon on cherche le premier algorithme commun (§4.4) : s'il n'y en a pas, l'entrée est `modified` et reçoit le diagnostic `hash-incomparable` (warning) — prudence : jamais « inchangé » par défaut ; s'il y en a un, l'entrée est `modified` si les deux valeurs diffèrent.
+2. Restent `A`, les chemins présents seulement dans `target`, et `D`, les chemins présents seulement dans `base`.
+3. **Déplacements par identité.** Une `identity` non vide portée par exactement une entrée de `D` et exactement une entrée de `A` apparie ces deux entrées en `moved`. `modified` vaut `true` si `size` diffère ou si le premier algorithme commun donne deux valeurs différentes ; sans algorithme commun, `modified` vaut `true` et `hash-incomparable` porte sur le chemin `to`. `kind` n'entre pas dans la comparaison : il dérive du chemin, qui change par définition.
+4. **Déplacements par contenu**, parmi les entrées restantes. Une entrée `d` de `D` et une entrée `a` de `A` sont **candidates** l'une de l'autre si elles ont la même `size` et un premier algorithme commun de même valeur. Si `d` n'a que `a` pour candidate et `a` n'a que `d`, l'appariement est unique : `moved`, avec `modified: false`. Toute entrée qui a au moins une candidate sans appariement unique reçoit `move-ambiguous` (info) sur son chemin, et reste en `added` ou `deleted`.
+5. Le reste de `A` est `added`, le reste de `D` est `deleted`.
+6. **Tri** : `added`, `modified` et `deleted` par `path`, `moved` par `to`, dans l'ordre canonique ; `diagnostics` par `path` puis `code`, au plus un par couple `(code, path)`.
+7. `diff(S, S)` est vide, sans diagnostic — l'étape 0 le garantit, y compris pour des entrées `placeholder` sans hash.
+
+Une première publication (`base: null`) range toutes les entrées de `target` en `added`. Le changeset ne dit rien de la validité du contenu : c'est le rôle de la validation (§4.10) et de la garde (§4.11).
+
+### 4.8 — ProviderCapabilities v1
+
+Tous les providers ne savent pas tout faire. Un provider déclare ses capacités ; le pipeline s'y adapte.
+
+```json
+{ "localRead": true, "localWrite": false, "remoteRead": true, "remoteWrite": false,
+  "incrementalChanges": true, "stableIdentity": true, "serverWebhook": true,
+  "clientChangeObservation": false, "materializationAware": false,
+  "hashAlgorithms": ["dropbox"] }
+```
+
+| Capacité | Sens |
+|---|---|
+| `localRead` / `localWrite` | lecture / écriture sur un filesystem local |
+| `remoteRead` / `remoteWrite` | lecture / écriture par une API distante |
+| `incrementalChanges` | changements depuis un curseur, sans listing complet |
+| `stableIdentity` | `identity` qui survit au renommage (§4.5) |
+| `serverWebhook` | notification de changement envoyée à un serveur |
+| `clientChangeObservation` | changements observables seulement par une application cliente |
+| `materializationAware` | le provider distingue un fichier présent d'un fichier matérialisé (`state: "placeholder"`) |
+| `hashAlgorithms` | algorithmes que le provider fournit sans lire les octets (§4.4) |
+
+Une capacité booléenne absente vaut `false` ; `hashAlgorithms` absent vaut `[]`. Le pipeline NE DOIT jamais supposer une capacité absente : sans webhook, il réconcilie périodiquement ; sans changements incrémentaux, il relit le listing complet ; sans identité stable, il n'infère les déplacements que par contenu (§4.7).
+
+Valeurs de référence, indicatives :
+
+| Provider | Capacités |
+|---|---|
+| Filesystem | `localRead`, `localWrite`, `hashAlgorithms: ["sha256", "dropbox"]` (calculés) |
+| Dropbox | `remoteRead`, `remoteWrite`, `incrementalChanges`, `stableIdentity`, `serverWebhook`, `hashAlgorithms: ["dropbox"]` |
+| WebDAV | `remoteRead`, `remoteWrite`, `hashAlgorithms: ["x-etag"]` |
+| iCloud Drive (depuis un CMS) | `localRead`, `localWrite`, `clientChangeObservation`, `materializationAware`, `stableIdentity`, `hashAlgorithms: ["sha256"]` |
+
+Google Drive relève du même contrat — identifiants stables, jeton de changements — et reste un provider cible au même titre que les autres.
+
+### 4.9 — PublicationState
+
+Vocabulaire commun de l'état d'une publication. Un CMS et un site PEUVENT afficher des libellés différents ; la sémantique DOIT rester celle-ci.
+
+| État | Sens |
+|---|---|
+| `sourceSynced` | la source correspond au dernier snapshot publié |
+| `sourceDirty` | la source a divergé du dernier snapshot publié |
+| `snapshotPending` | un snapshot de la source est en construction (listing, lecture, hashes) |
+| `validating` | le snapshot est construit ; diff, validation et garde en cours |
+| `publishing` | le snapshot est validé ; transfert des objets et bascule en cours |
+| `published` | le snapshot est la révision servie |
+| `failed` | la dernière tentative a échoué ; la révision publiée précédente reste servie |
+| `conflict` | le provider signale un conflit de version (fichier dupliqué en « copie en conflit ») ; la publication est bloquée |
+
+```json
+{ "format": "hyperfocale.publication", "version": 1, "state": "published",
+  "sourceProvider": "dropbox", "sourceRevision": "<opaque>",
+  "snapshot": "sha256:…", "publishedRevision": "<défini par le consommateur, ex. commit git>",
+  "updatedAt": "2026-09-29T10:05:00.000Z", "error": { "code": "…", "message": "…" } }
+```
+
+`format`, `version` (`1`), `state` et `updatedAt` (ISO 8601 UTC) sont requis. `sourceProvider` et `sourceRevision` décrivent la source ; `snapshot` est l'`id` du snapshot concerné ; `publishedRevision` est défini par le consommateur (commit Git, identifiant de déploiement). `error` accompagne `failed` et `conflict` ; son `code` reprend un code de diagnostic (§4.10, §4.11) quand il y en a un.
+
+Transitions :
+
+- chemin nominal : `sourceDirty` → `snapshotPending` → `validating` → `publishing` → `published`, puis `published` → `sourceSynced` tant que la source ne bouge pas ;
+- tout état → `failed`. Un échec — `validating` → `failed` compris — n'altère jamais la révision publiée précédente ;
+- tout état → `conflict` quand le provider signale un conflit ; aucune publication n'a lieu tant qu'il persiste ;
+- depuis `sourceSynced`, `published`, `failed` ou `conflict`, toute divergence de la source ramène à `sourceDirty`.
+
+### 4.10 — Diagnostics
+
+```json
+{ "code": "slug-invalid", "severity": "error", "path": "archives/Foo_Bar", "message": "…", "rule": "§1.2" }
+```
+
+`severity` vaut `error`, `warning` ou `info`. `message` est libre ; `rule`, facultatif, renvoie à la règle de la spec. Deux implémentations sont conformes si elles produisent les mêmes triplets **`code` + `severity` + `path`** — jamais le message. Une liste de diagnostics est triée par `path` (ordre canonique) puis par `code`, et ne contient jamais deux fois le même couple `(code, path)`. Un diagnostic qui porte sur le snapshot entier a pour `path` la chaîne vide. Un consommateur qui ajoute ses propres contrôles les code avec le préfixe `x-`.
+
+| Code | Sévérité | Règle | `path` |
+|---|---|---|---|
+| `snapshot-version-unsupported` | error | `version` ≠ 1 | `""` |
+| `snapshot-incomplete` | error | `complete: false` — interdit toute publication, donc toute suppression | `""` |
+| `snapshot-empty` | error | aucune entrée `content` | `""` |
+| `entry-path-invalid` | error | chemin non conforme à §4.1, non NFC, ou exclu (§4.2) | l'entrée |
+| `entry-path-collision` | error | collision (§4.1) | le second chemin dans l'ordre canonique, et chacun des suivants |
+| `entry-hash-missing` | error | entrée matérialisée sans hash (`hashes` absent ou vide) | l'entrée |
+| `entry-not-materialized` | error | `state: "placeholder"` — publication impossible | l'entrée |
+| `slug-invalid` | error | dossier porteur d'un fichier index dont le nom ne suit pas `^[a-z0-9]+(-[a-z0-9]+)*$` (§1.2) | le dossier |
+| `media-nested` | error | dossier sous `media/` (§1.2) : entrée dont un segment ancêtre autre que le parent immédiat est `media` | le dossier imbriqué |
+| `media-orphan` | warning | dossier `media` dont le dossier parent ne porte aucun fichier index | le dossier `media` |
+| `index-default-missing` | warning | `index.<lang>.md` présent sans `index.md` ni `index.mdx` | le dossier |
+| `nesting-too-deep` | error | série sous une sous-série (§1.8) ; les sections `type: section` ne comptent pas | la série la plus profonde |
+| `section-has-media` | warning | `type: section` et `media/` (§1.10) | le dossier |
+| `frontmatter-missing` | error | fichier index sans bloc `---` initial refermé | le fichier |
+| `frontmatter-invalid` | error | YAML illisible ou qui n'est pas un mapping | le fichier |
+| `title-missing` | error | pas de `title` chaîne non vide | le fichier |
+| `date-missing` | error | série sans `date` (sauf `type: section`, ou racine `dateRequired: false`) | le fichier |
+| `date-invalid` | error | `date` qui n'est pas une date ISO 8601 valide | le fichier |
+| `type-invalid` | error | `type` ∉ {`series`, `section`} | le fichier |
+| `cover-not-found` | warning | `cover` relatif introuvable, dans le snapshot comme dans `images.json` | le fichier |
+| `cover-not-image` | error | `cover` relatif qui désigne un fichier non image (§1.9) | le fichier |
+| `images-conflict` | error | `images:` et `images.json` dans la même série (§1.5.1) | le fichier |
+| `images-json-invalid` | warning | JSON illisible, racine qui n'est pas un objet, clé `images` absente ou non tableau (§1.5.1) | le `images.json` |
+| `attachment-not-found` | warning | entrée `attachments[]` dont le `file` est absent de `media/` (§1.9) | le fichier |
+| `embed-url-missing` | error | entrée `embeds[]` sans `url` (§1.11) | le fichier |
+| `hash-incomparable` | warning | diff : aucun algorithme commun (§4.7) | l'entrée |
+| `move-ambiguous` | info | diff : appariement non unique (§4.7) | l'entrée |
+
+La sévérité est celle d'un **outil d'ingestion**, qui décide d'une publication automatique : elle peut être plus stricte que la règle de rendu d'un adaptateur. Un adaptateur continue d'ignorer une entrée `embeds` sans `url` (§1.11) ; l'ingestion, elle, refuse de publier sans intervention.
+
+#### Fichiers index et racines
+
+**Fichiers index** : entrées de `kind` `content` dont le nom de base est `index.md`, `index.mdx` ou `index.<lang>.md` (Annexe F, stratégie 2), avec `<lang>` = `[a-z]{2}(-[A-Z]{2})?`. `index.english.md` ou `index.EN.md` n'en sont pas : ils sont copiés, jamais validés. Chaque fichier index est validé indépendamment. Un **dossier porteur** est un dossier qui contient directement au moins un fichier index.
+
+**Racines de validation** : la validation du contenu porte sur des racines configurées, `roots: [{ "path": "archives", "dateRequired": true }, …]` (`dateRequired` vaut `true` par défaut). Défaut : une racine unique `""` (tout le corpus), `dateRequired: true`. Un fichier appartient à la racine la plus longue qui le contient ; hors racines, les fichiers sont copiés, pas validés. Les diagnostics `snapshot-*` et `entry-*` portent sur le snapshot entier, indépendamment des racines.
+
+#### Règles d'évaluation
+
+1. **Version.** `version` ≠ 1 : seul `snapshot-version-unsupported` est produit, rien d'autre n'est vérifié.
+2. **Entrées.** Les entrées au chemin invalide (`entry-path-invalid`) sont écartées de tout le reste. Les collisions se cherchent parmi les entrées retenues, `snapshot-empty` aussi. Une entrée `placeholder` produit `entry-not-materialized` et n'est jamais lue : un fichier index placeholder ne produit aucun diagnostic de contenu.
+3. **Lecture.** Seuls sont lus les fichiers index et les `images.json` des racines, matérialisés. Le texte est de l'UTF-8 ; un BOM initial est ignoré ; des octets qui ne forment pas de l'UTF-8 valide rendent le fichier illisible (`frontmatter-invalid`, `images-json-invalid`).
+4. **Bloc de frontmatter.** La première ligne vaut exactement `---` ; le bloc se ferme à la ligne suivante qui vaut exactement `---` (fins de ligne `\n` ou `\r\n`). Sans ligne d'ouverture ou sans ligne de fermeture : `frontmatter-missing`.
+5. **YAML.** Le bloc s'interprète selon le **schéma YAML 1.2 *core*** : une date non guillemetée y reste une chaîne, validée par la règle 7. Une clé dupliquée rend le YAML illisible. Un bloc vide, ou dont la racine n'est pas un mapping : `frontmatter-invalid`. Après `frontmatter-missing` ou `frontmatter-invalid`, aucun diagnostic de champ n'est produit pour ce fichier.
+6. **Champs.** Une clé de valeur `null` vaut absente (`type`, `date`, `cover`, `images`). `title` doit être une chaîne d'au moins un caractère. `type`, s'il est présent, vaut `series` ou `section` ; toute autre valeur produit `type-invalid`, et le fichier est traité en série.
+7. **Date.** Une date valide est une chaîne `AAAA-MM-JJ`, éventuellement suivie de `THH:MM`, de `:SS`, d'une fraction `.S…` et d'un fuseau `Z` ou `±HH:MM`, qui forme une date calendaire réelle (heures 00–23, minutes et secondes 00–59). `2024-02-30` produit `date-invalid`. Pour une section, `date` n'est pas vérifiée (§1.10).
+8. **Références relatives.** Une référence est relative si elle n'est pas vide, ne commence pas par `/` et ne porte pas de schéma (`https:`, `data:`…). Elle se résout depuis le dossier du fichier index : les segments vides et `.` sont ignorés, `..` remonte d'un niveau ; une résolution qui sort de la racine du corpus n'aboutit pas.
+9. **Couverture.** Seul un `cover` relatif est vérifié. `cover-not-image` dépend de la seule extension, que le fichier existe ou non. `cover-not-found` est produit si le chemin résolu n'est pas une entrée du snapshot **et** qu'aucune entrée du manifeste `images.json` de la série (chaîne, ou `url` d'un objet) ne lui correspond : une entrée relative correspond si elle se résout au même chemin ; une entrée absolue, si elle se termine par `/` suivi du chemin résolu (`/content/<chemin résolu>`, `https://cdn.example.com/<chemin résolu>`).
+10. **Manifeste.** `images-conflict` : le frontmatter porte `images` et le dossier contient un `images.json`. `images-json-invalid` s'évalue pour tout `images.json` des racines.
+11. **Documents joints et embeds.** Chaque entrée de `attachments` dont `file` manque, n'est pas relatif, ou ne se résout pas vers une entrée existante située directement dans `<dossier>/media/` produit `attachment-not-found`. Chaque entrée de `embeds` qui n'est pas un objet portant une `url` chaîne non vide produit `embed-url-missing`.
+12. **Type d'un dossier porteur.** Il se lit dans `index.md`, sinon dans `index.mdx`, sinon dans le premier `index.<lang>.md` de l'ordre canonique. Un fichier illisible ou placeholder vaut `series` : la nature de section ne se devine jamais (§1.10).
+13. **Structure.** `slug-invalid` porte sur le dernier segment de chaque dossier porteur, sauf le dossier qui est lui-même la racine de validation : il n'a pas de slug, et un `index.md` à la racine du corpus est licite. `nesting-too-deep` : une série qui compte au moins deux dossiers porteurs de type série parmi ses ancêtres situés dans sa racine (le dossier racine compris) — un diagnostic par série fautive. `media-nested` : pour chaque entrée d'une racine, le dossier situé juste sous le segment `media` ancêtre le moins profond, parent immédiat exclu. `media-orphan` : tout dossier nommé `media` dont le parent ne porte aucun fichier index. Pour ces deux règles, seuls comptent les segments situés sous la racine.
+
+### 4.11 — Garde de publication
+
+La garde est un mécanisme générique ; ses seuils appartiennent au consommateur. `guardChangeSet(changeSet, base, target, policy)` renvoie des diagnostics `guard-*`, qui suivent les conventions de §4.10 :
+
+| Code | Sévérité | Déclenchement | `path` |
+|---|---|---|---|
+| `guard-snapshot-incomplete` | error | `target` n'est pas `complete: true` — toujours active, non désactivable | `""` |
+| `guard-snapshot-empty` | error | `target` n'a aucune entrée `content` — toujours active, non désactivable | `""` |
+| `guard-mass-deletion` | error | séries supprimées > `maxDeletedSeries`, ou médias supprimés > `maxDeletedMediaRatio` × médias de `base` | `""` |
+| `guard-mass-move` | warning | séries déplacées > `maxMovedSeries` | `""` |
+| `guard-private-exposed` | error | une série `private: true` dans `base` ne l'est plus dans `target` (champ retiré ou passé à `false`) | le fichier index dans `target` |
+| `guard-oversize` | error | entrée de `target` dont la taille dépasse `maxFileBytes[kind]` | l'entrée |
+
+- **Série supprimée** : dossier porteur d'un fichier index dans `base`, qui n'en porte plus dans `target`, et dont aucun fichier index n'est la source (`from`) d'un `moved`. **Série déplacée** : dossier distinct parmi les `from` des `moved` qui désignent un fichier index. **Médias supprimés** : entrées `media` de `deleted`, rapportées au nombre d'entrées `media` de `base`.
+- `private` n'est pas un champ du format : c'est une extension de site (§0.5). La garde s'applique aux corpus qui l'emploient, et suit un fichier index déplacé jusqu'à sa destination.
+- Un seuil absent désactive la garde correspondante, sauf les deux gardes toujours actives. Avec `base: null`, seules ces deux gardes et `guard-oversize` s'évaluent.
+- Le consommateur décide : un diagnostic `error`, de garde ou de validation, interdit la publication automatique.
+
+### 4.12 — Fixtures de conformité
+
+`fixtures/ingestion/`, dans ce dépôt, contient les fixtures de la couche 4 : corpus d'entrée, snapshots, validations, diffs, identifiants, chemins et vecteurs de hash, avec leurs résultats attendus. Elles sont normatives au même titre que ce texte : une implémentation est conforme si elle les passe toutes. Leur format et leurs règles de comparaison sont décrits dans `fixtures/ingestion/README.md`. Un consommateur les copie à une ref épinglée ; toute évolution du contrat met à jour les fixtures dans la même révision que la prose.
+
+### 4.13 — Exemples de providers *(non normatif)*
+
+Ces exemples montrent comment des providers réels se projettent sur le contrat. Aucun n'est normatif — Dropbox pas plus que les autres : ce que la spec exige tient dans §4.1 à §4.11.
+
+#### Dropbox
+
+| Contrat | Projection Dropbox |
+|---|---|
+| Listing complet | `files/list_folder` récursif, puis `files/list_folder/continue` jusqu'à `has_more: false`. `complete: true` seulement si toutes les pages ont abouti. |
+| Changements | curseur sauvegardé → `files/list_folder/continue`. Une erreur `reset` (curseur expiré) impose un listing complet — jamais une interprétation « tout supprimé ». Une suppression de dossier vaut pour tout son contenu. |
+| Hash | `content_hash` → `dropbox` (§4.4), sans télécharger le fichier. |
+| Identité | `id` du fichier (`id:…`) → `identity` : survit aux renommages et déplacements. |
+| Chemins | `path_display` n'est fiable qu'en son dernier segment : la casse des dossiers se reconstruit depuis leurs propres entrées, puis NFC. |
+| Exclusions | `.dropbox` et `.dropbox.cache` tombent sous §4.2. |
+| Conflit | un fichier dupliqué en « copie en conflit » signale un conflit de version → `conflict` (§4.9). |
+| Webhook | simple **déclencheur** : la notification ne porte aucun contenu ; sa signature (`X-Dropbox-Signature`, HMAC-SHA256 du corps avec le secret de l'application) se vérifie, puis une ingestion démarre. Aucune lecture Dropbox au runtime. |
+
+```json
+{ "path": "archives/music/concerts/2010/the-wombats-paris-2010/media/01.jpg",
+  "kind": "media", "size": 2481530,
+  "hashes": { "dropbox": "…" },
+  "identity": "id:a4ayc_80_OEAAAAAAAAAXw", "modifiedAt": "2026-09-28T08:00:00Z" }
+```
+
+L'identifiant d'un tel snapshot ne porte que l'algorithme `dropbox`. Un pipeline qui recalcule `sha256` à la lecture des octets obtient un autre `id` : il DEVRAIT choisir un jeu d'algorithmes et s'y tenir d'une ingestion à l'autre.
+
+#### WebDAV
+
+| Contrat | Projection WebDAV |
+|---|---|
+| Listing | `PROPFIND` en `Depth: 1`, dossier par dossier (`Depth: infinity` est souvent désactivé). |
+| Hash | `getetag` → `x-etag`, tel quel. Un ETag ne se compare qu'à un ETag : passer de Dropbox à WebDAV rend tout le corpus `hash-incomparable` au premier diff, par prudence. |
+| Taille, date | `getcontentlength` → `size`, `getlastmodified` → `modifiedAt`. |
+| Changements | aucun mécanisme standard : réconciliation périodique par listing complet. Sans identité stable, les déplacements ne s'infèrent que par contenu. |
+| Lecture | `GET`. |
+
+#### iCloud Drive (depuis un CMS)
+
+iCloud Drive n'offre pas d'API serveur : les changements ne s'observent que depuis une application cliente (`clientChangeObservation`). Un fichier peut y être présent sans être téléchargé : il entre au snapshot en `state: "placeholder"`, sans hash, et bloque la publication (`entry-not-materialized`) jusqu'à sa matérialisation. Les hashes (`sha256`) se calculent localement sur les octets. L'application construit le snapshot et le transmet au pipeline d'ingestion : une fois ingéré, il se publie exactement comme un snapshot Dropbox, et l'infrastructure de production ne lit jamais iCloud.
+
+---
+
 ## Annexes
 
 ### A — Validation du format
@@ -1591,6 +1980,8 @@ Vérifications :
 - [ ] Chaque entrée `embeds:` porte une `url` (§1.11)
 - [ ] Chaque `embeds[].poster` en chemin relatif pointe vers un fichier existant de `media/`
 - [ ] Aucun `poster` d'embed n'est aussi listé dans `images:` ou `attachments:` — une image est une photo de la série ou la vignette d'un embed, pas les deux
+
+Les outils d'ingestion (couche 4) expriment la plupart de ces vérifications dans un vocabulaire de diagnostics normalisé — code, sévérité, chemin — avec des règles d'évaluation exactes et des fixtures de conformité : voir §4.10 et `fixtures/ingestion/`. Un linter PEUT adopter ce vocabulaire.
 
 ### B — Migration depuis la spec v1 (Astro-only)
 
@@ -2577,6 +2968,31 @@ Un profil ne DOIT jamais : renommer un champ core, modifier le slug regex, suppr
 ---
 
 ## Changelog
+
+### 2.10-draft — 2026-09-29
+
+#### Couche 4 (§4.0 à §4.13) et fixtures d'ingestion
+
+**Ajouts** :
+- **Couche 4** — contrat des outils d'ingestion : chemins (§4.1), exclusions (§4.2), classification (§4.3), hash dont l'algorithme Dropbox (§4.4), `ContentSnapshot` v1 (§4.5) et son identifiant (§4.6), `ContentChangeSet` v1 et son algorithme (§4.7), `ProviderCapabilities` v1 (§4.8), `PublicationState` (§4.9), table des diagnostics et règles d'évaluation (§4.10), garde de publication (§4.11), fixtures (§4.12), exemples Dropbox, WebDAV et iCloud Drive non normatifs (§4.13).
+- §4.0 — séparation des trois contrats (format, ingestion/snapshot, consommation) et six invariants : provider opaque, aucune lecture runtime, incomplet ≠ suppression, N intact tant que N+1 n'est pas publié, nettoyage après succès, idempotence.
+- `fixtures/ingestion/` — premier contenu du dépôt hors prose : 25 corpus, leurs snapshots, 35 cas de validation, 12 diffs, 7 identifiants, 5 jeux de chemins, vecteurs de hash. Normatives au même titre que le texte.
+- Architecture en couches (quatre couches), table des matières, « Ce que cette spec définit / NE définit PAS ».
+- §1.2 — un corpus PEUT résider sur un filesystem distant ou synchronisé ; §1.5.1 — `images.json` reste dérivé à l'ingestion ; Annexe A — renvoi vers §4.10.
+
+**Décisions normatives** :
+- **La couche 4 ne touche pas au format.** Elle est normative pour les outils d'ingestion et ne change rien à ce qu'un lecteur doit faire. Aucun champ n'est ajouté au frontmatter ; la couche 1 ne reçoit que deux phrases.
+- **Incomplet ≠ suppression.** Seul un snapshot `complete: true` fonde une suppression ; la garde bloque tout snapshot incomplet ou vide, sans désactivation possible.
+- **L'identifiant ne dépend que de `path`, `kind`, `size` et `hashes`** — ni de l'instant, ni de la source, ni de l'identité attribuée par le provider. Même état, mêmes algorithmes, même `id`.
+- **Le diff est prudent.** Sans algorithme de hash commun, une entrée est `modified`, jamais « inchangée ». Les déplacements s'infèrent par identité, puis par contenu, et seulement sur appariement unique.
+- **Minuscule simple pour les collisions, octets UTF-8 pour le tri** : les deux points où JavaScript et Swift divergent si l'on s'en remet à leurs bibliothèques (`toLowerCase()` applique le sigma final, les chaînes JavaScript se comparent en UTF-16).
+- **Le frontmatter se lit sous le schéma YAML 1.2 core.** Une date non guillemetée reste une chaîne, validée par un motif ISO 8601 et par le calendrier. Sans cette règle, `2024-02-30` passait avec le schéma par défaut de js-yaml (débordement silencieux vers le 1ᵉʳ mars) et échouait avec d'autres parseurs.
+- **L'exclusion précède la validité** ; dans un snapshot, un chemin non NFC ou exclu est invalide.
+- **`cover-not-found` consulte `images.json` en plus du snapshot**, par résolution d'un chemin relatif ou par suffixe d'une URL absolue — sans quoi un corpus dont les médias ne vivent que dans le manifeste produirait un avertissement par série.
+- **La sévérité est celle de l'ingestion**, qui décide d'une publication automatique : une entrée `embeds` sans `url` reste ignorée au rendu (§1.11) mais bloque la publication (`embed-url-missing`, error).
+- **Dropbox n'est jamais normatif.** Son algorithme de hash et ses identifiants sont des cas du contrat, au même titre que ceux de WebDAV, d'iCloud Drive ou de Google Drive.
+
+**Justification** : le site `mathieu-drouet.com` doit laisser des contributeurs non développeurs gérer le corpus depuis un dossier synchronisé, puis publier sans intervention ([mdr-monorepo#129](https://github.com/izo/mdr-monorepo/issues/129)) ; le CMS Swift doit faire de même depuis iCloud Drive ([hyperfocale-cms#77](https://github.com/izo/hyperfocale-cms/issues/77)). Sans contrat commun, le plugin TypeScript et le CMS Swift auraient chacun inventé leur snapshot, leur diff et leurs règles de suppression — et le premier listing incomplet serait devenu une suppression massive en production. La couche 4 fige ce contrat avant toute implémentation profonde : c'est le Gate W0 de l'epic [#23](https://github.com/izo/hyperfocale-spec/issues/23), atteint quand TypeScript et Swift peuvent l'implémenter sans inventer de champ ni de sémantique (issue [#22](https://github.com/izo/hyperfocale-spec/issues/22)).
 
 ### 2.9-draft — 2026-08-22
 
