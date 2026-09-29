@@ -43,6 +43,7 @@ Arborescence d'entrée. Un provider filesystem la parcourt récursivement ; chaq
 | `embeds` | contenus embarqués §1.11, plateforme inconnue, poster en couverture | aucun |
 | `roots` | racines de validation (`validation/roots.json`, `validation/roots-default.json`) | selon la racine |
 | `invalid-<code>` | un corpus par diagnostic de validation `error` ou `warning` qui dépend du contenu | exactement `<code>` |
+| `cover-cumulative` | `cover` relatif vers un document joint absent : deux diagnostics sur le même fichier | `cover-not-found` + `cover-not-image` |
 
 ### `snapshots/<nom>.json`
 
