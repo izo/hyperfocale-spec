@@ -105,7 +105,7 @@ Vecteurs `sha256` et `dropbox` (§4.4). `input.utf8` désigne les octets UTF-8 d
 | **5 000 000 × `0x00`** | 5 000 000 | `b39781589c4403fb82174c9647a010464cff38bad976547d339899b00053a545` | `2bf4530eab0a0c6da78fe764ce67a6a97163afd2148b379a14c22ff8c45173ce` |
 | 8 388 608 × `0x00` (deux blocs pleins) | 8 388 608 | `2daeb1f36095b44b318410b3f4e8b5d989dcc7bb023d1426c492dab0a3053e74` | `03ae066c707c588592d9e27aa2444ca98423e0999024f1ceaa11a153790b37de` |
 
-Le hash `dropbox` d'un fichier vide est le SHA-256 de la chaîne vide (aucun bloc) : il est égal à son `sha256`. Pour un fichier d'au plus un bloc, `dropbox` = SHA-256 du digest **binaire** SHA-256 du contenu — jamais du digest hexadécimal.
+Le hash `dropbox` d'un fichier vide est le SHA-256 de la chaîne vide (aucun bloc) : il est égal à son `sha256`. Pour un fichier non vide d'au plus un bloc, `dropbox` = SHA-256 du digest **binaire** SHA-256 du contenu — jamais du digest hexadécimal.
 
 ## Pourquoi il n'y a pas de corpus `collision` sur disque
 

@@ -6,12 +6,13 @@ Dépôt de **spécification uniquement** — pas de code, pas de build, pas de d
 >
 > `spec-hyperfocale.md` est **la source de vérité unique** du format Hyperfocale. Toutes les implémentations (plugin Astro, site mathieu-drouet.com, exporter Lightroom, projet Recipes) suivent cette spec — elles ne la précèdent pas. Toute évolution du format passe par une modification ici, en premier.
 >
-> Version courante : **2.9-draft** (révisée le 2026-08-22). Le header de `spec-hyperfocale.md` fait foi — cette ligne dérive (constatée 6 versions en retard le 2026-08-22) : la resynchroniser à chaque bump.
+> Version courante : **2.10-draft** (révisée le 2026-09-29). Le header de `spec-hyperfocale.md` fait foi — cette ligne dérive (constatée 6 versions en retard le 2026-08-22) : la resynchroniser à chaque bump.
 
 ## Contenu
 
-- `spec-hyperfocale.md` — spec complète du format de contenu Hyperfocale
+- `spec-hyperfocale.md` — spec complète du format de contenu Hyperfocale (couches 1 à 4)
 - `README.md` — présentation du projet
+- `fixtures/ingestion/` — fixtures de conformité de la couche 4 (corpus, snapshots, validations, diffs, identifiants, chemins, vecteurs de hash) ; leur format est dans `fixtures/ingestion/README.md`
 
 ## Ce qu'est ce repo
 
@@ -38,6 +39,6 @@ La version est dans le header de `spec-hyperfocale.md`.
 
 - Mise à jour du CLAUDE.md : invoquer le skill `claude-md-management:revise-claude-md`
 - Pattern de commit : `type(spec): message` + PR via `gh pr create`
-- Avant toute modification : lire `spec-hyperfocale.md` en entier (~2 800 lignes — dépasse la limite de Read, lire par tranches de ≤950 lignes)
+- Avant toute modification : lire `spec-hyperfocale.md` en entier (~3 200 lignes — dépasse la limite de Read, lire par tranches de ≤950 lignes)
 - À chaque release du plugin Astro : mettre à jour §0.5, le header (ligne plugin) et le README. Version réelle : `gh api -H "Accept: application/vnd.github.raw" repos/izo/hyperfocale-astro-plugins/contents/CHANGELOG.md` (CHANGELOG à la racine — le repo n'est pas un monorepo `packages/`)
 - Bump de version uniquement sur changement normatif du format — une mise à jour §0.5 seule ne bumpe pas (commits `docs(0.5): ...` sans bump)

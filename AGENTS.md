@@ -6,7 +6,7 @@ Dépôt de **spécification uniquement** — pas de code, pas de build, pas de d
 >
 > `spec-hyperfocale.md` est **la source de vérité unique** du format Hyperfocale. Toutes les implémentations (plugin Astro, site mathieu-drouet.com, exporter Lightroom, projet Recipes) suivent cette spec — elles ne la précèdent pas. Toute évolution du format passe par une modification ici, en premier.
 >
-> Version courante : **2.3-draft** (révisée le 2026-06-08). Voir le Changelog en fin de fichier.
+> Version courante : **2.10-draft** (révisée le 2026-09-29). Le header de `spec-hyperfocale.md` fait foi. Voir le Changelog en fin de fichier.
 
 ## Contenu
 
@@ -29,7 +29,7 @@ La version est dans le header de `spec-hyperfocale.md`.
 
 ## Règles de travail
 
-- Ne pas créer d'autres fichiers que `spec-hyperfocale.md`, `README.md`, `AGENTS.md`
+- Ne pas créer d'autres fichiers que `spec-hyperfocale.md`, `README.md`, `AGENTS.md` — et `fixtures/`, qui porte les fixtures de conformité cross-language de la couche 4 (décision epic #23)
 - Ne pas générer de code d'implémentation dans ce repo
 - Toute modification de la spec doit rester cohérente avec la section 0 (spec générique)
 

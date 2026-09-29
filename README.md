@@ -48,7 +48,7 @@ Le reste (métadonnées IPTC, GPS, couverture, mots-clés...) est optionnel et s
 
 → [`spec-hyperfocale.md`](./spec-hyperfocale.md)
 
-La spec est organisée en trois couches :
+La spec est organisée en quatre couches, précédées d'une spec générique :
 
 | Couche | Contenu |
 |--------|---------|
@@ -56,9 +56,12 @@ La spec est organisée en trois couches :
 | **1 — Format de contenu** | Filesystem, frontmatter, règles métier, types de données |
 | **2 — Adaptateurs** | Astro, Next.js, Hugo, 11ty, Obsidian (+ plugin), CMS headless, Lightroom |
 | **3 — Composants UI** | Vocabulaire partagé (SeriesCard, Gallery, Lightbox...) |
+| **4 — Ingestion** | Contrat des outils qui publient un corpus édité dans Dropbox, iCloud Drive, WebDAV… : snapshot, diff, diagnostics, garde de publication. Ne change rien à ce qu'un lecteur doit faire |
+
+La couche 4 s'accompagne de **fixtures de conformité** cross-language, dans [`fixtures/ingestion/`](./fixtures/ingestion/) : corpus d'entrée et résultats attendus que toute implémentation — TypeScript, Swift ou autre — doit reproduire à l'identique.
 
 Au-delà de la série photo, l'**Annexe G** standardise **onze profils de contenu** réutilisant le même squelette : Série (`series`), Événement (`event`), Recette (`recipe`), Application (`app`), Livre (`book`), Lieu (`place`), Écran (`screen`), Portfolio (`portfolio`), Musique (`music`), Catalogue (`catalog`), Presse (`press`).
 
 ## Statut
 
-`v2.9-draft` — spécification active, source de vérité canonique. Voir le **Changelog** en fin de `spec-hyperfocale.md` pour l'historique des révisions.
+`v2.10-draft` — spécification active, source de vérité canonique. Voir le **Changelog** en fin de `spec-hyperfocale.md` pour l'historique des révisions.
