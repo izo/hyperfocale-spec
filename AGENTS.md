@@ -6,12 +6,13 @@ Dépôt de **spécification uniquement** — pas de code, pas de build, pas de d
 >
 > `spec-hyperfocale.md` est **la source de vérité unique** du format Hyperfocale. Toutes les implémentations (plugin Astro, site mathieu-drouet.com, exporter Lightroom, projet Recipes) suivent cette spec — elles ne la précèdent pas. Toute évolution du format passe par une modification ici, en premier.
 >
-> Version courante : **2.3-draft** (révisée le 2026-06-08). Voir le Changelog en fin de fichier.
+> Version courante : **2.10-draft** (révisée le 2026-09-29). Le header de `spec-hyperfocale.md` fait foi. Voir le Changelog en fin de fichier.
 
 ## Contenu
 
-- `spec-hyperfocale.md` — spec complète du format de contenu Hyperfocale
+- `spec-hyperfocale.md` — spec complète du format de contenu Hyperfocale (couches 1 à 4)
 - `README.md` — présentation du projet
+- `fixtures/ingestion/` — fixtures de conformité de la couche 4 ; leur format est dans `fixtures/ingestion/README.md`
 
 ## Ce qu'est ce repo
 
@@ -29,7 +30,7 @@ La version est dans le header de `spec-hyperfocale.md`.
 
 ## Règles de travail
 
-- Ne pas créer d'autres fichiers que `spec-hyperfocale.md`, `README.md`, `AGENTS.md`
+- Ne pas créer d'autres fichiers que `spec-hyperfocale.md`, `README.md`, `AGENTS.md` — et `fixtures/`, qui porte les fixtures de conformité cross-language de la couche 4 (décision epic #23)
 - Ne pas générer de code d'implémentation dans ce repo
 - Toute modification de la spec doit rester cohérente avec la section 0 (spec générique)
 
@@ -37,4 +38,4 @@ La version est dans le header de `spec-hyperfocale.md`.
 
 - Mise à jour du AGENTS.md : invoquer le skill `Codex-md-management:revise-Codex-md`
 - Pattern de commit : `type(spec): message` + PR via `gh pr create`
-- Avant toute modification : lire `spec-hyperfocale.md` en entier (fichier unique, ~600+ lignes)
+- Avant toute modification : lire `spec-hyperfocale.md` en entier (~3 250 lignes — lire par tranches de ≤950 lignes)
