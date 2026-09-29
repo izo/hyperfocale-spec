@@ -39,7 +39,7 @@ Le reste (métadonnées IPTC, GPS, couverture, mots-clés...) est optionnel et s
 
 | Outil | Dépôt | Rôle |
 |-------|-------|------|
-| `@regrets/hyperfocale` (v0.18.0) | https://github.com/izo/hyperfocale-astro-plugins | Plugin Astro 7 — schéma Zod, collections, presets, composants |
+| `@regrets/hyperfocale` (v0.19.0) | https://github.com/izo/hyperfocale-astro-plugins | Plugin Astro 7 — schéma Zod, collections, presets, composants ; outils d'ingestion de la couche 4 (snapshot, diff, validation, garde, providers filesystem, Dropbox, WebDAV) |
 | Exporter Lightroom | https://github.com/izo/hyperfocale-exporter-app | Export LR → format Hyperfocale avec métadonnées IPTC |
 
 > **Pas de site vitrine dédié.** Un dépôt `hyperfocale-site` a existé puis a disparu (introuvable sur GitHub comme en local — constat du 2026-08-22, issue [#18](https://github.com/izo/hyperfocale-spec/issues/18)). Les sites `mathieu-drouet.com` et `laurenceguenoun.com` servent de démonstrateurs grandeur nature du format.
