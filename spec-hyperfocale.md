@@ -1708,7 +1708,7 @@ Un snapshot est la liste complète des fichiers d'un corpus à un instant donné
 | `entries[].hashes` | oui* | *Sauf `state: "placeholder"` ou `"conflict"` (§4.4). |
 | `entries[].identity` | non | Identifiant stable attribué par le provider, qui survit au renommage. Hors `id`. |
 | `entries[].modifiedAt` | non | Informatif. Hors `id`. |
-| `entries[].state` | non | `"materialized"` (défaut) ; `"placeholder"` : présente à la source, contenu non disponible localement (fichier iCloud non téléchargé, par exemple) ; `"conflict"` : le provider signale un conflit de version sur ce fichier (copie conflictuelle Dropbox, versions concurrentes iCloud). Une entrée `placeholder` ou `conflict` rend le snapshot impubliable. Hors `id`. |
+| `entries[].state` | non | `"materialized"` (défaut) ; `"placeholder"` : présente à la source, contenu non disponible localement (fichier iCloud non téléchargé, par exemple) ; `"conflict"` : le provider signale un conflit de version sur ce fichier (copie conflictuelle Dropbox, versions concurrentes iCloud). Une entrée `placeholder` ou `conflict` rend le snapshot impubliable. La détection d'un conflit incombe au provider, qui PEUT marquer l'entrée `conflict`. Hors `id`. |
 
 Champs inconnus : un lecteur les ignore et les transmet (passthrough) ; un écrivain NE DOIT PAS en créer hors préfixe `x-`. Un lecteur ne suppose pas l'ordre des entrées : tout calcul (§4.6, §4.7) les trie d'abord.
 
@@ -1833,6 +1833,7 @@ Transitions — la liste est **exhaustive** : toute autre transition est interdi
 | Depuis | Vers | Quand |
 |---|---|---|
 | — | `sourceDirty` | état initial, avant toute publication |
+| — | `sourceSynced` | amorçage depuis un snapshot déjà publié (pipeline mis en service sur une production existante) |
 | `sourceDirty` | `snapshotPending` | une ingestion démarre |
 | `snapshotPending` | `validating` | le snapshot est construit |
 | `validating` | `publishing` | validation et garde sans erreur |
@@ -1909,7 +1910,7 @@ La sévérité est celle d'un **outil d'ingestion**, qui décide d'une publicati
 10. **Couverture.** Seul un `cover` relatif est vérifié. `cover-not-image` dépend de la seule extension, que le fichier existe ou non. `cover-not-found` est produit si le chemin résolu n'est pas une entrée du snapshot **et** qu'aucune entrée du manifeste `images.json` de la série (chaîne, ou `url` d'un objet) ne lui correspond : une entrée relative correspond si elle se résout au même chemin ; une entrée absolue, si elle se termine par `/` suivi du chemin résolu (`/content/<chemin résolu>`, `https://cdn.example.com/<chemin résolu>`).
 11. **Manifeste.** `images-conflict` : le frontmatter porte `images` et le dossier contient un `images.json`. `images-json-invalid` s'évalue pour tout `images.json` des racines.
 12. **Documents joints et embeds.** Chaque entrée de `attachments` dont `file` manque, n'est pas relatif, ou ne se résout pas vers une entrée existante située directement dans `<dossier>/media/` produit `attachment-not-found`. Chaque entrée de `embeds` qui n'est pas un objet portant une `url` chaîne non vide produit `embed-url-missing`.
-13. **Type d'un dossier porteur.** Il se lit dans `index.md`, sinon dans `index.mdx`, sinon dans le premier `index.<lang>.md` de l'ordre canonique. Un fichier illisible, `placeholder` ou `conflict` vaut `series` : la nature de section ne se devine jamais (§1.10).
+13. **Type d'un dossier porteur.** Il se lit dans `index.md`, sinon dans `index.mdx`, sinon dans le premier `index.<lang>.md` de l'ordre canonique. Un fichier illisible, aux octets divergents (§4.4), `placeholder` ou `conflict` vaut `series` : la nature de section ne se devine jamais (§1.10).
 14. **Structure.** `slug-invalid` porte sur le dernier segment de chaque dossier porteur, sauf le dossier qui est lui-même la racine de validation : il n'a pas de slug, et un `index.md` à la racine du corpus est licite. `nesting-too-deep` : une série qui compte au moins deux dossiers porteurs de type série parmi ses ancêtres situés dans sa racine (le dossier racine compris) — un diagnostic par série fautive. `media-nested` : pour chaque entrée d'une racine, le dossier situé juste sous le segment `media` ancêtre le moins profond, parent immédiat exclu. `media-orphan` : tout dossier nommé `media` dont le parent ne porte aucun fichier index. Pour ces deux règles, seuls comptent les segments situés sous la racine.
 
 ### 4.11 — Garde de publication
@@ -1956,7 +1957,7 @@ Ces exemples montrent comment des providers réels se projettent sur le contrat.
 | Identité | `id` du fichier (`id:…`) → `identity` : survit aux renommages et déplacements. |
 | Chemins | `path_display` n'est fiable qu'en son dernier segment : la casse des dossiers se reconstruit depuis leurs propres entrées, puis NFC. |
 | Exclusions | `.dropbox` et `.dropbox.cache` tombent sous §4.2. |
-| Conflit | un fichier dupliqué en « copie en conflit » signale un conflit de version : le provider PEUT marquer l'entrée `state: "conflict"` (`entry-conflict`), et la publication passe à l'état `conflict` (§4.9). |
+| Conflit | la détection des conflits incombe au provider : une « copie en conflit » Dropbox est le signal qu'il traduit en entrée `state: "conflict"` (`entry-conflict`, §4.5), et la publication passe à l'état `conflict` (§4.9). |
 | Webhook | simple **déclencheur** : la notification ne porte aucun contenu ; sa signature (`X-Dropbox-Signature`, HMAC-SHA256 du corps avec le secret de l'application) se vérifie, puis une ingestion démarre. Aucune lecture Dropbox au runtime. |
 
 ```json
@@ -1980,7 +1981,7 @@ L'identifiant d'un tel snapshot ne porte que l'algorithme `dropbox` ; recalculer
 
 #### iCloud Drive (depuis un CMS)
 
-iCloud Drive n'offre pas d'API serveur : les changements ne s'observent que depuis une application cliente (`clientChangeObservation`). Un fichier peut y être présent sans être téléchargé : il entre au snapshot en `state: "placeholder"`, sans hash, et bloque la publication (`entry-not-materialized`) jusqu'à sa matérialisation. Des versions concurrentes d'un même fichier se signalent en `state: "conflict"` (`entry-conflict`). Les hashes (`sha256`) se calculent localement sur les octets. L'application construit le snapshot et le transmet au pipeline d'ingestion : une fois ingéré, il se publie exactement comme un snapshot Dropbox, et l'infrastructure de production ne lit jamais iCloud.
+iCloud Drive n'offre pas d'API serveur : les changements ne s'observent que depuis une application cliente (`clientChangeObservation`). Un fichier peut y être présent sans être téléchargé : il entre au snapshot en `state: "placeholder"`, sans hash, et bloque la publication (`entry-not-materialized`) jusqu'à sa matérialisation. Des versions concurrentes d'un même fichier sont signalées par le provider en `state: "conflict"` (`entry-conflict`). Les hashes (`sha256`) se calculent localement sur les octets. L'application construit le snapshot et le transmet au pipeline d'ingestion : une fois ingéré, il se publie exactement comme un snapshot Dropbox, et l'infrastructure de production ne lit jamais iCloud.
 
 ---
 
@@ -3022,7 +3023,7 @@ Un profil ne DOIT jamais : renommer un champ core, modifier le slug regex, suppr
 - **Le diff est prudent.** Sans algorithme de hash commun, une entrée est `modified`, jamais « inchangée ». Les déplacements s'infèrent par identité, puis par contenu, et seulement sur appariement unique.
 - **Minuscule simple pour les collisions, octets UTF-8 pour le tri** : les deux points où JavaScript et Swift divergent si l'on s'en remet à leurs bibliothèques (`toLowerCase()` applique le sigma final, les chaînes JavaScript se comparent en UTF-16).
 - **Le frontmatter se lit sous le schéma YAML 1.2 core.** Une date non guillemetée reste une chaîne, validée par un motif ISO 8601 et par le calendrier. Sans cette règle, `2024-02-30` passait avec le schéma par défaut de js-yaml (débordement silencieux vers le 1ᵉʳ mars) et échouait avec d'autres parseurs.
-- **Les transitions de `PublicationState` sont exhaustives** : état initial `sourceDirty`, et `failed` → `snapshotPending` pour un nouvel essai sur une source inchangée ; toute transition absente de la table est interdite.
+- **Les transitions de `PublicationState` sont exhaustives** : état initial `sourceDirty` (ou `sourceSynced` pour un amorçage depuis un snapshot déjà publié), et `failed` → `snapshotPending` pour un nouvel essai sur une source inchangée ; toute transition absente de la table est interdite.
 - **La garde est fail-closed côté `base`** : un fichier index de `base` illisible, aux octets divergents, `placeholder` ou en conflit rend la série privée par prudence ; côté `target`, un fichier illisible ne déclare rien. La garde vérifie les octets mais n'émet pas `entry-hash-mismatch`, qui appartient à la validation.
 - **La garde connaît la confidentialité** : signature `guardChangeSet(changeSet, base, target, { read, policy })` ; une série est privée si au moins un de ses fichiers index déclare `private: true` (booléen YAML, la chaîne `"true"` ne compte pas) ; l'exposition suppose une série présente dans `target`, au même chemin ou déplacée — une série privée supprimée n'est pas exposée. `private` reste une extension de site.
 - **Les octets lus se vérifient** : un outil DOIT comparer ce qu'il lit au hash de l'entrée (premier algorithme enregistré qu'elle porte). Un écart (`entry-hash-mismatch`) signe un fichier modifié entre le listing et la lecture : le snapshot n'est pas publiable, il faut un nouveau listing.
