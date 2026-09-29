@@ -120,10 +120,12 @@ Pour la même raison, aucun corpus ne contient deux noms égaux après repli de 
 
 | Code | Fixture |
 |---|---|
+| `snapshot-invalid` | `validation/snapshot-invalid-format.json`, `validation/snapshot-invalid-complete.json`, `validation/snapshot-invalid-entries.json` |
 | `snapshot-version-unsupported` | `validation/snapshot-version-unsupported.json` |
 | `snapshot-id-mismatch` | `validation/snapshot-id-mismatch.json` |
 | `snapshot-incomplete` | `validation/snapshot-incomplete.json` |
 | `snapshot-empty` | `validation/snapshot-empty.json`, `validation/snapshot-empty-no-content.json` |
+| `entry-invalid` | `validation/entry-invalid.json` |
 | `entry-path-invalid` | `validation/entry-path-invalid.json` |
 | `entry-path-collision` | `validation/entry-path-collision.json` |
 | `entry-kind-mismatch` | `validation/entry-kind-mismatch.json` |

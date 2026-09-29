@@ -1666,7 +1666,7 @@ Une entrée porte un objet `hashes` : `{ "<algorithme>": "<valeur>" }`.
 | `x-<nom>` | Tout autre algorithme est préfixé `x-` (`x-etag`, `x-md5`) : valeur opaque, comparée à l'identique, comparable seulement à elle-même. Un ETag s'enregistre tel que le serveur le rend, guillemets compris. |
 
 - Une entrée **matérialisée** DOIT porter au moins un hash. Une entrée `placeholder` (présente à la source mais non matérialisée, §4.5) PEUT n'en porter aucun.
-- Pour comparer deux entrées, l'ordre de préférence est `sha256`, puis `dropbox`, puis les `x-*` par ordre alphabétique (octets UTF-8). On retient le **premier algorithme présent sur les deux entrées** : lui seul décide, même si un algorithme suivant diverge. Un nom d'algorithme ni enregistré ni préfixé `x-` n'entre dans aucune comparaison.
+- Pour comparer deux entrées, l'ordre de préférence est `sha256`, puis `dropbox`, puis les `x-*` par ordre alphabétique (octets UTF-8). On retient le **premier algorithme présent sur les deux entrées** : lui seul décide, même si un algorithme suivant diverge. Dans un snapshot, un nom d'algorithme ni enregistré ni préfixé `x-` rend l'entrée invalide (`entry-invalid`, §4.5).
 
 Pour un fichier non vide d'au plus un bloc, `dropbox` est le SHA-256 du digest binaire SHA-256 du contenu : il diffère donc de `sha256`. Pour le fichier vide, les deux valeurs sont égales. Vecteurs multi-blocs, dont 5 000 000 octets nuls : `fixtures/ingestion/hashes/vectors.json`.
 
@@ -1708,6 +1708,14 @@ Un snapshot est la liste complète des fichiers d'un corpus à un instant donné
 | `entries[].state` | non | `"materialized"` (défaut) ou `"placeholder"` : présente à la source, contenu non disponible localement (fichier iCloud non téléchargé, par exemple). Hors `id`. |
 
 Champs inconnus : un lecteur les ignore et les transmet (passthrough) ; un écrivain NE DOIT PAS en créer hors préfixe `x-`. Un lecteur ne suppose pas l'ordre des entrées : tout calcul (§4.6, §4.7) les trie d'abord.
+
+**Rejet structurel.** Un lecteur vérifie la structure avant tout le reste, dans cet ordre :
+
+1. le document est un objet JSON dont `format` vaut `"hyperfocale.snapshot"` — sinon ce n'est pas un snapshot : `snapshot-invalid` ;
+2. `version` vaut `1` — sinon `snapshot-version-unsupported` ;
+3. `id` et `createdAt` sont des chaînes, `complete` un booléen, `entries` un tableau — sinon `snapshot-invalid`.
+
+Chacun de ces trois diagnostics est alors le seul produit : rien d'autre n'est vérifié. Une **entrée** est ensuite structurellement invalide (`entry-invalid`) si elle n'est pas un objet, si `path` n'est pas une chaîne (le diagnostic porte alors le chemin `""`), si `kind` n'est pas l'une des quatre valeurs de §4.3, si `size` n'est pas un entier ≥ 0, si `state` porte une valeur inconnue, si `hashes` n'est pas un objet, si une valeur `sha256` ou `dropbox` n'est pas faite de 64 chiffres hexadécimaux minuscules, si une valeur `x-*` n'est pas une chaîne, ou si un algorithme n'est ni enregistré ni préfixé `x-`. Une entrée invalide est écartée de tout le reste de la validation. L'identifiant (§4.6) et le diff (§4.7) portent sur des snapshots structurellement valides.
 
 ### 4.6 — Identifiant de snapshot
 
@@ -1834,10 +1842,12 @@ Transitions :
 
 | Code | Sévérité | Règle | `path` |
 |---|---|---|---|
+| `snapshot-invalid` | error | `format` ≠ `"hyperfocale.snapshot"`, ou champ requis absent ou mal typé (§4.5) | `""` |
 | `snapshot-version-unsupported` | error | `version` ≠ 1 | `""` |
 | `snapshot-id-mismatch` | error | `id` déclaré ≠ `id` recalculé (§4.6) à partir des entrées telles que déclarées | `""` |
 | `snapshot-incomplete` | error | `complete: false` — interdit toute publication, donc toute suppression | `""` |
 | `snapshot-empty` | error | aucune entrée `content` | `""` |
+| `entry-invalid` | error | entrée structurellement invalide (§4.5) | l'entrée, ou `""` si `path` n'est pas une chaîne |
 | `entry-path-invalid` | error | chemin non conforme à §4.1, non NFC, ou exclu (§4.2) | l'entrée |
 | `entry-kind-mismatch` | error | `kind` déclaré ≠ classification du chemin (§4.3) | l'entrée |
 | `entry-path-collision` | error | collision (§4.1) | le second chemin dans l'ordre canonique, et chacun des suivants |
@@ -1874,9 +1884,9 @@ La sévérité est celle d'un **outil d'ingestion**, qui décide d'une publicati
 
 #### Règles d'évaluation
 
-1. **Version.** `version` ≠ 1 : seul `snapshot-version-unsupported` est produit, rien d'autre n'est vérifié.
-2. **Identifiant.** L'`id` est recalculé (§4.6) à partir des entrées telles que déclarées — `kind` déclaré compris, entrées au chemin invalide comprises. S'il diffère de l'`id` déclaré : `snapshot-id-mismatch`. La validation continue.
-3. **Entrées.** Les entrées au chemin invalide (`entry-path-invalid`) sont écartées de tout le reste. Pour les entrées retenues, un `kind` déclaré différent de la classification du chemin produit `entry-kind-mismatch` ; l'entrée reste dans la validation avec la classification recalculée. Les collisions se cherchent parmi les entrées retenues, `snapshot-empty` aussi. Une entrée `placeholder` produit `entry-not-materialized` et n'est jamais lue : un fichier index placeholder ne produit aucun diagnostic de contenu.
+1. **Structure et version.** Dans l'ordre de §4.5 : `format`, puis `version`, puis les champs requis. `snapshot-invalid` ou `snapshot-version-unsupported` est alors le seul diagnostic produit ; rien d'autre n'est vérifié.
+2. **Identifiant.** Si toutes les entrées sont structurellement valides, l'`id` est recalculé (§4.6) à partir des entrées telles que déclarées — `kind` déclaré compris, entrées au chemin invalide comprises. S'il diffère de l'`id` déclaré : `snapshot-id-mismatch`. La validation continue. Si une entrée est `entry-invalid`, l'`id` n'est pas recalculable et la règle est sans objet.
+3. **Entrées.** Les entrées structurellement invalides (`entry-invalid`), puis les entrées au chemin invalide (`entry-path-invalid`), sont écartées de tout le reste. Pour les entrées retenues, un `kind` déclaré différent de la classification du chemin produit `entry-kind-mismatch` ; l'entrée reste dans la validation avec la classification recalculée. Les collisions se cherchent parmi les entrées retenues, `snapshot-empty` aussi. Une entrée `placeholder` produit `entry-not-materialized` et n'est jamais lue : un fichier index placeholder ne produit aucun diagnostic de contenu.
 4. **Lecture.** Seuls sont lus les fichiers index et les `images.json` des racines, matérialisés. Le texte est de l'UTF-8 ; un BOM initial est ignoré ; des octets qui ne forment pas de l'UTF-8 valide rendent le fichier illisible (`frontmatter-invalid`, `images-json-invalid`).
 5. **Bloc de frontmatter.** La première ligne vaut exactement `---` ; le bloc se ferme à la ligne suivante qui vaut exactement `---` (fins de ligne `\n` ou `\r\n`). Sans ligne d'ouverture ou sans ligne de fermeture : `frontmatter-missing`.
 6. **YAML.** Le bloc s'interprète selon le **schéma YAML 1.2 *core*** : une date non guillemetée y reste une chaîne, validée par la règle 8. Une clé dupliquée rend le YAML illisible. Un bloc vide, ou dont la racine n'est pas un mapping : `frontmatter-invalid`. Après `frontmatter-missing` ou `frontmatter-invalid`, aucun diagnostic de champ n'est produit pour ce fichier.
@@ -2990,6 +3000,7 @@ Un profil ne DOIT jamais : renommer un champ core, modifier le slug regex, suppr
 - **Le diff est prudent.** Sans algorithme de hash commun, une entrée est `modified`, jamais « inchangée ». Les déplacements s'infèrent par identité, puis par contenu, et seulement sur appariement unique.
 - **Minuscule simple pour les collisions, octets UTF-8 pour le tri** : les deux points où JavaScript et Swift divergent si l'on s'en remet à leurs bibliothèques (`toLowerCase()` applique le sigma final, les chaînes JavaScript se comparent en UTF-16).
 - **Le frontmatter se lit sous le schéma YAML 1.2 core.** Une date non guillemetée reste une chaîne, validée par un motif ISO 8601 et par le calendrier. Sans cette règle, `2024-02-30` passait avec le schéma par défaut de js-yaml (débordement silencieux vers le 1ᵉʳ mars) et échouait avec d'autres parseurs.
+- **Un document mal formé est rejeté avant d'être interprété** : `snapshot-invalid` (format, champ requis absent ou mal typé) arrête la validation comme `snapshot-version-unsupported` ; `entry-invalid` écarte une entrée mal typée (taille, `kind`, `state`, hashes, algorithme inconnu) du reste de la validation.
 - **`hash-incomparable` exige `kind` et `size` égaux**, y compris pour un déplacement par identité : un move dont la taille change est `modified: true` sans diagnostic. L'étape 0 du diff compare les `id` **déclarés** ; leur cohérence relève de `snapshot-id-mismatch`.
 - **L'exclusion précède la validité** ; dans un snapshot, un chemin non NFC ou exclu est invalide.
 - **Un snapshot se vérifie, il ne se croit pas sur parole** : un `id` qui ne correspond pas aux entrées (`snapshot-id-mismatch`) et un `kind` qui contredit le chemin (`entry-kind-mismatch`) sont des erreurs. La validation continue dans les deux cas, et s'appuie sur la classification recalculée.
