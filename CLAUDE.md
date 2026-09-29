@@ -29,8 +29,9 @@ La version est dans le header de `spec-hyperfocale.md`.
 
 ## Règles de travail
 
-- Ne pas créer d'autres fichiers que `spec-hyperfocale.md`, `README.md`, `CLAUDE.md`
-- Ne pas générer de code d'implémentation dans ce repo
+- Ne pas créer d'autres fichiers que `spec-hyperfocale.md`, `README.md`, `CLAUDE.md` — et `fixtures/`, qui porte les fixtures de conformité cross-language (décision epic #23 : la spec possède les fixtures que TypeScript et Swift doivent passer)
+- Ne pas générer de code d'implémentation dans ce repo — y compris dans `fixtures/` : les valeurs attendues se calculent avec un script jetable hors dépôt, jamais commité
+- Toute évolution du contrat de la couche 4 met à jour `fixtures/ingestion/` dans la même PR que la prose
 - Toute modification de la spec doit rester cohérente avec la section 0 (spec générique)
 
 ## Workflow
