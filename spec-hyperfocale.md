@@ -10,7 +10,7 @@
 
 | Implémentation | Dépôt | Rôle | Conformité |
 |----------------|-------|------|------------|
-| Plugin Astro `@regrets/hyperfocale` | https://github.com/izo/hyperfocale-astro-plugins | Adaptateur Astro (couche 2) | ✅ Conforme au contrat, Annexe G couverte, §1.11 implémentée (v0.18.0) |
+| Plugin Astro `@regrets/hyperfocale` | https://github.com/izo/hyperfocale-astro-plugins | Adaptateur Astro (couche 2) et outils d'ingestion (couche 4) | ✅ Conforme au contrat, Annexe G couverte, §1.11 implémentée, couche 4 implémentée (v0.19.0) |
 | Site `laurenceguenoun.com` | https://github.com/izo/laurenceguenoun | Consommateur en **couche data seule** (Astro) | ⚠️ Bloc `videos[]` local à migrer vers `embeds:` — §1.11 est implémentée par le plugin depuis la v0.17.0 |
 | Site `mathieu-drouet.com` | https://github.com/izo/mathieu-drouet.com | Consommateur grandeur nature (Astro) | ⚠️ Migration v2.1 prévue |
 | Exporter Lightroom | https://github.com/izo/hyperfocale-exporter-app | Source de contenu : LR → format Hyperfocale | ✅ Conforme |
@@ -154,9 +154,9 @@ Toute implémentation (adaptateur, script, outil) qui lit du contenu Hyperfocale
 
 Section informative — un audit de conformité des implémentations connues, mis à jour à chaque révision majeure de la spec.
 
-### Plugin Astro `@regrets/hyperfocale` (v0.18.0)
+### Plugin Astro `@regrets/hyperfocale` (v0.19.0)
 
-**Conformité** : ✅ Conforme sur le contrat d'adaptateur (§2.0), obligations v2.6 comprises, aligné sur les profils de l'Annexe G depuis la v0.12.0, et **§1.11 (contenus embarqués) implémentée depuis la v0.17.0** — plus aucune obligation ouverte.
+**Conformité** : ✅ Conforme sur le contrat d'adaptateur (§2.0), obligations v2.6 comprises, aligné sur les profils de l'Annexe G depuis la v0.12.0, et **§1.11 (contenus embarqués) implémentée depuis la v0.17.0** — plus aucune obligation ouverte. **La couche 4 (ingestion) est implémentée depuis la v0.19.0** : les 109 fixtures cross-language de la spec (`main@18f48de`) passent toutes.
 
 > Le paquet s'appelait `@izo/hyperfocale` jusqu'au 2026-08-04. Le scope `@izo` ne correspondait à aucun compte npm et aucune version n'avait jamais été publiée sous ce nom : le renommage n'a rien cassé.
 
@@ -174,6 +174,7 @@ Section informative — un audit de conformité des implémentations connues, mi
 | Page d'index de section (§1.10) | ✅ | Implémentée en **v0.9.0** : champ `type`, exclusion des listings, `date` non requise pour une section. `isSection()` ne teste que `type` — jamais l'absence de date (« discriminant explicite »). Helpers `isSection()` / `getSections()` exposés ; la route de section reste au site consommateur (§1.10 la donne en PEUT) |
 | Séries imbriquées (§1.8) | ✅ | Implémentées en **v0.12.0** : `getSubSeries()` et line-up rendu sur la page du conteneur, tri par `lineup_order` puis date décroissante. Le helper ne retient que les entrées situées exactement un segment plus bas — une série rangée plus profond (§1.2) n'est pas une sous-série |
 | Profils de contenu (Annexe G) | ✅ | Les **11 profils** de l'annexe sont couverts depuis la **v0.14.0** ; leurs prefix restent localisés en français, ce que §2.0.1 autorise |
+| Ingestion (couche 4) | ✅ | Implémentée en **v0.19.0**, en quatre sous-chemins **additifs** : `/ingest` (contrat, agnostique du runtime), `/ingest/fs`, `/ingest/dropbox`, `/ingest/webdav`, plus les commandes `validate`, `snapshot` et `diff` du CLI. Les 109 fixtures de `fixtures/ingestion/` (`main@18f48de`) sont copiées à une ref épinglée et rejouées en totalité. L'entrée racine n'atteint aucun code d'ingestion : rien ne change pour un site qui ne l'importe pas |
 | Contenus embarqués (§1.11) | ✅ | Implémentés en **v0.17.0** : champ `embeds`, `getSeriesEmbeds()` (résolution dans l'ordre du tableau, `playable` = plateforme reconnue + `id` présent), `<SeriesEmbeds>` rendu **en façade** (le poster s'affiche, l'iframe n'arrive qu'au clic ; sans JavaScript la façade reste un lien fonctionnel), liste de plateformes ouverte (valeur inconnue → repli en lien), posters exclus du scan de galerie. Vocabulaires (`EMBED_PLATFORMS`, `ATTACHMENT_KINDS`) exportés à la racine en v0.17.1 |
 | Passthrough racine (champs inconnus) | ✅ | `z.looseObject()` racine — les extensions site-spécifiques ne sont jamais rejetées (v0.4.0) |
 | Tri date desc | ✅ | |
@@ -192,6 +193,8 @@ Section informative — un audit de conformité des implémentations connues, mi
 - **v0.17.0** — contenus embarqués (§1.11) : champ `embeds`, `getSeriesEmbeds()`, `<SeriesEmbeds>` en façade, posters exclus du scan de galerie. La construction de l'URL de lecture vit dans le composant, pas dans le schéma — §1.11 ne fige aucun gabarit d'iframe.
 - **v0.17.1** — `ATTACHMENT_KINDS`, `EMBED_PLATFORMS` et leurs types exportés par l'entrée racine ; ils n'étaient atteignables que via `/helpers`, sous-chemin qui importe `astro:content` et n'est pas chargeable hors runtime Astro.
 - **v0.18.0** — helpers multi-collections : la plupart des helpers acceptent un nom de collection en argument (`collectionName` pour `querySeries`), `getAllSeries()` expose la collection brute, et le cache — jusqu'ici scalaire, il servait une collection pour une autre sur un site bilingue — est indexé par collection. Besoin remonté par `mathieu-drouet.com` (une collection par locale).
+- **v0.18.1** et **v0.18.2** — correctifs de sécurité, sans changement d'API : les données de contenu injectées dans un `<script>` (JSON-LD, lightbox) ne peuvent plus le refermer (`<` échappé en `\u003c`) ; `embeds[].id` ne peut plus détourner l'URL de lecture d'un embed.
+- **v0.19.0** — couche 4 (ingestion) : snapshot, diff, validation (§4.10), garde de publication fail-closed côté base (§4.11), providers filesystem, Dropbox et WebDAV, états de publication, CLI `validate` / `snapshot` / `diff`. Le frontmatter y est lu en schéma YAML 1.2 *core*, comme §4.10 le demande.
 - Socle : **Astro 7.2.0**, TypeScript 7, Zod 4.
 
 **Presets vs Annexe G — écart refermé en v0.12.0** :
