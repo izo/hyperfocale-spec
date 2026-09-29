@@ -131,6 +131,7 @@ Pour la même raison, aucun corpus ne contient deux noms égaux après repli de 
 | `entry-kind-mismatch` | `validation/entry-kind-mismatch.json` |
 | `entry-hash-missing` | `validation/entry-hash-missing.json` |
 | `entry-not-materialized` | `validation/entry-not-materialized.json` |
+| `entry-conflict` | `validation/entry-conflict.json` |
 | `slug-invalid` … `embed-url-missing` | `validation/invalid-<code>.json` (corpus `invalid-<code>`), plus `validation/roots-default.json` |
 | `hash-incomparable` | `diff/incomparable.json` |
 | `move-ambiguous` | `diff/ambiguous.json` |

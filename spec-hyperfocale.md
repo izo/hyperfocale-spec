@@ -1665,7 +1665,7 @@ Une entrée porte un objet `hashes` : `{ "<algorithme>": "<valeur>" }`.
 | `dropbox` | *Content hash* Dropbox : découper le fichier en blocs de 4 194 304 octets (le dernier peut être plus court), calculer le SHA-256 de chaque bloc, concaténer les **digests binaires** (32 octets chacun), calculer le SHA-256 de cette concaténation ; hexadécimal minuscule. Un fichier vide n'a aucun bloc : son hash est le SHA-256 de la chaîne vide, `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`. |
 | `x-<nom>` | Tout autre algorithme est préfixé `x-` (`x-etag`, `x-md5`) : valeur opaque, comparée à l'identique, comparable seulement à elle-même. Un ETag s'enregistre tel que le serveur le rend, guillemets compris. |
 
-- Une entrée **matérialisée** DOIT porter au moins un hash. Une entrée `placeholder` (présente à la source mais non matérialisée, §4.5) PEUT n'en porter aucun.
+- Une entrée **matérialisée** DOIT porter au moins un hash. Une entrée `placeholder` (présente à la source mais non matérialisée) ou `conflict` (en conflit de version, §4.5) PEUT n'en porter aucun.
 - Pour comparer deux entrées, l'ordre de préférence est `sha256`, puis `dropbox`, puis les `x-*` par ordre alphabétique (octets UTF-8). On retient le **premier algorithme présent sur les deux entrées** : lui seul décide, même si un algorithme suivant diverge. Dans un snapshot, un nom d'algorithme ni enregistré ni préfixé `x-` rend l'entrée invalide (`entry-invalid`, §4.5).
 
 Pour un fichier non vide d'au plus un bloc, `dropbox` est le SHA-256 du digest binaire SHA-256 du contenu : il diffère donc de `sha256`. Pour le fichier vide, les deux valeurs sont égales. Vecteurs multi-blocs, dont 5 000 000 octets nuls : `fixtures/ingestion/hashes/vectors.json`.
@@ -1702,10 +1702,10 @@ Un snapshot est la liste complète des fichiers d'un corpus à un instant donné
 | `entries[].path` | oui | Chemin (§4.1). |
 | `entries[].kind` | oui | Classification du chemin (§4.3). Un écart produit `entry-kind-mismatch`. |
 | `entries[].size` | oui | Taille en octets, entier ≥ 0. |
-| `entries[].hashes` | oui* | *Sauf `state: "placeholder"` (§4.4). |
+| `entries[].hashes` | oui* | *Sauf `state: "placeholder"` ou `"conflict"` (§4.4). |
 | `entries[].identity` | non | Identifiant stable attribué par le provider, qui survit au renommage. Hors `id`. |
 | `entries[].modifiedAt` | non | Informatif. Hors `id`. |
-| `entries[].state` | non | `"materialized"` (défaut) ou `"placeholder"` : présente à la source, contenu non disponible localement (fichier iCloud non téléchargé, par exemple). Hors `id`. |
+| `entries[].state` | non | `"materialized"` (défaut) ; `"placeholder"` : présente à la source, contenu non disponible localement (fichier iCloud non téléchargé, par exemple) ; `"conflict"` : le provider signale un conflit de version sur ce fichier (copie conflictuelle Dropbox, versions concurrentes iCloud). Une entrée `placeholder` ou `conflict` rend le snapshot impubliable. Hors `id`. |
 
 Champs inconnus : un lecteur les ignore et les transmet (passthrough) ; un écrivain NE DOIT PAS en créer hors préfixe `x-`. Un lecteur ne suppose pas l'ordre des entrées : tout calcul (§4.6, §4.7) les trie d'abord.
 
@@ -1814,7 +1814,7 @@ Vocabulaire commun de l'état d'une publication. Un CMS et un site PEUVENT affic
 | `publishing` | le snapshot est validé ; transfert des objets et bascule en cours |
 | `published` | le snapshot est la révision servie |
 | `failed` | la dernière tentative a échoué ; la révision publiée précédente reste servie |
-| `conflict` | le provider signale un conflit de version (fichier dupliqué en « copie en conflit ») ; la publication est bloquée |
+| `conflict` | le provider signale un conflit de version (fichier dupliqué en « copie en conflit », entrée `state: "conflict"`) ; la publication est bloquée |
 
 ```json
 { "format": "hyperfocale.publication", "version": 1, "state": "published",
@@ -1853,6 +1853,7 @@ Transitions :
 | `entry-path-collision` | error | collision (§4.1) | le second chemin dans l'ordre canonique, et chacun des suivants |
 | `entry-hash-missing` | error | entrée matérialisée sans hash (`hashes` absent ou vide) | l'entrée |
 | `entry-not-materialized` | error | `state: "placeholder"` — publication impossible | l'entrée |
+| `entry-conflict` | error | `state: "conflict"` — le provider signale un conflit de version, publication impossible | l'entrée |
 | `slug-invalid` | error | dossier porteur d'un fichier index dont le nom ne suit pas `^[a-z0-9]+(-[a-z0-9]+)*$` (§1.2) | le dossier |
 | `media-nested` | error | dossier sous `media/` (§1.2) : entrée dont un segment ancêtre autre que le parent immédiat est `media` | le dossier imbriqué |
 | `media-orphan` | warning | dossier `media` dont le dossier parent ne porte aucun fichier index | le dossier `media` |
@@ -1886,8 +1887,8 @@ La sévérité est celle d'un **outil d'ingestion**, qui décide d'une publicati
 
 1. **Structure et version.** Dans l'ordre de §4.5 : `format`, puis `version`, puis les champs requis. `snapshot-invalid` ou `snapshot-version-unsupported` est alors le seul diagnostic produit ; rien d'autre n'est vérifié.
 2. **Identifiant.** Si toutes les entrées sont structurellement valides, l'`id` est recalculé (§4.6) à partir des entrées telles que déclarées — `kind` déclaré compris, entrées au chemin invalide comprises. S'il diffère de l'`id` déclaré : `snapshot-id-mismatch`. La validation continue. Si une entrée est `entry-invalid`, l'`id` n'est pas recalculable et la règle est sans objet.
-3. **Entrées.** Les entrées structurellement invalides (`entry-invalid`), puis les entrées au chemin invalide (`entry-path-invalid`), sont écartées de tout le reste. Pour les entrées retenues, un `kind` déclaré différent de la classification du chemin produit `entry-kind-mismatch` ; l'entrée reste dans la validation avec la classification recalculée. Les collisions se cherchent parmi les entrées retenues, `snapshot-empty` aussi. Une entrée `placeholder` produit `entry-not-materialized` et n'est jamais lue : un fichier index placeholder ne produit aucun diagnostic de contenu.
-4. **Lecture.** Seuls sont lus les fichiers index et les `images.json` des racines, matérialisés. Le texte est de l'UTF-8 ; un BOM initial est ignoré ; des octets qui ne forment pas de l'UTF-8 valide rendent le fichier illisible (`frontmatter-invalid`, `images-json-invalid`).
+3. **Entrées.** Les entrées structurellement invalides (`entry-invalid`), puis les entrées au chemin invalide (`entry-path-invalid`), sont écartées de tout le reste. Pour les entrées retenues, un `kind` déclaré différent de la classification du chemin produit `entry-kind-mismatch` ; l'entrée reste dans la validation avec la classification recalculée. Les collisions se cherchent parmi les entrées retenues, `snapshot-empty` aussi. Une entrée `placeholder` produit `entry-not-materialized`, une entrée `conflict` produit `entry-conflict` ; ni l'une ni l'autre n'est jamais lue : un tel fichier index ne produit aucun diagnostic de contenu.
+4. **Lecture.** Seuls sont lus les fichiers index et les `images.json` des racines, à l'état `materialized`. Le texte est de l'UTF-8 ; un BOM initial est ignoré ; des octets qui ne forment pas de l'UTF-8 valide rendent le fichier illisible (`frontmatter-invalid`, `images-json-invalid`).
 5. **Bloc de frontmatter.** La première ligne vaut exactement `---` ; le bloc se ferme à la ligne suivante qui vaut exactement `---` (fins de ligne `\n` ou `\r\n`). Sans ligne d'ouverture ou sans ligne de fermeture : `frontmatter-missing`.
 6. **YAML.** Le bloc s'interprète selon le **schéma YAML 1.2 *core*** : une date non guillemetée y reste une chaîne, validée par la règle 8. Une clé dupliquée rend le YAML illisible. Un bloc vide, ou dont la racine n'est pas un mapping : `frontmatter-invalid`. Après `frontmatter-missing` ou `frontmatter-invalid`, aucun diagnostic de champ n'est produit pour ce fichier.
 7. **Champs.** Une clé de valeur `null` vaut absente (`type`, `date`, `cover`, `images`). `title` doit être une chaîne d'au moins un caractère. `type`, s'il est présent, vaut `series` ou `section` ; toute autre valeur produit `type-invalid`, et le fichier est traité en série.
@@ -1896,7 +1897,7 @@ La sévérité est celle d'un **outil d'ingestion**, qui décide d'une publicati
 10. **Couverture.** Seul un `cover` relatif est vérifié. `cover-not-image` dépend de la seule extension, que le fichier existe ou non. `cover-not-found` est produit si le chemin résolu n'est pas une entrée du snapshot **et** qu'aucune entrée du manifeste `images.json` de la série (chaîne, ou `url` d'un objet) ne lui correspond : une entrée relative correspond si elle se résout au même chemin ; une entrée absolue, si elle se termine par `/` suivi du chemin résolu (`/content/<chemin résolu>`, `https://cdn.example.com/<chemin résolu>`).
 11. **Manifeste.** `images-conflict` : le frontmatter porte `images` et le dossier contient un `images.json`. `images-json-invalid` s'évalue pour tout `images.json` des racines.
 12. **Documents joints et embeds.** Chaque entrée de `attachments` dont `file` manque, n'est pas relatif, ou ne se résout pas vers une entrée existante située directement dans `<dossier>/media/` produit `attachment-not-found`. Chaque entrée de `embeds` qui n'est pas un objet portant une `url` chaîne non vide produit `embed-url-missing`.
-13. **Type d'un dossier porteur.** Il se lit dans `index.md`, sinon dans `index.mdx`, sinon dans le premier `index.<lang>.md` de l'ordre canonique. Un fichier illisible ou placeholder vaut `series` : la nature de section ne se devine jamais (§1.10).
+13. **Type d'un dossier porteur.** Il se lit dans `index.md`, sinon dans `index.mdx`, sinon dans le premier `index.<lang>.md` de l'ordre canonique. Un fichier illisible, `placeholder` ou `conflict` vaut `series` : la nature de section ne se devine jamais (§1.10).
 14. **Structure.** `slug-invalid` porte sur le dernier segment de chaque dossier porteur, sauf le dossier qui est lui-même la racine de validation : il n'a pas de slug, et un `index.md` à la racine du corpus est licite. `nesting-too-deep` : une série qui compte au moins deux dossiers porteurs de type série parmi ses ancêtres situés dans sa racine (le dossier racine compris) — un diagnostic par série fautive. `media-nested` : pour chaque entrée d'une racine, le dossier situé juste sous le segment `media` ancêtre le moins profond, parent immédiat exclu. `media-orphan` : tout dossier nommé `media` dont le parent ne porte aucun fichier index. Pour ces deux règles, seuls comptent les segments situés sous la racine.
 
 ### 4.11 — Garde de publication
@@ -1935,7 +1936,7 @@ Ces exemples montrent comment des providers réels se projettent sur le contrat.
 | Identité | `id` du fichier (`id:…`) → `identity` : survit aux renommages et déplacements. |
 | Chemins | `path_display` n'est fiable qu'en son dernier segment : la casse des dossiers se reconstruit depuis leurs propres entrées, puis NFC. |
 | Exclusions | `.dropbox` et `.dropbox.cache` tombent sous §4.2. |
-| Conflit | un fichier dupliqué en « copie en conflit » signale un conflit de version → `conflict` (§4.9). |
+| Conflit | un fichier dupliqué en « copie en conflit » signale un conflit de version : le provider PEUT marquer l'entrée `state: "conflict"` (`entry-conflict`), et la publication passe à l'état `conflict` (§4.9). |
 | Webhook | simple **déclencheur** : la notification ne porte aucun contenu ; sa signature (`X-Dropbox-Signature`, HMAC-SHA256 du corps avec le secret de l'application) se vérifie, puis une ingestion démarre. Aucune lecture Dropbox au runtime. |
 
 ```json
@@ -1959,7 +1960,7 @@ L'identifiant d'un tel snapshot ne porte que l'algorithme `dropbox`. Un pipeline
 
 #### iCloud Drive (depuis un CMS)
 
-iCloud Drive n'offre pas d'API serveur : les changements ne s'observent que depuis une application cliente (`clientChangeObservation`). Un fichier peut y être présent sans être téléchargé : il entre au snapshot en `state: "placeholder"`, sans hash, et bloque la publication (`entry-not-materialized`) jusqu'à sa matérialisation. Les hashes (`sha256`) se calculent localement sur les octets. L'application construit le snapshot et le transmet au pipeline d'ingestion : une fois ingéré, il se publie exactement comme un snapshot Dropbox, et l'infrastructure de production ne lit jamais iCloud.
+iCloud Drive n'offre pas d'API serveur : les changements ne s'observent que depuis une application cliente (`clientChangeObservation`). Un fichier peut y être présent sans être téléchargé : il entre au snapshot en `state: "placeholder"`, sans hash, et bloque la publication (`entry-not-materialized`) jusqu'à sa matérialisation. Des versions concurrentes d'un même fichier se signalent en `state: "conflict"` (`entry-conflict`). Les hashes (`sha256`) se calculent localement sur les octets. L'application construit le snapshot et le transmet au pipeline d'ingestion : une fois ingéré, il se publie exactement comme un snapshot Dropbox, et l'infrastructure de production ne lit jamais iCloud.
 
 ---
 
@@ -3000,6 +3001,7 @@ Un profil ne DOIT jamais : renommer un champ core, modifier le slug regex, suppr
 - **Le diff est prudent.** Sans algorithme de hash commun, une entrée est `modified`, jamais « inchangée ». Les déplacements s'infèrent par identité, puis par contenu, et seulement sur appariement unique.
 - **Minuscule simple pour les collisions, octets UTF-8 pour le tri** : les deux points où JavaScript et Swift divergent si l'on s'en remet à leurs bibliothèques (`toLowerCase()` applique le sigma final, les chaînes JavaScript se comparent en UTF-16).
 - **Le frontmatter se lit sous le schéma YAML 1.2 core.** Une date non guillemetée reste une chaîne, validée par un motif ISO 8601 et par le calendrier. Sans cette règle, `2024-02-30` passait avec le schéma par défaut de js-yaml (débordement silencieux vers le 1ᵉʳ mars) et échouait avec d'autres parseurs.
+- **Un fichier en conflit bloque la publication** : `state` admet `"conflict"` (copie conflictuelle Dropbox, versions concurrentes iCloud) ; l'entrée n'est jamais lue et produit `entry-conflict`.
 - **Un document mal formé est rejeté avant d'être interprété** : `snapshot-invalid` (format, champ requis absent ou mal typé) arrête la validation comme `snapshot-version-unsupported` ; `entry-invalid` écarte une entrée mal typée (taille, `kind`, `state`, hashes, algorithme inconnu) du reste de la validation.
 - **`hash-incomparable` exige `kind` et `size` égaux**, y compris pour un déplacement par identité : un move dont la taille change est `modified: true` sans diagnostic. L'étape 0 du diff compare les `id` **déclarés** ; leur cohérence relève de `snapshot-id-mismatch`.
 - **L'exclusion précède la validité** ; dans un snapshot, un chemin non NFC ou exclu est invalide.
