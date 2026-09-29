@@ -13,6 +13,7 @@ fixtures/ingestion/
 ├── snapshots/<nom>.json       snapshot attendu de corpora/<nom>
 ├── validation/<cas>.json      diagnostics attendus de la validation
 ├── diff/<cas>.json            ContentChangeSet attendu entre deux snapshots
+├── guard/<cas>.json           diagnostics attendus de la garde de publication
 ├── snapshot-id/<cas>.json     identifiant attendu d'une liste d'entrées
 ├── paths/<cas>.json           normalisation, validité, exclusion, classification, collisions
 └── hashes/vectors.json        vecteurs de hash sha256 et dropbox
@@ -66,6 +67,15 @@ Comparaison : `format`, `version`, `id`, `complete`, et pour chaque entrée `pat
 ```
 
 Comparaison : `format`, `version`, `base`, `target` à l'identique ; `added`, `modified`, `deleted`, `moved` égaux en profondeur, dans l'ordre (§4.7, règle 6), les entrées étant comparées comme objets JSON complets (`identity` et `modifiedAt` compris) ; `diagnostics` par `code` + `severity` + `path`.
+
+### `guard/<cas>.json`
+
+```json
+{ "description": "…", "base": <snapshot | null>, "target": <snapshot>, "changeSet": <ContentChangeSet>,
+  "files": { "base": { "<chemin>": "<texte>" }, "target": { … } }, "policy": { … }, "expected": [ { "code", "severity", "path" } ] }
+```
+
+`changeSet` est le diff de `base` vers `target`, fourni pour tester la garde indépendamment du diff (il est égal à ce que produit §4.7). `read(côté, chemin)` rend les octets UTF-8 de `files[côté][chemin]` ; une lecture hors de `files` est un défaut d'implémentation. `policy` est toujours explicite. Comparaison des diagnostics : comme pour `validation/`.
 
 ### `snapshot-id/<cas>.json`
 
@@ -137,7 +147,14 @@ Pour la même raison, aucun corpus ne contient deux noms égaux après repli de 
 | `hash-incomparable` | `diff/incomparable.json` |
 | `move-ambiguous` | `diff/ambiguous.json` |
 
-Les diagnostics de la garde de publication (`guard-*`, §4.11) n'ont pas de fixture : leurs seuils appartiennent au consommateur.
+| Garde (§4.11) | Fixture |
+|---|---|
+| `guard-mass-deletion` | `guard/mass-deletion-series.json` (séries), `guard/mass-deletion-media.json` (ratio de médias) |
+| `guard-mass-move` | `guard/mass-move.json` |
+| `guard-private-exposed` | `guard/private-exposed.json` |
+| `guard-snapshot-incomplete`, `guard-snapshot-empty`, `guard-oversize` | `guard/always-active.json` |
+
+Chaque fixture de garde fixe sa `policy` : les seuils réels appartiennent au consommateur.
 
 ## Diffs couverts
 

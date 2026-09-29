@@ -1904,25 +1904,33 @@ La sévérité est celle d'un **outil d'ingestion**, qui décide d'une publicati
 
 ### 4.11 — Garde de publication
 
-La garde est un mécanisme générique ; ses seuils appartiennent au consommateur. `guardChangeSet(changeSet, base, target, policy)` renvoie des diagnostics `guard-*`, qui suivent les conventions de §4.10 :
+La garde est un mécanisme générique ; ses seuils appartiennent au consommateur.
+
+```
+guardChangeSet(changeSet, base, target, { read, policy }) → diagnostics
+```
+
+`changeSet` est le diff de `base` (ou `null`) vers `target` (§4.7). `read(côté, chemin)` rend les octets du fichier `chemin` dans `base` (`côté = "base"`) ou dans `target` (`côté = "target"`) : la garde lit les fichiers index pour connaître la confidentialité des séries, et vérifie les octets lus comme tout outil (§4.4, `entry-hash-mismatch`). `policy` porte les seuils, tous facultatifs : `maxDeletedSeries` (entier), `maxDeletedMediaRatio` (nombre entre 0 et 1), `maxMovedSeries` (entier), `maxFileBytes` (objet `{ "<kind>": entier }`). Les diagnostics suivent les conventions de §4.10.
 
 | Code | Sévérité | Déclenchement | `path` |
 |---|---|---|---|
-| `guard-snapshot-incomplete` | error | `target` n'est pas `complete: true` — toujours active, non désactivable | `""` |
-| `guard-snapshot-empty` | error | `target` n'a aucune entrée `content` — toujours active, non désactivable | `""` |
+| `guard-snapshot-incomplete` | error | `target` n'est pas `complete: true` | `""` |
+| `guard-snapshot-empty` | error | `target` n'a aucune entrée `content` | `""` |
 | `guard-mass-deletion` | error | séries supprimées > `maxDeletedSeries`, ou médias supprimés > `maxDeletedMediaRatio` × médias de `base` | `""` |
 | `guard-mass-move` | warning | séries déplacées > `maxMovedSeries` | `""` |
-| `guard-private-exposed` | error | une série `private: true` dans `base` ne l'est plus dans `target` (champ retiré ou passé à `false`) | le fichier index dans `target` |
+| `guard-private-exposed` | error | une série privée dans `base`, présente dans `target`, n'y est plus privée | le dossier de la série dans `target` |
 | `guard-oversize` | error | entrée de `target` dont la taille dépasse `maxFileBytes[kind]` | l'entrée |
 
-- **Série supprimée** : dossier porteur d'un fichier index dans `base`, qui n'en porte plus dans `target`, et dont aucun fichier index n'est la source (`from`) d'un `moved`. **Série déplacée** : dossier distinct parmi les `from` des `moved` qui désignent un fichier index. **Médias supprimés** : entrées `media` de `deleted`, rapportées au nombre d'entrées `media` de `base`.
-- `private` n'est pas un champ du format : c'est une extension de site (§0.5). La garde s'applique aux corpus qui l'emploient, et suit un fichier index déplacé jusqu'à sa destination.
-- Un seuil absent désactive la garde correspondante, sauf les deux gardes toujours actives. Avec `base: null`, seules ces deux gardes et `guard-oversize` s'évaluent.
+- **Série** : dossier porteur d'un fichier index (§4.10). **Série supprimée** : dossier porteur dans `base`, qui ne l'est plus dans `target`, et dont aucun fichier index n'est la source (`from`) d'un `moved`. **Série déplacée** : dossier distinct parmi les `from` des `moved` qui désignent un fichier index. **Médias supprimés** : entrées `media` de `deleted`, rapportées au nombre d'entrées `media` de `base`. Une série déplacée n'est jamais comptée comme supprimée.
+- **Série privée** : au moins un de ses fichiers index, à l'état `materialized`, déclare `private: true` — un **booléen** YAML (schéma core : `true`, `True`, `TRUE`). La chaîne `"true"` ne rend pas une série privée. Le frontmatter se lit selon les règles 4 à 7 de §4.10 ; un fichier illisible, non matérialisé ou dont les octets divergent ne déclare rien. La garde lit tous les fichiers index de chaque série de `base`, puis ceux de la série homologue dans `target` quand la série de `base` est privée.
+- **Exposition** : une série privée dans `base` est présente dans `target` au même chemin si le dossier y porte encore un fichier index, sinon à la destination (dossier du `to`) du premier de ses fichiers index déplacés, dans l'ordre canonique. Si elle n'y est plus privée, `guard-private-exposed` porte sur ce dossier de `target`. La **suppression** d'une série privée n'est pas une exposition.
+- `private` n'est pas un champ du format : c'est une extension de site (§0.5), la seule marque de confidentialité que connaissent les consommateurs actuels. La garde s'applique aux corpus qui l'emploient ; un corpus qui ne l'emploie pas ne la déclenche jamais.
+- `guard-snapshot-incomplete`, `guard-snapshot-empty` et `guard-private-exposed` sont toujours évaluées, sans seuil ni désactivation possible. Les gardes à seuil sont inactives quand leur seuil est absent. Avec `base: null`, seules `guard-snapshot-incomplete`, `guard-snapshot-empty` et `guard-oversize` s'évaluent, et rien n'est lu.
 - Le consommateur décide : un diagnostic `error`, de garde ou de validation, interdit la publication automatique.
 
 ### 4.12 — Fixtures de conformité
 
-`fixtures/ingestion/`, dans ce dépôt, contient les fixtures de la couche 4 : corpus d'entrée, snapshots, validations, diffs, identifiants, chemins et vecteurs de hash, avec leurs résultats attendus. Elles sont normatives au même titre que ce texte : une implémentation est conforme si elle les passe toutes. Leur format et leurs règles de comparaison sont décrits dans `fixtures/ingestion/README.md`. Un consommateur les copie à une ref épinglée ; toute évolution du contrat met à jour les fixtures dans la même révision que la prose.
+`fixtures/ingestion/`, dans ce dépôt, contient les fixtures de la couche 4 : corpus d'entrée, snapshots, validations, diffs, gardes, identifiants, chemins et vecteurs de hash, avec leurs résultats attendus. Elles sont normatives au même titre que ce texte : une implémentation est conforme si elle les passe toutes. Leur format et leurs règles de comparaison sont décrits dans `fixtures/ingestion/README.md`. Un consommateur les copie à une ref épinglée ; toute évolution du contrat met à jour les fixtures dans la même révision que la prose.
 
 ### 4.13 — Exemples de providers *(non normatif)*
 
@@ -3003,6 +3011,7 @@ Un profil ne DOIT jamais : renommer un champ core, modifier le slug regex, suppr
 - **Le diff est prudent.** Sans algorithme de hash commun, une entrée est `modified`, jamais « inchangée ». Les déplacements s'infèrent par identité, puis par contenu, et seulement sur appariement unique.
 - **Minuscule simple pour les collisions, octets UTF-8 pour le tri** : les deux points où JavaScript et Swift divergent si l'on s'en remet à leurs bibliothèques (`toLowerCase()` applique le sigma final, les chaînes JavaScript se comparent en UTF-16).
 - **Le frontmatter se lit sous le schéma YAML 1.2 core.** Une date non guillemetée reste une chaîne, validée par un motif ISO 8601 et par le calendrier. Sans cette règle, `2024-02-30` passait avec le schéma par défaut de js-yaml (débordement silencieux vers le 1ᵉʳ mars) et échouait avec d'autres parseurs.
+- **La garde connaît la confidentialité** : signature `guardChangeSet(changeSet, base, target, { read, policy })` ; une série est privée si au moins un de ses fichiers index déclare `private: true` (booléen YAML, la chaîne `"true"` ne compte pas) ; l'exposition suppose une série présente dans `target`, au même chemin ou déplacée — une série privée supprimée n'est pas exposée. `private` reste une extension de site.
 - **Les octets lus se vérifient** : un outil DOIT comparer ce qu'il lit au hash de l'entrée (premier algorithme enregistré qu'elle porte). Un écart (`entry-hash-mismatch`) signe un fichier modifié entre le listing et la lecture : le snapshot n'est pas publiable, il faut un nouveau listing.
 - **Un fichier en conflit bloque la publication** : `state` admet `"conflict"` (copie conflictuelle Dropbox, versions concurrentes iCloud) ; l'entrée n'est jamais lue et produit `entry-conflict`.
 - **Un document mal formé est rejeté avant d'être interprété** : `snapshot-invalid` (format, champ requis absent ou mal typé) arrête la validation comme `snapshot-version-unsupported` ; `entry-invalid` écarte une entrée mal typée (taille, `kind`, `state`, hashes, algorithme inconnu) du reste de la validation.
