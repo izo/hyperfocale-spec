@@ -1747,10 +1747,10 @@ Un changeset décrit ce qui sépare un snapshot `base` (le dernier publié, ou `
 
 Les entrées y figurent telles qu'en snapshot, champs informatifs compris. L'algorithme est déterministe :
 
-0. Si `base` n'est pas `null` et que les deux snapshots ont le même `id`, le changeset est vide.
+0. Si `base` n'est pas `null` et que les deux snapshots **déclarent** le même `id`, le changeset est vide. La cohérence d'un `id` déclaré avec ses entrées relève de la validation (`snapshot-id-mismatch`, §4.10), pas du diff.
 1. **Chemins présents des deux côtés.** L'entrée est `modified` si `kind` ou `size` diffère. Sinon on cherche le premier algorithme commun (§4.4) : s'il n'y en a pas, l'entrée est `modified` et reçoit le diagnostic `hash-incomparable` (warning) — prudence : jamais « inchangé » par défaut ; s'il y en a un, l'entrée est `modified` si les deux valeurs diffèrent.
 2. Restent `A`, les chemins présents seulement dans `target`, et `D`, les chemins présents seulement dans `base`.
-3. **Déplacements par identité.** Une `identity` non vide portée par exactement une entrée de `D` et exactement une entrée de `A` apparie ces deux entrées en `moved`. `modified` vaut `true` si `size` diffère ou si le premier algorithme commun donne deux valeurs différentes ; sans algorithme commun, `modified` vaut `true` et `hash-incomparable` porte sur le chemin `to`. `kind` n'entre pas dans la comparaison : il dérive du chemin, qui change par définition.
+3. **Déplacements par identité.** Une `identity` non vide portée par exactement une entrée de `D` et exactement une entrée de `A` apparie ces deux entrées en `moved`. `modified` vaut `true` si `size` diffère ou si le premier algorithme commun donne deux valeurs différentes ; sans algorithme commun, `modified` vaut `true`. Comme à l'étape 1, `hash-incomparable` exige que `kind` **et** `size` soient égaux : il porte alors sur le chemin `to` ; un déplacement dont la taille ou le `kind` change est `modified: true` sans diagnostic. Hors de ce diagnostic, `kind` n'entre pas dans la comparaison : il dérive du chemin, qui change par définition.
 4. **Déplacements par contenu**, parmi les entrées restantes. Une entrée `d` de `D` et une entrée `a` de `A` sont **candidates** l'une de l'autre si elles ont la même `size` et un premier algorithme commun de même valeur. Si `d` n'a que `a` pour candidate et `a` n'a que `d`, l'appariement est unique : `moved`, avec `modified: false`. Toute entrée qui a au moins une candidate sans appariement unique reçoit `move-ambiguous` (info) sur son chemin, et reste en `added` ou `deleted`.
 5. Le reste de `A` est `added`, le reste de `D` est `deleted`.
 6. **Tri** : `added`, `modified` et `deleted` par `path`, `moved` par `to`, dans l'ordre canonique ; `diagnostics` par `path` puis `code`, au plus un par couple `(code, path)`.
@@ -1861,7 +1861,7 @@ Transitions :
 | `images-json-invalid` | warning | JSON illisible, racine qui n'est pas un objet, clé `images` absente ou non tableau (§1.5.1) | le `images.json` |
 | `attachment-not-found` | warning | entrée `attachments[]` dont le `file` est absent de `media/` (§1.9) | le fichier |
 | `embed-url-missing` | error | entrée `embeds[]` sans `url` (§1.11) | le fichier |
-| `hash-incomparable` | warning | diff : aucun algorithme commun (§4.7) | l'entrée |
+| `hash-incomparable` | warning | diff : `kind` et `size` égaux, aucun algorithme commun (§4.7) | l'entrée (le `to` d'un déplacement) |
 | `move-ambiguous` | info | diff : appariement non unique (§4.7) | l'entrée |
 
 La sévérité est celle d'un **outil d'ingestion**, qui décide d'une publication automatique : elle peut être plus stricte que la règle de rendu d'un adaptateur. Un adaptateur continue d'ignorer une entrée `embeds` sans `url` (§1.11) ; l'ingestion, elle, refuse de publier sans intervention.
@@ -2990,6 +2990,7 @@ Un profil ne DOIT jamais : renommer un champ core, modifier le slug regex, suppr
 - **Le diff est prudent.** Sans algorithme de hash commun, une entrée est `modified`, jamais « inchangée ». Les déplacements s'infèrent par identité, puis par contenu, et seulement sur appariement unique.
 - **Minuscule simple pour les collisions, octets UTF-8 pour le tri** : les deux points où JavaScript et Swift divergent si l'on s'en remet à leurs bibliothèques (`toLowerCase()` applique le sigma final, les chaînes JavaScript se comparent en UTF-16).
 - **Le frontmatter se lit sous le schéma YAML 1.2 core.** Une date non guillemetée reste une chaîne, validée par un motif ISO 8601 et par le calendrier. Sans cette règle, `2024-02-30` passait avec le schéma par défaut de js-yaml (débordement silencieux vers le 1ᵉʳ mars) et échouait avec d'autres parseurs.
+- **`hash-incomparable` exige `kind` et `size` égaux**, y compris pour un déplacement par identité : un move dont la taille change est `modified: true` sans diagnostic. L'étape 0 du diff compare les `id` **déclarés** ; leur cohérence relève de `snapshot-id-mismatch`.
 - **L'exclusion précède la validité** ; dans un snapshot, un chemin non NFC ou exclu est invalide.
 - **Un snapshot se vérifie, il ne se croit pas sur parole** : un `id` qui ne correspond pas aux entrées (`snapshot-id-mismatch`) et un `kind` qui contredit le chemin (`entry-kind-mismatch`) sont des erreurs. La validation continue dans les deux cas, et s'appuie sur la classification recalculée.
 - **`cover-not-found` consulte `images.json` en plus du snapshot**, par résolution d'un chemin relatif ou par suffixe d'une URL absolue — sans quoi un corpus dont les médias ne vivent que dans le manifeste produirait un avertissement par série.

@@ -137,7 +137,7 @@ Les diagnostics de la garde de publication (`guard-*`, §4.11) n'ont pas de fixt
 
 ## Diffs couverts
 
-`initial` (base `null`), `added`, `modified`, `deleted`, `moved-identity` (l'identité résout ce que le contenu laisserait ambigu), `moved-content`, `moved-and-modified`, `ambiguous`, `incomparable` (changement de provider, taille différente, move par identité sans algorithme commun), `hash-preference` (sha256 > dropbox > `x-*` alphabétique), `rename-series-folder` (N moves), `idempotence` (`diff(S, S)` vide, entrée `placeholder` comprise).
+`initial` (base `null`), `added`, `modified`, `deleted`, `moved-identity` (l'identité résout ce que le contenu laisserait ambigu), `moved-content`, `moved-and-modified`, `moved-identity-resized` (move par identité sans algorithme commun, taille ou `kind` changé : pas de `hash-incomparable`), `ambiguous`, `ambiguous-one-to-two` (1 supprimé : 2 ajoutés), `identity-duplicated` (identité portée par deux entrées : pas de move par identité), `incomparable` (changement de provider, taille différente, move par identité sans algorithme commun), `hash-preference` (sha256 > dropbox > `x-*` alphabétique), `rename-series-folder` (N moves), `idempotence` (`diff(S, S)` vide, entrée `placeholder` comprise).
 
 ## Provenance des valeurs attendues
 
