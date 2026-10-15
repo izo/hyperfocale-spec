@@ -60,8 +60,10 @@ La spec est organisée en quatre couches, précédées d'une spec générique :
 
 La couche 4 s'accompagne de **fixtures de conformité** cross-language, dans [`fixtures/ingestion/`](./fixtures/ingestion/) : corpus d'entrée et résultats attendus que toute implémentation — TypeScript, Swift ou autre — doit reproduire à l'identique.
 
-Au-delà de la série photo, l'**Annexe G** standardise **onze profils de contenu** réutilisant le même squelette : Série (`series`), Événement (`event`), Recette (`recipe`), Application (`app`), Livre (`book`), Lieu (`place`), Écran (`screen`), Portfolio (`portfolio`), Musique (`music`), Catalogue (`catalog`), Presse (`press`).
+Au-delà de la série photo, l'**Annexe G** standardise **douze profils de contenu** réutilisant le même squelette : Série (`series`), Événement (`event`), Recette (`recipe`), Application (`app`), Livre (`book`), Lieu (`place`), Écran (`screen`), Portfolio (`portfolio`), Musique (`music`), Catalogue (`catalog`), Presse (`press`), Projet (`project`).
+
+Le profil Projet décrit un **dossier de travail** géré dès la prise de vue : `media/` y porte aussi les **originaux** (RAW, sidecars `.xmp`), que les lecteurs ignorent et que la publication écarte. Un tel dossier ne se publie jamais tel quel, mais par export vers une série.
 
 ## Statut
 
-`v2.10-draft` — spécification active, source de vérité canonique. Voir le **Changelog** en fin de `spec-hyperfocale.md` pour l'historique des révisions.
+`v2.11-draft` — spécification active, source de vérité canonique. Voir le **Changelog** en fin de `spec-hyperfocale.md` pour l'historique des révisions.
