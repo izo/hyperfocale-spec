@@ -2,15 +2,15 @@
 
 > **Source de vérité canonique.** Ce document définit le format Hyperfocale — un standard de gestion de **séries photo** portable entre SSG (Astro, Next.js, Hugo, 11ty...), vaults Obsidian, et CMS headless (Strapi, Sanity, Payload...). Toute évolution du format doit être proposée d'abord ici, dans ce dépôt.
 
-**Version** : 2.10-draft
+**Version** : 2.11-draft
 **Statut** : spécification active — source de vérité canonique
-**Dernière révision** : 2026-09-29
+**Dernière révision** : 2026-10-15
 
 ### Implémentations de référence
 
 | Implémentation | Dépôt | Rôle | Conformité |
 |----------------|-------|------|------------|
-| Plugin Astro `@regrets/hyperfocale` | https://github.com/izo/hyperfocale-astro-plugins | Adaptateur Astro (couche 2) et outils d'ingestion (couche 4) | ✅ Conforme au contrat, Annexe G couverte, §1.11 implémentée, couche 4 implémentée (v0.19.0) |
+| Plugin Astro `@regrets/hyperfocale` | https://github.com/izo/hyperfocale-astro-plugins | Adaptateur Astro (couche 2) et outils d'ingestion (couche 4) | ✅ Conforme v2.10 : contrat, Annexe G jusqu'à G.10, §1.11, couche 4 (v0.19.0) — ⚠️ originaux (§1.9) et profil `project` (G.12) de la v2.11 non implémentés |
 | Site `laurenceguenoun.com` | https://github.com/izo/laurenceguenoun | Consommateur en **couche data seule** (Astro) | ⚠️ Bloc `videos[]` local à migrer vers `embeds:` — §1.11 est implémentée par le plugin depuis la v0.17.0 |
 | Site `mathieu-drouet.com` | https://github.com/izo/mathieu-drouet.com | Consommateur grandeur nature (Astro) | ⚠️ Migration v2.1 prévue |
 | Exporter Lightroom | https://github.com/izo/hyperfocale-exporter-app | Source de contenu : LR → format Hyperfocale | ✅ Conforme |
@@ -61,7 +61,7 @@ Un contenu Hyperfocale est toujours un **dossier** avec cette structure stricte 
 |---------|------|-----------|
 | `<slug>/` | Identifiant de la série | `^[a-z0-9]+(-[a-z0-9]+)*$` |
 | `index.md` | Toutes les métadonnées + texte | Obligatoire |
-| `media/` | Médias de la série (images + documents joints) | Obligatoire, plat (pas de sous-dossiers) |
+| `media/` | Médias de la série (images, documents joints, originaux) | Obligatoire, plat (pas de sous-dossiers) |
 
 ### Le fichier `index.md`
 
@@ -125,7 +125,8 @@ Ces règles s'appliquent quel que soit l'adaptateur ou la plateforme :
 | **Tri des séries** | Date décroissante dans les listings |
 | **Brouillons** | `draft: true` → exclu des listings en production |
 | **Formats images** | `.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`, `.tif`, `.tiff` — seuls formats alimentant la galerie |
-| **Documents joints** | Tout autre fichier de `media/` est un document joint (§1.9), listé après la galerie |
+| **Originaux** | RAW et sidecars (`.raf`, `.cr3`, `.nef`, `.dng`, `.xmp`… — liste fermée, §1.9) sont des originaux : ignorés par les lecteurs — ni galerie, ni documents joints, ni couverture |
+| **Documents joints** | Tout autre fichier de `media/`, ni image ni original, est un document joint (§1.9), listé après la galerie |
 | **Pas de récursion** | `media/` est plat, pas de sous-dossiers |
 | **Passthrough** | Les champs inconnus du frontmatter ne provoquent pas d'erreur |
 
@@ -141,8 +142,8 @@ Toute implémentation (adaptateur, script, outil) qui lit du contenu Hyperfocale
 
 1. Parser le frontmatter YAML de `index.md`
 2. Exiger `title` et `date`, ignorer les champs inconnus
-3. Scanner `media/` et trier les fichiers alphabétiquement — les images alimentent la galerie, les autres fichiers sont des documents joints (§1.9)
-4. Utiliser `cover` ou la première image comme couverture (les documents joints ne sont jamais candidats)
+3. Scanner `media/` et trier les fichiers alphabétiquement — les images alimentent la galerie, les originaux sont ignorés, les autres fichiers sont des documents joints (§1.9)
+4. Utiliser `cover` ou la première image comme couverture (ni les documents joints ni les originaux ne sont jamais candidats)
 5. Exclure les entrées `draft: true` des listings publics
 6. Rendre le body Markdown
 7. Ne jamais échouer sur un fichier de type inconnu dans `media/`
@@ -156,7 +157,7 @@ Section informative — un audit de conformité des implémentations connues, mi
 
 ### Plugin Astro `@regrets/hyperfocale` (v0.19.0)
 
-**Conformité** : ✅ Conforme sur le contrat d'adaptateur (§2.0), obligations v2.6 comprises, aligné sur les profils de l'Annexe G depuis la v0.12.0, et **§1.11 (contenus embarqués) implémentée depuis la v0.17.0** — plus aucune obligation ouverte. **La couche 4 (ingestion) est implémentée depuis la v0.19.0** : les 109 fixtures cross-language de la spec (`main@18f48de`) passent toutes.
+**Conformité** : ✅ Conforme sur le contrat d'adaptateur (§2.0), obligations v2.6 comprises, aligné sur les profils de l'Annexe G depuis la v0.12.0, et **§1.11 (contenus embarqués) implémentée depuis la v0.17.0** — plus aucune obligation ouverte. **La couche 4 (ingestion) est implémentée depuis la v0.19.0** : les 109 fixtures cross-language de la spec (`main@18f48de`) passent toutes. **La v2.11 rouvre deux obligations** : les originaux (§1.9), que le plugin classe encore en documents joints `file`, et leur exclusion par la garde de publication (§4.11). D'ici là, un dossier de travail ne doit pas lui être donné à lire ni à publier (G.12).
 
 > Le paquet s'appelait `@izo/hyperfocale` jusqu'au 2026-08-04. Le scope `@izo` ne correspondait à aucun compte npm et aucune version n'avait jamais été publiée sous ce nom : le renommage n'a rien cassé.
 
@@ -173,7 +174,9 @@ Section informative — un audit de conformité des implémentations connues, mi
 | Manifeste d'images (§1.5.1) | ✅ | Implémenté en **v0.10.0** : priorité `images:` > `images.json` > `media/`, formes courte et longue, résolution des trois formes d'URL, clé `files`. Le manifeste est lu en `?raw` puis parsé dans un `try` — un import JSON ferait échouer le bundler au parsing, là où §1.5.1 impose un repli sur `media/` sans échec de build |
 | Page d'index de section (§1.10) | ✅ | Implémentée en **v0.9.0** : champ `type`, exclusion des listings, `date` non requise pour une section. `isSection()` ne teste que `type` — jamais l'absence de date (« discriminant explicite »). Helpers `isSection()` / `getSections()` exposés ; la route de section reste au site consommateur (§1.10 la donne en PEUT) |
 | Séries imbriquées (§1.8) | ✅ | Implémentées en **v0.12.0** : `getSubSeries()` et line-up rendu sur la page du conteneur, tri par `lineup_order` puis date décroissante. Le helper ne retient que les entrées situées exactement un segment plus bas — une série rangée plus profond (§1.2) n'est pas une sous-série |
-| Profils de contenu (Annexe G) | ✅ | Les **11 profils** de l'annexe sont couverts depuis la **v0.14.0** ; leurs prefix restent localisés en français, ce que §2.0.1 autorise |
+| Profils de contenu (Annexe G) | ✅ | Les **11 profils** de l'annexe v2.10 sont couverts depuis la **v0.14.0** ; leurs prefix restent localisés en français, ce que §2.0.1 autorise. Le profil `project` (G.12, v2.11) ne l'est pas encore — couverture partielle, pas un écart : §2.0.1 donne les profils en COULD |
+| Originaux (§1.9, v2.11) | ❌ | Non implémentés : un RAW ou un `.xmp` de `media/` tombe en document joint de classe `file` et serait proposé en téléchargement |
+| Garde : originaux (§4.11, v2.11) | ❌ | Non implémentée : ni projection publiable, ni `guard-originals-excluded`. Les fixtures `publishable/` et `guard/originals.json` sont à rejouer |
 | Ingestion (couche 4) | ✅ | Implémentée en **v0.19.0**, en quatre sous-chemins **additifs** : `/ingest` (contrat, agnostique du runtime), `/ingest/fs`, `/ingest/dropbox`, `/ingest/webdav`, plus les commandes `validate`, `snapshot` et `diff` du CLI. Les 109 fixtures de `fixtures/ingestion/` (`main@18f48de`) sont copiées à une ref épinglée et rejouées en totalité. L'entrée racine n'atteint aucun code d'ingestion : rien ne change pour un site qui ne l'importe pas |
 | Contenus embarqués (§1.11) | ✅ | Implémentés en **v0.17.0** : champ `embeds`, `getSeriesEmbeds()` (résolution dans l'ordre du tableau, `playable` = plateforme reconnue + `id` présent), `<SeriesEmbeds>` rendu **en façade** (le poster s'affiche, l'iframe n'arrive qu'au clic ; sans JavaScript la façade reste un lien fonctionnel), liste de plateformes ouverte (valeur inconnue → repli en lien), posters exclus du scan de galerie. Vocabulaires (`EMBED_PLATFORMS`, `ATTACHMENT_KINDS`) exportés à la racine en v0.17.1 |
 | Passthrough racine (champs inconnus) | ✅ | `z.looseObject()` racine — les extensions site-spécifiques ne sont jamais rejetées (v0.4.0) |
@@ -345,6 +348,7 @@ Chaque série est **autonome** : toutes ses données (métadonnées + médias) v
 | `index.md` | Obligatoire. Contient le frontmatter YAML et le body Markdown. Encodage UTF-8. |
 | `media/` | Obligatoire (peut être vide pour une série en brouillon). Plat — pas de sous-dossiers. |
 | Images | Formats alimentant la galerie : `.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`, `.tif`, `.tiff`. Pas de récursion dans `media/`. |
+| Originaux | RAW et sidecars de développement (liste fermée, §1.9) : acceptés dans `media/`, ignorés par les lecteurs. |
 | Documents joints | Tout autre type de fichier est accepté dans `media/` (PDF, vidéo, audio, archives…) et traité en document joint — voir §1.9. |
 | Nommage des images | Libre, mais recommandé : `01.jpg`, `02.jpg`... (padding 2+ chiffres pour l'ordre). |
 
@@ -714,7 +718,7 @@ Les adaptateurs qui ne supportent pas (encore) les séries imbriquées DOIVENT a
 
 ### 1.9 — Documents joints (tous types de médias) *(introduit v2.5)*
 
-Une série n'est pas limitée aux images : `media/` accepte **tous les types de documents** (PDF, vidéo, audio, archives, tracés GPX…). Tout fichier de `media/` qui n'est pas une image au sens de §1.2 est un **document joint** (*attachment*).
+Une série n'est pas limitée aux images : `media/` accepte **tous les types de documents** (PDF, vidéo, audio, archives, tracés GPX…). Tout fichier de `media/` qui n'est ni une image au sens de §1.2, ni un original (voir *Originaux* ci-dessous), est un **document joint** (*attachment*).
 
 #### Classes de médias
 
@@ -726,7 +730,10 @@ La classification se fait par extension de fichier, en minuscules. Un adaptateur
 | `video` | `.mp4`, `.webm`, `.mov`, `.m4v` | Lecteur intégré (`<video>`) dans ou après la galerie |
 | `audio` | `.mp3`, `.m4a`, `.ogg`, `.wav`, `.flac` | Lecteur intégré (`<audio>`) après la galerie |
 | `document` | `.pdf`, `.epub`, `.txt`, `.md` (hors `index.md`) | Lien de téléchargement / visionneuse |
+| `original` | RAW et sidecars — liste fermée, voir *Originaux* | **Aucun** : ni galerie, ni document joint |
 | `file` | Tout le reste (`.zip`, `.gpx`, `.svg`…) | Lien de téléchargement |
+
+`original` n'est pas une classe de document joint : c'est la troisième catégorie de fichiers de `media/`, à côté des images et des documents joints. Elle n'apparaît ni dans `attachments:`, ni dans `files:`, ni dans l'interface `Attachment` (§3.2).
 
 #### Règles
 
@@ -738,6 +745,29 @@ La classification se fait par extension de fichier, en minuscules. Un adaptateur
 | Lecteurs | Un adaptateur PEUT rendre `video` / `audio` en lecteurs intégrés ; à défaut, il les liste en pièces jointes. |
 | Robustesse | Un lecteur DOIT ignorer sans erreur tout fichier de type inconnu dans `media/`. |
 | `index.md` | N'est jamais un document joint (c'est le fichier de métadonnées de la série). |
+
+#### Originaux *(introduit v2.11)*
+
+Un dossier de travail — un projet photo géré à la source dès la prise de vue (G.12) — porte dans `media/` les fichiers sortis du boîtier et ceux des logiciels de développement : les RAW, et les fichiers annexes (*sidecars*) qui décrivent leurs réglages. Ce sont des **originaux**. Ils ne sont pas faits pour être montrés : un RAW ne s'affiche pas dans un navigateur, un `.xmp` n'est lisible que par un logiciel, et ni l'un ni l'autre n'a vocation à sortir du dossier.
+
+| Catégorie | Extensions (liste fermée, insensible à la casse) |
+|-----------|--------------------------------------------------|
+| RAW | `.raf` `.cr2` `.cr3` `.nef` `.nrw` `.arw` `.srf` `.sr2` `.orf` `.rw2` `.pef` `.dng` `.3fr` `.iiq` `.x3f` `.srw` `.rwl` `.erf` `.mos` `.mef` `.kdc` `.dcr` |
+| Sidecars | `.xmp` `.pp3` `.dop` `.cos` |
+
+| Règle | Description |
+|-------|-------------|
+| Ignorés | Un lecteur DOIT ignorer les originaux : ils n'alimentent ni la galerie, ni la lightbox, ni la liste des documents joints. |
+| Couverture | Un original n'est jamais candidat au fallback de couverture. `cover` DOIT désigner une image : un `cover` vers un original est une erreur (`cover-not-image`, §4.10). |
+| `attachments:` | Une entrée `attachments:` qui désigne un original ne désigne pas un document joint : le lint DEVRAIT la signaler (`attachment-not-found`, §4.10) et le rendu l'ignore. |
+| Extension | La partie du nom qui suit son **dernier** point, comparée en minuscules (§4.1) : `DSCF0001.RAF` est un original, `DSCF0001.raf.jpg` une image, un fichier nommé `raf` un document joint. |
+| Liste fermée | La liste est fermée et versionnée avec la spec, sans renvoi à une source externe : deux implémentations doivent classer un fichier de la même façon. Une extension RAW absente de la liste reste un document joint de classe `file` ; elle s'ajoute par PR contre cette spec. `.dng` est toujours un original, même issu d'une conversion. |
+| À plat | Les originaux vivent **à plat** dans `media/`, à côté de leurs images. Un sous-dossier `media/originals/` casserait la règle « pas de récursion » (§1.2) ; il n'est pas une variante admise. |
+| Ingestion | Un outil d'ingestion retire les originaux du snapshot publié et en rapporte le nombre et le poids (§4.11). |
+
+##### Compatibilité
+
+Un lecteur antérieur à v2.11 classe les originaux en documents joints de classe `file` et les **propose en téléchargement** après la galerie. Aucun contenu publié n'est cassé — une série publiée n'a aucune raison de porter un RAW — mais un dossier de travail lu par un tel lecteur laisse fuir ses originaux. La règle qui en découle ne dépend d'aucune version d'adaptateur : **un dossier de travail ne se publie jamais directement**, il se publie par export (G.12). La garde de publication v2.11 (§4.11) protège en plus contre l'erreur, mais seulement quand l'outil d'ingestion la connaît. La prise en charge des originaux est requise pour la conformité v2.11 (§2.0).
 
 #### Métadonnées des documents joints (optionnel)
 
@@ -766,7 +796,7 @@ files:
     size: 2400000
 ```
 
-`url` est requis ; `title`, `kind` (une classe du tableau ci-dessus) et `size` (octets) sont optionnels. Mêmes règles d'exclusivité que §1.5 : si `files` est présent, il a priorité sur les fichiers non-image de `media/`.
+`url` est requis ; `title`, `kind` (une classe du tableau ci-dessus) et `size` (octets) sont optionnels. Mêmes règles d'exclusivité que §1.5 : si `files` est présent, il a priorité sur les documents joints de `media/`.
 
 #### Compatibilité
 
@@ -932,7 +962,8 @@ Tout adaptateur Hyperfocale **DOIT** :
 | Ignorer les champs inconnus | Ne jamais échouer sur un champ frontmatter non reconnu |
 | Transmettre les extensions | Rendre accessible `iptc.*` et tout champ supplémentaire aux templates/composants |
 | Scanner `media/` | Mode local : glob les images, trier alphabétiquement |
-| Exposer les documents joints | Lister les fichiers non-image de `media/` (tri alphabétique) et les rendre accessibles aux templates (§1.9) — *conformité v2.5* |
+| Exposer les documents joints | Lister les documents joints de `media/` — ni images ni originaux — (tri alphabétique) et les rendre accessibles aux templates (§1.9) — *conformité v2.5* |
+| Ignorer les originaux | Ne jamais placer un original (§1.9 — RAW, sidecars) dans la galerie, la lightbox, les documents joints ni le fallback de couverture — *conformité v2.11* |
 | Supporter le mode distant | Si `images` est présent, l'utiliser à la place de `media/` ; si `files` est présent, l'utiliser pour les pièces jointes |
 | Distinguer les sections | Ne pas valider comme série un `index.md` portant `type: section` ; l'exclure des listings de séries (§1.10) — *conformité v2.6* |
 | Supporter le manifeste d'images | Si un `images.json` accompagne `index.md`, l'utiliser à la place de `media/` en respectant l'ordre du tableau (§1.5.1) — *conformité v2.6* |
@@ -976,7 +1007,7 @@ Un preset NE DOIT PAS :
 - Supprimer les obligations du contrat d'adaptateur
 - Renommer les champs core (`title`, `date`, `description`, `cover`, etc.)
 
-Dix presets non-photo sont standardisés en **Annexe G — Profils de contenu** (`event`, `recipe`, `app`, `book`, `place`, `screen`, `portfolio`, `music`, `catalog`, `press`). L'ajout de nouveaux profils se discute par PR contre cette spec, en étendant cette annexe.
+Onze presets non-photo sont standardisés en **Annexe G — Profils de contenu** (`event`, `recipe`, `app`, `book`, `place`, `screen`, `portfolio`, `music`, `catalog`, `press`, `project`). L'ajout de nouveaux profils se discute par PR contre cette spec, en étendant cette annexe.
 
 ### 2.1 — Adaptateur Astro
 
@@ -1515,7 +1546,7 @@ interface Series {
   body: string;           // Markdown brut ou HTML rendu, selon la plateforme
   iptc: IPTCMetadata;
   images: Image[];        // toutes les images de la série
-  attachments: Attachment[]; // documents joints non-image (§1.9)
+  attachments: Attachment[]; // documents joints : ni images ni originaux (§1.9)
 }
 
 /** Image — mode local ou distant */
@@ -1659,6 +1690,8 @@ Chaque entrée porte un `kind`, déterminé par son seul chemin, par la premièr
 | 4 | tout le reste | `other` |
 
 L'ordre compte : `media/images.json` est `derived`, `media/index.md` est `media`, `media/raw/01.tif` est `other` (son parent immédiat est `raw`), `Media/01.jpg` est `other`. Le `kind` d'une entrée DOIT être égal à la classification de son chemin ; un écart produit `entry-kind-mismatch`, et les règles de validation (§4.10) s'appuient toujours sur la classification recalculée.
+
+Un original (§1.9) reste une entrée `media` : le snapshot d'une source décrit tout ce qu'elle contient. C'est la publication qui l'écarte (§4.11, *Originaux et projection publiable*).
 
 ### 4.4 — Hash
 
@@ -1853,7 +1886,7 @@ Transitions — la liste est **exhaustive** : toute autre transition est interdi
 { "code": "slug-invalid", "severity": "error", "path": "archives/Foo_Bar", "message": "…", "rule": "§1.2" }
 ```
 
-`severity` vaut `error`, `warning` ou `info`. `message` est libre ; `rule`, facultatif, renvoie à la règle de la spec. Deux implémentations sont conformes si elles produisent les mêmes triplets **`code` + `severity` + `path`** — jamais le message. Une liste de diagnostics est triée par `path` (ordre canonique) puis par `code`, et ne contient jamais deux fois le même couple `(code, path)`. Un diagnostic qui porte sur le snapshot entier a pour `path` la chaîne vide. Un consommateur qui ajoute ses propres contrôles les code avec le préfixe `x-`.
+`severity` vaut `error`, `warning` ou `info`. `message` est libre ; `rule`, facultatif, renvoie à la règle de la spec. Deux implémentations sont conformes si elles produisent les mêmes triplets **`code` + `severity` + `path`** — jamais le message. Une liste de diagnostics est triée par `path` (ordre canonique) puis par `code`, et ne contient jamais deux fois le même couple `(code, path)`. Un diagnostic qui porte sur le snapshot entier a pour `path` la chaîne vide. Un consommateur qui ajoute ses propres contrôles les code avec le préfixe `x-`. Un code PEUT définir des champs supplémentaires, normatifs pour lui seul : ils se comparent alors avec le triplet (`count` et `bytes` de `guard-originals-excluded`, §4.11).
 
 | Code | Sévérité | Règle | `path` |
 |---|---|---|---|
@@ -1886,7 +1919,7 @@ Transitions — la liste est **exhaustive** : toute autre transition est interdi
 | `cover-not-image` | error | `cover` relatif qui désigne un fichier non image (§1.9) | le fichier |
 | `images-conflict` | error | `images:` et `images.json` dans la même série (§1.5.1) | le fichier |
 | `images-json-invalid` | warning | JSON illisible, racine qui n'est pas un objet, clé `images` absente ou non tableau (§1.5.1) | le `images.json` |
-| `attachment-not-found` | warning | entrée `attachments[]` dont le `file` est absent de `media/` (§1.9) | le fichier |
+| `attachment-not-found` | warning | entrée `attachments[]` dont le `file` est absent de `media/` ou désigne un original (§1.9) | le fichier |
 | `embed-url-missing` | error | entrée `embeds[]` sans `url` (§1.11) | le fichier |
 | `hash-incomparable` | warning | diff : `kind` et `size` égaux, aucun algorithme commun (§4.7) | l'entrée (le `to` d'un déplacement) |
 | `move-ambiguous` | info | diff : appariement non unique (§4.7) | l'entrée |
@@ -1912,7 +1945,7 @@ La sévérité est celle d'un **outil d'ingestion**, qui décide d'une publicati
 9. **Références relatives.** Une référence est relative si elle n'est pas vide, ne commence pas par `/` et ne porte pas de schéma (`https:`, `data:`…). Elle se résout depuis le dossier du fichier index : les segments vides et `.` sont ignorés, `..` remonte d'un niveau ; une résolution qui sort de la racine du corpus n'aboutit pas.
 10. **Couverture.** Seul un `cover` relatif est vérifié. `cover-not-image` dépend de la seule extension, que le fichier existe ou non. `cover-not-found` est produit si le chemin résolu n'est pas une entrée du snapshot **et** qu'aucune entrée du manifeste `images.json` de la série (chaîne, ou `url` d'un objet) ne lui correspond : une entrée relative correspond si elle se résout au même chemin ; une entrée absolue, si elle se termine par `/` suivi du chemin résolu (`/content/<chemin résolu>`, `https://cdn.example.com/<chemin résolu>`).
 11. **Manifeste.** `images-conflict` : le frontmatter porte `images` et le dossier contient un `images.json`. `images-json-invalid` s'évalue pour tout `images.json` des racines.
-12. **Documents joints et embeds.** Chaque entrée de `attachments` dont `file` manque, n'est pas relatif, ou ne se résout pas vers une entrée existante située directement dans `<dossier>/media/` produit `attachment-not-found`. Chaque entrée de `embeds` qui n'est pas un objet portant une `url` chaîne non vide produit `embed-url-missing`.
+12. **Documents joints et embeds.** Chaque entrée de `attachments` dont `file` manque, n'est pas relatif, ou ne se résout pas vers une entrée existante située directement dans `<dossier>/media/`, ou se résout vers un original (extension de la liste fermée de §1.9), produit `attachment-not-found`. Chaque entrée de `embeds` qui n'est pas un objet portant une `url` chaîne non vide produit `embed-url-missing`.
 13. **Type d'un dossier porteur.** Il se lit dans `index.md`, sinon dans `index.mdx`, sinon dans le premier `index.<lang>.md` de l'ordre canonique. Un fichier illisible, aux octets divergents (§4.4), `placeholder` ou `conflict` vaut `series` : la nature de section ne se devine jamais (§1.10).
 14. **Structure.** `slug-invalid` porte sur le dernier segment de chaque dossier porteur, sauf le dossier qui est lui-même la racine de validation : il n'a pas de slug, et un `index.md` à la racine du corpus est licite. `nesting-too-deep` : une série qui compte au moins deux dossiers porteurs de type série parmi ses ancêtres situés dans sa racine (le dossier racine compris) — un diagnostic par série fautive. `media-nested` : pour chaque entrée d'une racine, le dossier situé juste sous le segment `media` ancêtre le moins profond, parent immédiat exclu. `media-orphan` : tout dossier nommé `media` dont le parent ne porte aucun fichier index. Pour ces deux règles, seuls comptent les segments situés sous la racine.
 
@@ -1924,7 +1957,7 @@ La garde est un mécanisme générique ; ses seuils appartiennent au consommateu
 guardChangeSet(changeSet, base, target, { read, policy }) → diagnostics
 ```
 
-`changeSet` est le diff de `base` (ou `null`) vers `target` (§4.7). `read(côté, chemin)` rend les octets du fichier `chemin` dans `base` (`côté = "base"`) ou dans `target` (`côté = "target"`) : la garde lit les fichiers index pour connaître la confidentialité des séries, et vérifie les octets lus contre le hash de l'entrée (§4.4). Elle n'émet pas `entry-hash-mismatch` — ce diagnostic appartient à la validation (§4.10) — mais traite un écart comme un fichier illisible (voir *Série privée*). `policy` porte les seuils, tous facultatifs : `maxDeletedSeries` (entier), `maxDeletedMediaRatio` (nombre entre 0 et 1), `maxMovedSeries` (entier), `maxFileBytes` (objet `{ "<kind>": entier }`). Les diagnostics suivent les conventions de §4.10.
+`target` est le snapshot de la source ; `changeSet` est le diff de `base` (ou `null`) vers `publishable(target)` (§4.7), sa projection publiable — égale à `target` quand il ne porte aucun original (voir *Originaux et projection publiable*). `read(côté, chemin)` rend les octets du fichier `chemin` dans `base` (`côté = "base"`) ou dans `target` (`côté = "target"`) : la garde lit les fichiers index pour connaître la confidentialité des séries, et vérifie les octets lus contre le hash de l'entrée (§4.4). Elle n'émet pas `entry-hash-mismatch` — ce diagnostic appartient à la validation (§4.10) — mais traite un écart comme un fichier illisible (voir *Série privée*). `policy` porte les seuils, tous facultatifs : `maxDeletedSeries` (entier), `maxDeletedMediaRatio` (nombre entre 0 et 1), `maxMovedSeries` (entier), `maxFileBytes` (objet `{ "<kind>": entier }`). Les diagnostics suivent les conventions de §4.10.
 
 | Code | Sévérité | Déclenchement | `path` |
 |---|---|---|---|
@@ -1933,18 +1966,37 @@ guardChangeSet(changeSet, base, target, { read, policy }) → diagnostics
 | `guard-mass-deletion` | error | séries supprimées > `maxDeletedSeries`, ou médias supprimés > `maxDeletedMediaRatio` × médias de `base` | `""` |
 | `guard-mass-move` | warning | séries déplacées > `maxMovedSeries` | `""` |
 | `guard-private-exposed` | error | une série privée dans `base`, présente dans `target`, n'y est plus privée | le dossier de la série dans `target` |
-| `guard-oversize` | error | entrée de `target` dont la taille dépasse `maxFileBytes[kind]` | l'entrée |
+| `guard-oversize` | error | entrée de `publishable(target)` dont la taille dépasse `maxFileBytes[kind]` | l'entrée |
+| `guard-originals-excluded` | info | `target` porte au moins une entrée originale, retirée du snapshot publié. Le diagnostic porte `count`, le nombre d'entrées originales, et `bytes`, la somme de leurs `size` (entiers) | `""` |
 
 - **Série** : dossier porteur d'un fichier index (§4.10). **Série supprimée** : dossier porteur dans `base`, qui ne l'est plus dans `target`, et dont aucun fichier index n'est la source (`from`) d'un `moved`. **Série déplacée** : dossier distinct parmi les `from` des `moved` qui désignent un fichier index. **Médias supprimés** : entrées `media` de `deleted`, rapportées au nombre d'entrées `media` de `base`. Une série déplacée n'est jamais comptée comme supprimée.
 - **Série privée** : au moins un de ses fichiers index, à l'état `materialized`, déclare `private: true` — un **booléen** YAML (schéma core : `true`, `True`, `TRUE`). La chaîne `"true"` ne rend pas une série privée. Le frontmatter se lit selon les règles 4 à 7 de §4.10. Un fichier index est **illisible** s'il n'est pas à l'état `materialized` (`placeholder`, `conflict`), si ses octets divergent de son hash, ou si son frontmatter ne se lit pas (UTF-8 invalide, bloc absent, YAML illisible ou qui n'est pas un mapping). La garde est **fail-closed côté `base`** : un fichier index illisible y rend la série privée par prudence. Côté `target`, un fichier illisible ne déclare rien : une série privée dans `base` dont l'homologue est illisible est donc exposée. La garde lit tous les fichiers index de chaque série de `base`, puis ceux de la série homologue dans `target` quand la série de `base` est privée.
 - **Exposition** : une série privée dans `base` est présente dans `target` au même chemin si le dossier y porte encore un fichier index, sinon à la destination (dossier du `to`) du premier de ses fichiers index déplacés, dans l'ordre canonique. Si elle n'y est plus privée, `guard-private-exposed` porte sur ce dossier de `target`. La **suppression** d'une série privée n'est pas une exposition.
 - `private` n'est pas un champ du format : c'est une extension de site (§0.5), la seule marque de confidentialité que connaissent les consommateurs actuels. La garde s'applique aux corpus qui l'emploient ; un corpus qui ne l'emploie pas ne la déclenche jamais.
-- `guard-snapshot-incomplete`, `guard-snapshot-empty` et `guard-private-exposed` sont toujours évaluées, sans seuil ni désactivation possible. Les gardes à seuil sont inactives quand leur seuil est absent. Avec `base: null`, seules `guard-snapshot-incomplete`, `guard-snapshot-empty` et `guard-oversize` s'évaluent, et rien n'est lu.
+- `guard-snapshot-incomplete`, `guard-snapshot-empty`, `guard-private-exposed` et `guard-originals-excluded` sont toujours évaluées, sans seuil ni désactivation possible. Les gardes à seuil sont inactives quand leur seuil est absent. Avec `base: null`, seules `guard-snapshot-incomplete`, `guard-snapshot-empty`, `guard-oversize` et `guard-originals-excluded` s'évaluent, et rien n'est lu.
 - Le consommateur décide : un diagnostic `error`, de garde ou de validation, interdit la publication automatique.
+
+#### Originaux et projection publiable *(introduit v2.11)*
+
+Une **entrée originale** est une entrée dont le `kind` est `media` — classification recalculée de son chemin (§4.3) — et dont l'extension (§4.1) appartient à la liste fermée des originaux (§1.9). Une entrée `other` n'est jamais originale, même avec une extension RAW : la catégorie n'existe que dans `media/`.
+
+Le snapshot publié ne contient jamais d'original :
+
+```
+publishable(snapshot) → snapshot
+```
+
+La **projection publiable** reprend le snapshot à l'identique — `format`, `version`, `createdAt`, `complete`, `source`, champs inconnus — sans ses entrées originales, avec un `id` recalculé (§4.6) sur les entrées restantes. Un snapshot sans original est sa propre projection, au même `id`.
+
+- Ce qui se publie est `publishable(target)`. Le diff que reçoit la garde, et que la publication applique, va de `base` à `publishable(target)`. La validation (§4.10), elle, porte sur `target` tel quel : elle signale un `cover` ou une entrée `attachments:` qui désigne un original.
+- `guard-oversize` s'évalue sur la projection : un RAW de 80 Mo ne bloque pas une publication dont il est exclu.
+- `guard-originals-excluded` est de sévérité `info` : l'exclusion est le comportement attendu, le diagnostic en rapporte le poids — un dossier de travail confié par erreur à l'ingestion se voit à ses `bytes`.
+- Un snapshot publié par un outil antérieur à v2.11 peut contenir des originaux. Le premier diff vers une projection les range en `deleted` ; ils comptent dans `maxDeletedMediaRatio`, et c'est voulu : leur retrait est une suppression réelle de la production.
+- Cette exclusion est un filet, pas un mode de publication : un dossier de travail se publie par export (G.12), entre autres parce que la garde ne retire pas le bloc `project:` de son `index.md`.
 
 ### 4.12 — Fixtures de conformité
 
-`fixtures/ingestion/`, dans ce dépôt, contient les fixtures de la couche 4 : corpus d'entrée, snapshots, validations, diffs, gardes, identifiants, chemins et vecteurs de hash, avec leurs résultats attendus. Elles sont normatives au même titre que ce texte : une implémentation est conforme si elle les passe toutes, ce qui suppose de savoir calculer `sha256` **et** `dropbox`. Leur format et leurs règles de comparaison sont décrits dans `fixtures/ingestion/README.md`. Un consommateur les copie à une ref épinglée ; toute évolution du contrat met à jour les fixtures dans la même révision que la prose.
+`fixtures/ingestion/`, dans ce dépôt, contient les fixtures de la couche 4 : corpus d'entrée, snapshots, projections publiables, validations, diffs, gardes, identifiants, chemins et vecteurs de hash, avec leurs résultats attendus. Elles sont normatives au même titre que ce texte : une implémentation est conforme si elle les passe toutes, ce qui suppose de savoir calculer `sha256` **et** `dropbox`. Leur format et leurs règles de comparaison sont décrits dans `fixtures/ingestion/README.md`. Un consommateur les copie à une ref épinglée ; toute évolution du contrat met à jour les fixtures dans la même révision que la prose.
 
 ### 4.13 — Exemples de providers *(non normatif)*
 
@@ -2007,9 +2059,9 @@ Vérifications :
 - [ ] `slug` respecte le pattern `^[a-z0-9]+(-[a-z0-9]+)*$`
 - [ ] `cover` pointe vers un fichier existant dans `media/`
 - [ ] `media/` ne contient pas de sous-dossiers
-- [ ] Chaque fichier de `media/` est classé (image ou document joint, §1.9)
-- [ ] `cover` pointe vers une image (jamais un document joint)
-- [ ] Chaque entrée `attachments:` du frontmatter référence un fichier existant de `media/`
+- [ ] Chaque fichier de `media/` est classé (image, original ou document joint, §1.9)
+- [ ] `cover` pointe vers une image (jamais un document joint ni un original)
+- [ ] Chaque entrée `attachments:` du frontmatter référence un fichier existant de `media/` qui n'est pas un original
 - [ ] `iptc.country_code` est un code ISO 3166-1 valide (si présent)
 - [ ] `iptc.gps.lat` est entre -90 et 90, `lng` entre -180 et 180 (si présent)
 - [ ] Pas de mélange mode local / mode distant / manifeste dans la même série
@@ -2142,7 +2194,7 @@ Ces règles garantissent qu'un profil reste un contenu Hyperfocale valide au sen
 | **Invariants §0 respectés** | Body avant galerie, tri alphabétique de `media/`, `cover`/fallback, `draft`, passthrough des champs inconnus s'appliquent identiquement. |
 | **Rétro-compatibilité** | Un adaptateur qui ne connaît pas un profil DOIT lire le contenu comme un contenu Hyperfocale standard (core + media + body) et ignorer le bloc d'extension sans erreur (passthrough §1.3). Aucun profil ne casse un lecteur existant. |
 | **Alignement externe** | Chaque profil DEVRAIT s'aligner sur un vocabulaire externe reconnu (schema.org), comme la photo s'aligne sur IPTC, pour l'interop et le balisage SEO. |
-| **Sens de `media/`** | `media/` garde son rôle : un dossier plat de médias liés au contenu (affiches, photos du plat, captures d'écran...). |
+| **Sens de `media/`** | `media/` garde son rôle : un dossier plat de médias liés au contenu (affiches, photos du plat, captures d'écran, originaux d'un dossier de travail...). |
 
 #### Vue d'ensemble
 
@@ -2159,6 +2211,7 @@ Ces règles garantissent qu'un profil reste un contenu Hyperfocale valide au sen
 | Musique | une sortie | `music` | `/music` | optionnelle (= sortie) | `music:` | schema.org/MusicAlbum |
 | Catalogue | un produit | `catalog` | `/catalog` | optionnelle | `catalog:` | schema.org/Product |
 | Presse | une parution | `press` | `/press` | requise (= parution) | `press:` | schema.org/NewsArticle |
+| Projet | un projet photo, géré à la source | `project` | `/projects` | requise (= prise de vue) | `project:` | schema.org/CreativeWork |
 
 ---
 
@@ -3005,7 +3058,188 @@ Un profil ne DOIT jamais : renommer un champ core, modifier le slug regex, suppr
 
 ---
 
+### G.12 — Profil Projet (`project`) *(introduit v2.11)*
+
+**Cas d'usage** : gérer un projet photo à la source, dès la prise de vue — commande, reportage, série personnelle — dans un outil de gestion (l'application macOS [hyperfocale-vault](https://github.com/izo/hyperfocale-vault)), un coffre Obsidian ou un simple dossier. L'atome est **un projet photo en cours ou livré** : un dossier de travail qui porte les originaux, les images de l'appareil et les informations de suivi.
+
+```
+mariage-dupont-2026/
+├── index.md
+└── media/
+    ├── DSCF0001.RAF
+    ├── DSCF0001.xmp
+    ├── DSCF0001.JPG
+    ├── devis.pdf
+    └── …
+```
+
+> **Un dossier de travail, pas une publication.** Les autres profils décrivent un contenu fait pour être publié. Un projet en est la matière première : ses originaux (§1.9) et son bloc `project:` — client, contact, échéances — n'ont pas vocation à sortir. Il se publie par **export** (voir *Publication*), jamais tel quel.
+>
+> **Distinction avec `portfolio` (G.7).** Un portfolio présente une réalisation livrée, au public. Un projet suit le travail en cours, pour soi. Un même travail peut passer de l'un à l'autre : le projet reste la source, l'entrée de portfolio ou la série publiée en est un export.
+
+#### Mapping du core
+
+| Champ core | Sens dans le profil |
+|------------|---------------------|
+| `title` | Nom du projet |
+| `date` | Date de prise de vue, ou de début du projet — **requise**, sert au tri. Preset `dateRequired: true`. |
+| `description` | Résumé du projet |
+| `cover` | Image choisie parmi les images de `media/` — jamais un original (§1.9) |
+| `location` | Lieu de la prise de vue |
+| `draft` | **`true` par défaut**, écrit explicitement à la création (voir *Règles*) |
+| `media/` | Originaux (RAW, sidecars), images (JPEG de l'appareil, exports), documents de travail (devis, contrat, feuille de route) — à plat |
+
+#### Bloc d'extension `project:`
+
+Les données de gestion vivent **dans le frontmatter de `index.md`**, sous la clé `project:` — pas dans un fichier voisin. Un projet reste un dossier autonome : le déplacer, c'est déplacer toutes ses données (§1.1).
+
+Tous les champs sont optionnels. Un adaptateur DOIT les ignorer sans erreur s'il ne les supporte pas.
+
+| Clé | Type | Description |
+|-----|------|-------------|
+| `status` | `string` | Cycle de vie : `prospect` · `en-cours` · `livre` · `archive` (voir *Statuts*) |
+| `stage` | `string` | Étape du workflow, **libre** (« tri », « retouche », « export », « livraison »…). La spec ne fixe aucune liste : chaque photographe a la sienne. |
+| `client` | `string` | Commanditaire |
+| `contact` | `string` | Contact chez le client, en texte libre (nom, e-mail, téléphone) |
+| `start` | `date` (ISO 8601) | Début du projet ou de la prise de vue |
+| `end` | `date` (ISO 8601) | Fin de la prise de vue |
+| `due` | `date` (ISO 8601) | Échéance de livraison |
+| `deliverables` | `object[]` | Livrables, dans l'ordre du tableau : `name` (`string`, requis), `date` (`date`, livraison prévue ou effective) |
+| `tasks` | `object[]` | Tâches, dans l'ordre du tableau : `title` (`string`, requis), `done` (`boolean`, défaut `false`), `due` (`date`) |
+
+Les dates s'écrivent `AAAA-MM-JJ`, comme `date` (§1.3). Une entrée de `deliverables` sans `name`, ou de `tasks` sans `title`, DEVRAIT être signalée par un outil de gestion et ignorée à l'affichage — jamais un échec.
+
+##### Statuts
+
+| Valeur | Sens |
+|--------|------|
+| `prospect` | Projet envisagé : premier contact, devis, date posée en option. Rien n'est confirmé. |
+| `en-cours` | Projet confirmé, de la prise de vue à la livraison : tri, retouche, export. |
+| `livre` | Livrables remis. Le projet peut encore recevoir une retouche ou donner lieu à une publication. |
+| `archive` | Projet clos, conservé pour mémoire. Plus aucune action attendue. |
+
+Les valeurs sont des **slugs ASCII** — ni accent ni majuscule — pour rester stables entre outils et comparables à l'octet ; le libellé affiché est libre (« En cours », « Livré », « Archivé »). `status` absent signifie *non renseigné* : un outil ne DOIT PAS le déduire des dates. Une valeur inconnue DOIT être conservée et ne fait jamais échouer un outil, qui l'affiche comme non renseignée. Le statut est indépendant de `draft` : un projet `livre` reste un brouillon tant qu'il n'a pas été exporté.
+
+#### Exemple
+
+```yaml
+---
+title: "Mariage Dupont"
+date: 2026-06-14
+description: "Mariage de Claire et Julien Dupont"
+cover: "./media/DSCF0002.JPG"
+location: "Arles, France"
+draft: true
+lang: fr
+
+project:
+  status: en-cours
+  stage: "tri"
+  client: "Famille Dupont"
+  contact: "claire.dupont@example.com"
+  start: 2026-06-14
+  end: 2026-06-15
+  due: 2026-07-01
+  deliverables:
+    - name: "Galerie web"
+      date: 2026-07-01
+    - name: "Tirages 30x40"
+  tasks:
+    - title: "Envoyer la sélection"
+      done: false
+      due: 2026-06-20
+    - title: "Sauvegarder les cartes"
+      done: true
+
+attachments:
+  - file: "./media/devis.pdf"
+    title: "Devis signé"
+---
+
+Notes de prise de vue : cérémonie à 15 h, vin d'honneur dans la cour.
+```
+
+C'est l'`index.md` du corpus `fixtures/ingestion/corpora/originals/`.
+
+#### Vocabulaire externe
+
+Un projet n'est pas publié : aucun balisage public n'est attendu, et un adaptateur web NE DOIT PAS émettre le bloc `project:` dans un balisage. Pour l'échange entre outils, le profil s'aligne sur `schema.org/CreativeWork` — `project.status` correspond à `creativeWorkStatus`. Les métadonnées photo restent sous `iptc:`, inchangé.
+
+#### Preset & règles métier spécifiques
+
+```ts
+hyperfocale({ preset: 'project' })  // collection 'projects', prefix /projects, dateRequired: true
+```
+
+| Règle | Description |
+|-------|-------------|
+| Tri | Date décroissante (§1.6). Un outil de gestion PEUT trier par `project.due` ascendant ou grouper par `project.status`. |
+| Brouillon | Un outil qui crée un projet DOIT écrire `draft: true` **explicitement**. Un lecteur qui ignore le profil applique le défaut du core (`false`) : seul un `draft` écrit protège le dossier d'un listing public. |
+| Originaux | `media/` porte les originaux à plat ; un lecteur les ignore (§1.9), l'ingestion les retire du snapshot publié (§4.11). |
+| Confidentialité | Un adaptateur qui rend un projet hors de l'outil de gestion NE DOIT PAS rendre le bloc `project:`. |
+| Pas de `type: project` | `type` n'admet que `series` et `section` (§1.3) : un projet n'en porte pas, ou porte `type: series`. Comme les autres profils, il se déclare par son preset. |
+
+#### Publication : par export
+
+Un dossier de projet NE DOIT PAS être publié tel quel. Il se publie par un **export** qui crée un **nouveau** dossier `<slug>/` :
+
+- un contenu de type série (`type` absent ou `series`), au squelette standard ;
+- un `media/` qui ne contient **que des images** (§1.2) — ni originaux, ni documents de travail ;
+- un frontmatter repris au choix de l'outil (`title`, `date`, `description`, `cover`, `location`, `lang`, `tags`, `iptc:`), **sans le bloc `project:`**, qui NE DOIT PAS être recopié ;
+- un slug libre : il PEUT différer de celui du projet.
+
+Trois raisons interdisent de publier le dossier de travail : un lecteur antérieur à v2.11 proposerait ses originaux en téléchargement (§1.9, *Compatibilité*) ; son `index.md` porte des données privées (client, contact) ; et la garde v2.11 (§4.11), qui retire les originaux, laisse le bloc `project:` en place. L'export est une copie : le projet reste la source, et la spec ne standardise pas le lien entre les deux. Un outil PEUT en garder la trace dans un champ libre du projet, transmis par passthrough.
+
+#### Outil de gestion
+
+Un outil de gestion PEUT traiter `index.md` comme **source de vérité** du projet : il le lit, et le réécrit quand l'utilisateur modifie le projet. En réécrivant, il DOIT :
+
+- préserver les champs qu'il ne connaît pas — à la racine du frontmatter, dans `project:` et dans chaque entrée de `deliverables` et de `tasks` (passthrough §1.3) ;
+- préserver le body Markdown à l'identique, octet pour octet.
+
+Il DEVRAIT préserver l'ordre des clés et les commentaires YAML qu'il ne modifie pas : `index.md` reste un fichier édité aussi à la main, dans Obsidian ou un éditeur de texte.
+
+#### Invariants §0
+
+| Invariant | Dans le profil |
+|-----------|----------------|
+| Squelette | `<slug>/index.md` + `media/`, slug regex inchangé. |
+| `media/` plat | Les originaux sont à plat, à côté de leurs images — aucun `media/originals/` (§1.9). |
+| Core | Aucun champ renommé ; `date` reste requise ; le vocabulaire de gestion vit sous la seule clé `project:`. |
+| Lecteur qui ignore le profil | Il lit une série en brouillon : les JPEG en galerie, le devis en document joint, les originaux ignorés (§1.9) — ou, avant v2.11, listés en documents joints, raison de la publication par export. |
+
+La seule nouveauté hors de l'annexe est la catégorie `original` de §1.9, dont le profil a besoin mais qui vaut pour tout contenu.
+
+---
+
 ## Changelog
+
+### 2.11-draft — 2026-10-15
+
+#### Originaux dans `media/` (§1.9), garde de publication (§4.11) et profil Projet (G.12)
+
+**Ajouts** :
+- §1.9 — **Originaux** : troisième catégorie de fichiers de `media/`, à côté des images et des documents joints. Liste fermée, insensible à la casse : RAW `.raf .cr2 .cr3 .nef .nrw .arw .srf .sr2 .orf .rw2 .pef .dng .3fr .iiq .x3f .srw .rwl .erf .mos .mef .kdc .dcr`, sidecars `.xmp .pp3 .dop .cos`. Classe `original` ajoutée au tableau des classes de médias.
+- §0 — règles invariantes (ligne « Originaux », ligne « Documents joints » restreinte) et contrat minimum du lecteur (points 3 et 4) ; §1.2, §1.9 *Mode distant*, §2.0 (obligation « Ignorer les originaux », conformité v2.11), §3.2 et Annexe A alignés : un fichier de `media/` qui n'est pas une image n'est plus d'office un document joint.
+- §4.11 — **projection publiable** `publishable(snapshot)` : le snapshot sans ses entrées originales, `id` recalculé. Diagnostic `guard-originals-excluded` (info, toujours évalué) avec deux champs normatifs, `count` et `bytes`. `guard-oversize` s'évalue sur la projection. §4.10 — un code PEUT porter des champs supplémentaires ; règle 12 : une entrée `attachments:` vers un original produit `attachment-not-found`.
+- `fixtures/ingestion/` — corpus `originals` (RAW, XMP, JPEG, devis), `snapshots/originals.json`, `validation/originals.json`, `validation/originals-references.json`, nouveau dossier `publishable/` (trois cas), `guard/originals.json`.
+- **G.12 — Projet** (`project`, `/projects`, `schema.org/CreativeWork`) : bloc `project:` (`status`, `stage`, `client`, `contact`, `start`, `end`, `due`, `deliverables`, `tasks`), statuts `prospect` · `en-cours` · `livre` · `archive`, publication par export, règles d'un outil de gestion. Vue d'ensemble de l'annexe et §2.0.1 complétés.
+- §0.5 — deux obligations rouvertes pour le plugin Astro (originaux, garde), profil `project` non couvert.
+
+**Décisions normatives** :
+- **Un original n'est ni une image ni un document joint.** Un lecteur l'ignore : ni galerie, ni pièces jointes, jamais candidat à `cover`. Le critère est l'extension — partie qui suit le dernier point, en minuscules —, comme pour les autres classes.
+- **La liste est fermée et vit dans la spec**, sans renvoi à une source externe : deux implémentations doivent classer le même fichier de la même façon. Une extension RAW manquante reste un document joint `file` jusqu'à son ajout par PR.
+- **Les originaux restent à plat dans `media/`.** L'alternative d'un sous-dossier `media/originals/` est écartée : elle casse la règle « pas de récursion ».
+- **Le snapshot d'une source garde ses originaux ; le snapshot publié n'en a jamais.** La classification de §4.3 ne change pas — un original reste une entrée `media` —, c'est la projection qui l'écarte. La validation porte sur la source, le diff et la garde sur la projection. Un snapshot sans original est sa propre projection : aucune fixture existante ne change.
+- **L'exclusion se voit** : `guard-originals-excluded` rapporte nombre et octets, en `info` — c'est le comportement attendu, pas une faute.
+- **Rétro-compatibilité** : un lecteur antérieur à v2.11 classe les originaux en documents joints `file` et les propose en téléchargement. Aucun contenu publié n'est cassé, mais un dossier de travail ne doit donc jamais être publié directement : il se publie par **export** vers un nouveau `<slug>/` de type série, images seules, sans bloc `project:`. La garde v2.11 reste un filet, pas un mode de publication.
+- **Les données de gestion vivent dans `index.md`, sous `project:`**, et non dans un fichier voisin (`project.yml`) : un projet reste un dossier autonome. Un outil de gestion qui réécrit `index.md` DOIT préserver les champs inconnus et le body.
+- **`draft: true` est écrit, jamais supposé** : un lecteur qui ignore le profil applique le défaut du core, `false`.
+- **`date` est requise** (date de prise de vue ou de début) ; **`stage` est libre** ; les statuts sont des slugs ASCII, et un statut absent ne se déduit pas des dates.
+- **`rating_min` est écarté** de la proposition initiale : la sélection publiable se décide image par image — notes des sidecars, choix de l'export —, pas par un seuil inscrit dans le projet.
+- **Pas de `type: project`** : `type` reste `series` | `section`, et le profil se déclare par preset, comme les autres.
+
+**Justification** : l'application macOS [hyperfocale-vault](https://github.com/izo/hyperfocale-vault) veut faire du format la base de la gestion de ses projets photo, dès la prise de vue : un dossier par projet, un `index.md` qui porte toutes ses informations, et `media/` qui contient les originaux sortis du boîtier ([hyperfocale-vault#127](https://github.com/izo/hyperfocale-vault/issues/127)). Lu par un lecteur v2.10, un tel dossier proposait ses `.RAF` et ses `.xmp` en téléchargement, puisque tout fichier non image de `media/` était un document joint ; et aucun profil ne décrivait un travail en cours avec son client et ses échéances. Issue [#26](https://github.com/izo/hyperfocale-spec/issues/26).
 
 ### 2.10-draft — 2026-09-29
 
