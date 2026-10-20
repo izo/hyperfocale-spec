@@ -22,6 +22,11 @@ Une spec de format de contenu photo universel (séries photo en Markdown + front
 
 - Plugin Astro : https://github.com/izo/hyperfocale-astro-plugins
 - Exporter Lightroom : https://github.com/izo/hyperfocale-exporter-app
+- CMS Swift : https://github.com/izo/hyperfocale-cms
+- hyperfocale-vault (G.12) : https://github.com/izo/hyperfocale-vault
+- Sites : https://github.com/izo/mdr-monorepo (`mathieu-drouet.com`), https://github.com/izo/laurenceguenoun, https://github.com/izo/hyperfocale.app
+
+L'état de chacun est en §0.5 — à relever à chaque release du plugin **et** à chaque évolution d'une implémentation.
 
 ## Versioning de la spec
 

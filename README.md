@@ -41,8 +41,15 @@ Le reste (métadonnées IPTC, GPS, couverture, mots-clés...) est optionnel et s
 |-------|-------|------|
 | `@regrets/hyperfocale` (v0.19.0) | https://github.com/izo/hyperfocale-astro-plugins | Plugin Astro 7 — schéma Zod, collections, presets, composants ; outils d'ingestion de la couche 4 (snapshot, diff, validation, garde, providers filesystem, Dropbox, WebDAV) |
 | Exporter Lightroom | https://github.com/izo/hyperfocale-exporter-app | Export LR → format Hyperfocale avec métadonnées IPTC |
+| Hyperfocale CMS | https://github.com/izo/hyperfocale-cms | Éditeur Swift (CLI, macOS, iOS) — ouvrir, éditer et publier une série sans écrire de YAML |
+| hyperfocale-vault | https://github.com/izo/hyperfocale-vault | Gestion de projets photo macOS — producteur du profil Projet (G.12) |
+| `mathieu-drouet.com` | https://github.com/izo/mdr-monorepo | Archive photo grandeur nature, premier pipeline d'ingestion (couche 4) |
+| `laurenceguenoun.com` | https://github.com/izo/laurenceguenoun | Portfolio, plugin en couche data seule |
+| `hyperfocale.app` | https://github.com/izo/hyperfocale.app | Site de l'écosystème, lui-même une archive Hyperfocale |
 
-> **Pas de site vitrine dédié.** Un dépôt `hyperfocale-site` a existé puis a disparu (introuvable sur GitHub comme en local — constat du 2026-08-22, issue [#18](https://github.com/izo/hyperfocale-spec/issues/18)). Les sites `mathieu-drouet.com` et `laurenceguenoun.com` servent de démonstrateurs grandeur nature du format.
+L'état de conformité de chacun est en **§0.5** de la spec.
+
+> **Site vitrine.** `hyperfocale.app` présente l'écosystème. Un dépôt de contenu vitrine, `izo/hyperforcale-site` (graphie sic, contenu figé en 2.1-draft), existe aussi — le constat de sa disparition (issue [#18](https://github.com/izo/hyperfocale-spec/issues/18), 2026-08-22) portait sur la graphie `hyperfocale-site`.
 
 ## Lire la spec
 
