@@ -4,16 +4,19 @@
 
 **Version** : 2.11-draft
 **Statut** : spécification active — source de vérité canonique
-**Dernière révision** : 2026-10-15
+**Dernière révision** : 2026-10-15 (§0.5 relevée le 2026-10-20)
 
 ### Implémentations de référence
 
 | Implémentation | Dépôt | Rôle | Conformité |
 |----------------|-------|------|------------|
 | Plugin Astro `@regrets/hyperfocale` | https://github.com/izo/hyperfocale-astro-plugins | Adaptateur Astro (couche 2) et outils d'ingestion (couche 4) | ✅ Conforme v2.10 : contrat, Annexe G jusqu'à G.10, §1.11, couche 4 (v0.19.0) — ⚠️ originaux (§1.9) et profil `project` (G.12) de la v2.11 non implémentés |
-| Site `laurenceguenoun.com` | https://github.com/izo/laurenceguenoun | Consommateur en **couche data seule** (Astro) | ⚠️ Bloc `videos[]` local à migrer vers `embeds:` — §1.11 est implémentée par le plugin depuis la v0.17.0 |
-| Site `mathieu-drouet.com` | https://github.com/izo/mathieu-drouet.com | Consommateur grandeur nature (Astro) | ⚠️ Migration v2.1 prévue |
-| Exporter Lightroom | https://github.com/izo/hyperfocale-exporter-app | Source de contenu : LR → format Hyperfocale | ✅ Conforme |
+| Site `mathieu-drouet.com` | https://github.com/izo/mdr-monorepo | Consommateur grandeur nature (Astro) et **premier pipeline d'ingestion** (couche 4, via le plugin) | ✅ Conforme v2.10 : format (schéma du plugin), sections, `images.json`, couche 4 — ⚠️ originaux (§1.9 v2.11) non exercés, le corpus n'en contient pas |
+| Site `laurenceguenoun.com` | https://github.com/izo/laurenceguenoun | Consommateur en **couche data seule** (Astro) | ✅ Conforme v2.8 (`embeds[]` §1.11 depuis le 2026-08-12) — plugin 0.18.0, deux écarts assumés |
+| Hyperfocale CMS | https://github.com/izo/hyperfocale-cms | Éditeur Swift (CLI, macOS, iOS) : lecture tolérante, écriture stricte | ⚠️ Vise v2.10 hors couche 4 ; originaux (§1.9) et G.12 non implémentés |
+| Exporter Lightroom | https://github.com/izo/hyperfocale-exporter-app | Source de contenu : LR → format Hyperfocale | ✅ Conforme v2.1 — ⚠️ non revérifié depuis la v2.11 (originaux §1.9) |
+| hyperfocale-vault | https://github.com/izo/hyperfocale-vault | Gestion de projets photo macOS : producteur du profil Projet (G.12) et export vers une série | ✅ Vise v2.11 (ADR-034) — vérifié contre §0 et G.12, pas contre les fixtures |
+| Site `hyperfocale.app` | https://github.com/izo/hyperfocale.app | Site de l'écosystème, lui-même une archive Hyperfocale (Astro) | ⚠️ Dépend encore de `@izo/hyperfocale` (nom antérieur au paquet npm) |
 
 Le détail de conformité par implémentation est en **§0.5 — État des implémentations**.
 
@@ -224,29 +227,69 @@ Restent non implémentés les cinq profils que le plugin ne couvre pas : `event`
 - `published: boolean` — redondant avec `draft` ; arbitré en v0.14.0 au profit de `draft`, seul champ standardisé par §1.3. Déprécié, retiré en 1.0
 - Module virtuel Vite `virtual:hyperfocale/collection` — pattern d'implémentation Astro
 
-### Site `mathieu-drouet.com`
+### Site `mathieu-drouet.com` (dépôt `izo/mdr-monorepo`)
 
-**Conformité** : ✅ Conforme v2.1 (migration terminée 2026-05-19).
+**Conformité** : ✅ Conforme v2.10 — format et couche 4. Relevé le 2026-10-20 sur `main`.
+
+> Le site vivait dans `izo/mathieu-drouet.com` jusqu'au 2026-08-22. Ce dépôt est archivé ; contenu et site sont dans `izo/mdr-monorepo`, organisé autour du contenu (`content/`) et consommé par le site Astro, les apps iOS/tvOS et Android, et un serveur MCP. Migration v2.1 terminée le 2026-05-19 (`docs/migration-spec-v2.1.md`).
 
 | Obligation | Statut | Note |
 |------------|--------|------|
 | Slug regex | ✅ | |
-| `title` + `date` requis | ✅ | |
-| Dossier `media/` | ✅ | Migré depuis `images/` — 304 dossiers (SPEC-001) |
-| Champ `description` | ✅ | Migré depuis `intro` — 683 fichiers (SPEC-002) |
+| `title` + `date` requis | ✅ | `baseSeriesSchema({ dateRequired: true })` du plugin |
+| Dossier `media/` | ✅ | Médias hors dépôt (disque local + bucket R2 privé), servis par le Worker |
+| Manifeste d'images (§1.5.1) | ✅ | `images.json` lu d'abord — il reflète le contenu de R2, seule vérité en production |
+| Page d'index de section (§1.10) | ✅ | 16 `index.md` en `type: section` |
 | `draft` respecté | ✅ | |
-| Bloc `iptc.*` | ❌ | Métadonnées IPTC ignorées (perdues à l'ingestion) |
+| Bloc `iptc.*` | ✅ | 549 `index*.md` le portent ; le site en retire les métadonnées des séries privées (ADR-012) |
+| Contenus embarqués (§1.11) | — | Non exercés : aucune série ne porte `embeds:` |
+| Ingestion (couche 4) | ✅ | Runner local sur `@regrets/hyperfocale/ingest` et `/ingest/fs` (plugin `^0.19.0`) : snapshot, diff, validation, garde. Dropbox fait foi (`MDR Content/`), aucune primitive générique dans le site. Garde site-spécifique `x-mdr-private-exposed` (§4.10, code `x-*`) |
+| Originaux (§1.9, v2.11) | — | Non exercés : le corpus n'en contient pas. Hérite de l'écart du plugin s'il en reçoit |
 | Tri date desc | ✅ | |
 
-**Migration v2.1** terminée sur branche `migration/spec-v2.1` (PR à merger). Historique dans `mathieu-drouet.com/docs/migration-spec-v2.1.md`.
-
 **Extensions strictement site-spécifiques (hors spec)** :
-- `private` + `password_hash` — séries protégées par mot de passe
-- `featured` — officialisé en spec v2.1
-- `tags` — officialisé en spec v2.1
+- `private` + `password_hash` — séries protégées par mot de passe (connues de la garde §4.11 comme extension de site)
 - `artist`, `bio_source`, `genres` — pipeline de génération de bios via LLM
-- Routage par collection (`series`, `series_fr`, `projects_*`, `store_*`) — pattern i18n documenté en Annexe F stratégie 3
+- Routage par collection (`series`, `series_fr`, `projects_*`, `store_*`) — pattern i18n documenté en Annexe F stratégie 3. Conventions de nommage des locales divergentes selon le type de contenu (archives : `index.md` = FR ; pages : `{slug}.md` = EN)
 - Champs e-commerce (`price`, `paage_url`, `source_url`, `format`, `edition`, `available`) — strictement hors spec
+
+### Site `laurenceguenoun.com`
+
+**Conformité** : ✅ Conforme v2.8 (mise en conformité du 2026-08-23), plugin **0.18.0** en **couche data seule** : `baseSeriesSchema` et helpers, `injectRoutes: false`, `theme: 'none'`, pages et design entièrement maison.
+
+| Obligation | Statut | Note |
+|------------|--------|------|
+| Structure §1.2 | ✅ | `galleries/<slug>/index.md` + `media/` depuis le 2026-08-23 (193 médias) |
+| `title` + `date` | ✅ | `date` posée sur les 8 séries — la même pour toutes : galeries thématiques sans chronologie. Le site trie par `order` ; tout consommateur de ce contenu doit faire de même, le tri par défaut de §1.6 y est indéterminé |
+| `type` | ✅ | `series` partout ; la nature d'une galerie se lit à la présence de `images[]` ou `embeds[]` |
+| Contenus embarqués (§1.11) | ✅ | 11 embeds Vimeo à la forme §1.11 depuis le 2026-08-12 — l'ancien bloc `videos[]` a servi de prototype à §1.11 |
+| Bloc `iptc.*`, `tags`, `location` | ✅ | Renseignés depuis le 2026-08-23 |
+| `draft` respecté | ⚠️ | Les champs à défaut du plugin existent dans `entry.data` mais le routage du site les ignore : `draft: true` ne retire pas une galerie |
+
+**Écarts assumés** : `images[].src` et `embeds[].poster` sont surchargés en `image()` d'Astro (validation au build, WebP responsive) ; `getSeriesEmbeds()` et `<SeriesEmbeds>` ne sont donc pas utilisés.
+
+### Hyperfocale CMS (Swift — CLI, macOS, iOS)
+
+**Conformité** : ⚠️ Vise **v2.10-draft** hors couche 4 (`Hyperfocale.specVersion`). Relevé le 2026-10-20.
+
+- Noyau `HyperfocaleCore` sans accès au système de fichiers : **lecture tolérante, écriture stricte** (champs inconnus, ordre des clés et style YAML préservés ; n'émet que du Hyperfocale conforme).
+- Couvre le core, `iptc.*`, documents joints, manifeste `images.json`, `embeds` (§1.11), profils de l'Annexe G (date optionnelle selon le profil), validation (`hyperfocale check`).
+- **Non implémentés** : la couche 4 (le CMS écrit dans Dropbox, la synchro du site publie — décision du 2026-09-29), les originaux (§1.9 v2.11) et le profil `project` (G.12).
+- Le canal GitHub (API Git data) est abandonné au profit de Dropbox seul.
+
+### hyperfocale-vault (macOS)
+
+**Conformité** : ✅ Vise **v2.11-draft** — c'est le besoin qui a fondé les originaux (§1.9) et le profil Projet (G.12) ; ADR-034 du dépôt.
+
+- **Producteur G.12** : un projet est un dossier `<slug>/index.md` + `media/` portant les originaux ; `draft: true` toujours écrit, aucun `type`, bloc `project:` et `iptc:`. Le fichier fait foi, les champs inconnus et le body sont préservés.
+- **Export vers une série** (« Exporter en série web… ») : nouveau dossier `<slug>/`, `media/` d'images rendues seulement, sans bloc `project:` — la voie de publication que la v2.11 prescrit.
+- **Écart** : vérifié contre les règles de §0 et G.12, pas contre les fixtures de `fixtures/ingestion/`, absentes du dépôt.
+
+### Site `hyperfocale.app`
+
+**Conformité** : ⚠️ Site de l'écosystème, lui-même une archive Hyperfocale (une série par projet dans `src/content/series/`), lue par le plugin Astro. Il dépend encore de `@izo/hyperfocale` résolu depuis GitHub — nom antérieur au paquet npm `@regrets/hyperfocale` — et ses fiches citent la spec en 2.7-draft.
+
+> Un second dépôt, `izo/hyperforcale-site` (graphie sic), porte du contenu de site vitrine en FR/EN figé en 2.1-draft, sans code.
 
 ### Exporter Lightroom (SwiftUI + Tauri, v0.1.0)
 
@@ -261,6 +304,7 @@ Restent non implémentés les cinq profils que le plugin ne couvre pas : `event`
 | Dual naming mode | ✅ | `original` ou `sequential` (01.jpg, 02.jpg...) — officialisé en §2.7 v2.1 |
 | Tri images | ⚠️ | Tri Lightroom (`customSortOrder, captureTime`), pas alphabétique — divergence intentionnelle préservant l'ordre éditorial |
 | Bloc `translations:` | ⚠️ | Implémenté côté SwiftUI uniquement — divergence Tauri ↔ SwiftUI à résoudre, pattern officialisé en §2.7 v2.1 |
+| Originaux (§1.9, v2.11) | ⚠️ | À vérifier : un export ne doit déposer dans `media/` que des images (formats de sortie JPEG, WebP, AVIF). Relevé du 2026-10-20 sans audit du code |
 
 ---
 
