@@ -49,7 +49,7 @@ Le reste (métadonnées IPTC, GPS, couverture, mots-clés...) est optionnel et s
 
 L'état de conformité de chacun est en **§0.5** de la spec.
 
-> **Site vitrine.** `hyperfocale.app` présente l'écosystème. Un dépôt de contenu vitrine, `izo/hyperforcale-site` (graphie sic, contenu figé en 2.1-draft), existe aussi — le constat de sa disparition (issue [#18](https://github.com/izo/hyperfocale-spec/issues/18), 2026-08-22) portait sur la graphie `hyperfocale-site`.
+> **Site vitrine.** `hyperfocale.app` présente l'écosystème. Le dépôt `izo/hyperforcale-site` (graphie sic) y a été repris le 2026-10-20 et est à archiver.
 
 ## Lire la spec
 
