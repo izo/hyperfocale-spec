@@ -10,13 +10,13 @@
 
 | Implémentation | Dépôt | Rôle | Conformité |
 |----------------|-------|------|------------|
-| Plugin Astro `@regrets/hyperfocale` | https://github.com/izo/hyperfocale-astro-plugins | Adaptateur Astro (couche 2) et outils d'ingestion (couche 4) | ✅ Conforme v2.10 : contrat, Annexe G jusqu'à G.10, §1.11, couche 4 (v0.19.0) — ⚠️ originaux (§1.9) et profil `project` (G.12) de la v2.11 non implémentés |
+| Plugin Astro `@regrets/hyperfocale` | https://github.com/izo/hyperfocale-astro-plugins | Adaptateur Astro (couche 2) et outils d'ingestion (couche 4) | ✅ Conforme v2.11 sur `main` (v0.20.0 : originaux §1.9, garde §4.11, G.12) — publiée sur npm : v0.19.0 (conforme v2.10), la 0.20.0 y est en attente |
 | Site `mathieu-drouet.com` | https://github.com/izo/mdr-monorepo | Consommateur grandeur nature (Astro) et **premier pipeline d'ingestion** (couche 4, via le plugin) | ✅ Conforme v2.10 : format (schéma du plugin), sections, `images.json`, couche 4 — ⚠️ originaux (§1.9 v2.11) non exercés, le corpus n'en contient pas |
-| Site `laurenceguenoun.com` | https://github.com/izo/laurenceguenoun | Consommateur en **couche data seule** (Astro) | ✅ Conforme v2.8 (`embeds[]` §1.11 depuis le 2026-08-12) — plugin 0.18.0, deux écarts assumés |
-| Hyperfocale CMS | https://github.com/izo/hyperfocale-cms | Éditeur Swift (CLI, macOS, iOS) : lecture tolérante, écriture stricte | ⚠️ Vise v2.10 hors couche 4 ; originaux (§1.9) et G.12 non implémentés |
-| Exporter Lightroom | https://github.com/izo/hyperfocale-exporter-app | Source de contenu : LR → format Hyperfocale | ⚠️ Conforme v2.1 — un export *Original* peut déposer un RAW dans `media/` (§1.9 v2.11) |
+| Site `laurenceguenoun.com` | https://github.com/izo/laurenceguenoun | Consommateur en **couche data seule** (Astro) | ✅ Conforme v2.8, inchangé en v2.11 (`embeds[]` §1.11 depuis le 2026-08-12) — plugin 0.19.0, deux écarts assumés |
+| Hyperfocale CMS | https://github.com/izo/hyperfocale-cms | Éditeur Swift (CLI, macOS, iOS) : lecture tolérante, écriture stricte | ⚠️ Vise v2.10 hors couche 4 ; originaux (§1.9) et G.12 écrits, non encore éprouvés (PR [cms#86](https://github.com/izo/hyperfocale-cms/pull/86)) |
+| Exporter Lightroom | https://github.com/izo/hyperfocale-exporter-app | Source de contenu : LR → format Hyperfocale | ⚠️ Conforme v2.1 — un export *Original* peut déposer un RAW dans `media/` (§1.9 v2.11) ; correctif en PR ([exporter-app#98](https://github.com/izo/hyperfocale-exporter-app/pull/98)) |
 | hyperfocale-vault | https://github.com/izo/hyperfocale-vault | Gestion de projets photo macOS : producteur du profil Projet (G.12) et export vers une série | ✅ Vise v2.11 (ADR-034) — vérifié contre §0 et G.12, pas contre les fixtures |
-| Site `hyperfocale.app` | https://github.com/izo/hyperfocale.app | Site de l'écosystème, lui-même une archive Hyperfocale (Astro) | ⚠️ Dépend encore de `@izo/hyperfocale` (nom antérieur au paquet npm) |
+| Site `hyperfocale.app` | https://github.com/izo/hyperfocale.app | Site de l'écosystème, lui-même une archive Hyperfocale (Astro) | ✅ Plugin `@regrets/hyperfocale` 0.19.0 ; présente les quatre couches et les douze profils |
 
 Le détail de conformité par implémentation est en **§0.5 — État des implémentations**.
 
@@ -158,9 +158,9 @@ Toute implémentation (adaptateur, script, outil) qui lit du contenu Hyperfocale
 
 Section informative — un audit de conformité des implémentations connues, mis à jour à chaque révision majeure de la spec.
 
-### Plugin Astro `@regrets/hyperfocale` (v0.19.0)
+### Plugin Astro `@regrets/hyperfocale` (v0.20.0 sur `main`, v0.19.0 sur npm)
 
-**Conformité** : ✅ Conforme sur le contrat d'adaptateur (§2.0), obligations v2.6 comprises, aligné sur les profils de l'Annexe G depuis la v0.12.0, et **§1.11 (contenus embarqués) implémentée depuis la v0.17.0** — plus aucune obligation ouverte. **La couche 4 (ingestion) est implémentée depuis la v0.19.0** : les 109 fixtures cross-language de la spec (`main@18f48de`) passent toutes. **La v2.11 rouvre deux obligations** : les originaux (§1.9), que le plugin classe encore en documents joints `file`, et leur exclusion par la garde de publication (§4.11). D'ici là, un dossier de travail ne doit pas lui être donné à lire ni à publier (G.12).
+**Conformité** : ✅ Conforme sur le contrat d'adaptateur (§2.0), obligations v2.6 comprises, aligné sur les profils de l'Annexe G depuis la v0.12.0, et **§1.11 (contenus embarqués) implémentée depuis la v0.17.0** — plus aucune obligation ouverte. **La couche 4 (ingestion) est implémentée depuis la v0.19.0** : les 109 fixtures cross-language de la spec (`main@18f48de`) passent toutes. **Les deux obligations rouvertes par la v2.11 sont refermées en v0.20.0** (fusionnée le 2026-10-20 ; publication npm en attente) : les originaux (§1.9) et leur exclusion par la garde de publication (§4.11). Jusqu'à sa publication, un site sur la 0.19.0 ne doit pas recevoir de dossier de travail (G.12).
 
 > Le paquet s'appelait `@izo/hyperfocale` jusqu'au 2026-08-04. Le scope `@izo` ne correspondait à aucun compte npm et aucune version n'avait jamais été publiée sous ce nom : le renommage n'a rien cassé.
 
@@ -177,9 +177,9 @@ Section informative — un audit de conformité des implémentations connues, mi
 | Manifeste d'images (§1.5.1) | ✅ | Implémenté en **v0.10.0** : priorité `images:` > `images.json` > `media/`, formes courte et longue, résolution des trois formes d'URL, clé `files`. Le manifeste est lu en `?raw` puis parsé dans un `try` — un import JSON ferait échouer le bundler au parsing, là où §1.5.1 impose un repli sur `media/` sans échec de build |
 | Page d'index de section (§1.10) | ✅ | Implémentée en **v0.9.0** : champ `type`, exclusion des listings, `date` non requise pour une section. `isSection()` ne teste que `type` — jamais l'absence de date (« discriminant explicite »). Helpers `isSection()` / `getSections()` exposés ; la route de section reste au site consommateur (§1.10 la donne en PEUT) |
 | Séries imbriquées (§1.8) | ✅ | Implémentées en **v0.12.0** : `getSubSeries()` et line-up rendu sur la page du conteneur, tri par `lineup_order` puis date décroissante. Le helper ne retient que les entrées situées exactement un segment plus bas — une série rangée plus profond (§1.2) n'est pas une sous-série |
-| Profils de contenu (Annexe G) | ✅ | Les **11 profils** de l'annexe v2.10 sont couverts depuis la **v0.14.0** ; leurs prefix restent localisés en français, ce que §2.0.1 autorise. Le profil `project` (G.12, v2.11) ne l'est pas encore — couverture partielle, pas un écart : §2.0.1 donne les profils en COULD |
-| Originaux (§1.9, v2.11) | ❌ | Non implémentés : un RAW ou un `.xmp` de `media/` tombe en document joint de classe `file` et serait proposé en téléchargement |
-| Garde : originaux (§4.11, v2.11) | ❌ | Non implémentée : ni projection publiable, ni `guard-originals-excluded`. Les fixtures `publishable/` et `guard/originals.json` sont à rejouer |
+| Profils de contenu (Annexe G) | ✅ | Les **11 profils** de l'annexe v2.10 sont couverts depuis la **v0.14.0**, le profil `project` (G.12) depuis la **v0.20.0** ; leurs prefix restent localisés en français, ce que §2.0.1 autorise |
+| Originaux (§1.9, v2.11) | ✅ | **v0.20.0** : `isOriginal()`, exclus de la galerie, des documents joints, de `files[]` et de la couverture ; l'exclusion se fait dès le glob, sans quoi Vite émettrait le fichier au build. ⚠️ Une graphie d'extension mixte (`.Raf`) est écartée du rendu mais reste copiée au build : le glob de Vite est sensible à la casse et ne liste que les graphies minuscule et majuscule |
+| Garde : originaux (§4.11, v2.11) | ✅ | **v0.20.0** : `publishable(snapshot)`, `guard-originals-excluded` (`count`, `bytes`), `guard-oversize` sur la projection, règle 12 de §4.10. Fixtures rejouées sur `main@51cbf73` (207 fichiers) |
 | Ingestion (couche 4) | ✅ | Implémentée en **v0.19.0**, en quatre sous-chemins **additifs** : `/ingest` (contrat, agnostique du runtime), `/ingest/fs`, `/ingest/dropbox`, `/ingest/webdav`, plus les commandes `validate`, `snapshot` et `diff` du CLI. Les 109 fixtures de `fixtures/ingestion/` (`main@18f48de`) sont copiées à une ref épinglée et rejouées en totalité. L'entrée racine n'atteint aucun code d'ingestion : rien ne change pour un site qui ne l'importe pas |
 | Contenus embarqués (§1.11) | ✅ | Implémentés en **v0.17.0** : champ `embeds`, `getSeriesEmbeds()` (résolution dans l'ordre du tableau, `playable` = plateforme reconnue + `id` présent), `<SeriesEmbeds>` rendu **en façade** (le poster s'affiche, l'iframe n'arrive qu'au clic ; sans JavaScript la façade reste un lien fonctionnel), liste de plateformes ouverte (valeur inconnue → repli en lien), posters exclus du scan de galerie. Vocabulaires (`EMBED_PLATFORMS`, `ATTACHMENT_KINDS`) exportés à la racine en v0.17.1 |
 | Passthrough racine (champs inconnus) | ✅ | `z.looseObject()` racine — les extensions site-spécifiques ne sont jamais rejetées (v0.4.0) |
@@ -201,11 +201,12 @@ Section informative — un audit de conformité des implémentations connues, mi
 - **v0.18.0** — helpers multi-collections : la plupart des helpers acceptent un nom de collection en argument (`collectionName` pour `querySeries`), `getAllSeries()` expose la collection brute, et le cache — jusqu'ici scalaire, il servait une collection pour une autre sur un site bilingue — est indexé par collection. Besoin remonté par `mathieu-drouet.com` (une collection par locale).
 - **v0.18.1** et **v0.18.2** — correctifs de sécurité, sans changement d'API : les données de contenu injectées dans un `<script>` (JSON-LD, lightbox) ne peuvent plus le refermer (`<` échappé en `\u003c`) ; `embeds[].id` ne peut plus détourner l'URL de lecture d'un embed.
 - **v0.19.0** — couche 4 (ingestion) : snapshot, diff, validation (§4.10), garde de publication fail-closed côté base (§4.11), providers filesystem, Dropbox et WebDAV, états de publication, CLI `validate` / `snapshot` / `diff`. Le frontmatter y est lu en schéma YAML 1.2 *core*, comme §4.10 le demande.
+- **v0.20.0** (sur `main`, non publiée au 2026-10-20) — spec 2.11 : originaux (§1.9), projection publiable et `guard-originals-excluded` (§4.11), preset `project` (G.12). Corrige au passage `.tif` et les extensions d'image en majuscules, classées en documents joints. `ORIGINAL_EXTENSIONS` et `PROJECT_STATUSES` exportés à la racine.
 - Socle : **Astro 7.2.0**, TypeScript 7, Zod 4.
 
 **Presets vs Annexe G — écart refermé en v0.12.0** :
 
-Le plugin expose `series`, `portfolio`, `music`, `catalog`, `press`, `recipe` : les six portent les noms de l'annexe. Quatre d'entre eux — `portfolio`, `music`, `catalog`, `press` — y ont été standardisés par la v2.7, à partir de cette implémentation ; le sixième, `series`, s'appelait `photo` jusqu'à la v0.12.0.
+Le plugin expose un preset par profil de l'annexe, sous le nom de l'annexe : `series`, `portfolio`, `music`, `catalog`, `press`, `recipe` depuis la v0.12.0, `event`, `app`, `book`, `place`, `screen` depuis la v0.14.0, `project` depuis la v0.20.0. Quatre d'entre eux — `portfolio`, `music`, `catalog`, `press` — y ont été standardisés par la v2.7, à partir de cette implémentation ; le sixième, `series`, s'appelait `photo` jusqu'à la v0.12.0.
 
 | Preset plugin | Prefix plugin | Profil Annexe G | État |
 |---------------|---------------|-----------------|------|
@@ -215,11 +216,16 @@ Le plugin expose `series`, `portfolio`, `music`, `catalog`, `press`, `recipe` : 
 | `music` | `/discographie` | `music` → `/music` | ✅ nom conforme ; prefix localisé |
 | `catalog` | `/catalogue` | `catalog` → `/catalog` | ✅ nom conforme ; prefix localisé |
 | `press` | `/presse` | `press` → `/press` | ✅ nom conforme ; prefix localisé |
-| — | — | `event`, `app`, `book`, `place`, `screen` | non implémentés |
+| `event` | `/evenements` | `event` → `/events` | ✅ v0.14.0 ; prefix localisé |
+| `app` | `/applications` | `app` → `/apps` | ✅ v0.14.0 ; prefix localisé |
+| `book` | `/livres` | `book` → `/books` | ✅ v0.14.0 ; prefix localisé |
+| `place` | `/lieux` | `place` → `/places` | ✅ v0.14.0 ; prefix localisé |
+| `screen` | `/ecrans` | `screen` → `/screens` | ✅ v0.14.0 ; prefix localisé |
+| `project` | `/suivi` | `project` → `/projects` | ✅ v0.20.0 ; prefix localisé ; collection `work`, `projects` étant prise par `portfolio` depuis la v0.8.0 |
 
 Les prefix divergents ne sont pas des non-conformités — la colonne de l'Annexe G est un **prefix recommandé**, et un preset PEUT fixer le sien (§2.0.1) ; le plugin les a simplement localisés en français. Le squelette, le slug regex et les champs core sont préservés, conformément aux interdits de §2.0.1.
 
-Restent non implémentés les cinq profils que le plugin ne couvre pas : `event`, `app`, `book`, `place`, `screen`. C'est une couverture partielle de l'annexe, pas un écart de conformité — §2.0.1 donne les profils en COULD.
+L'annexe est couverte en entier depuis la v0.20.0. Le nom de collection d'un preset n'est pas normé par l'annexe : `work` pour `project` n'est pas un écart.
 
 **Extensions au-delà du contrat** :
 - `featured: boolean` (boost ranking) — pattern utile, officialisé en §1.3 v2.1
@@ -244,7 +250,7 @@ Restent non implémentés les cinq profils que le plugin ne couvre pas : `event`
 | Bloc `iptc.*` | ✅ | 549 `index*.md` le portent ; le site en retire les métadonnées des séries privées (ADR-012) |
 | Contenus embarqués (§1.11) | — | Non exercés : aucune série ne porte `embeds:` |
 | Ingestion (couche 4) | ✅ | Runner local sur `@regrets/hyperfocale/ingest` et `/ingest/fs` (plugin `^0.19.0`) : snapshot, diff, validation, garde. Dropbox fait foi (`MDR Content/`), aucune primitive générique dans le site. Garde site-spécifique `x-mdr-private-exposed` (§4.10, code `x-*`) |
-| Originaux (§1.9, v2.11) | ⚠️ | Non exercés — le corpus n'en contient pas —, mais non protégés : la synchro envoie toute entrée `media` vers R2 sans filtre d'extension et le proxy sert un type inconnu en `application/octet-stream`, si bien qu'un RAW d'une série publique serait téléchargeable ([mdr-monorepo#244](https://github.com/izo/mdr-monorepo/issues/244)). La projection publiable de §4.11 est la correction attendue |
+| Originaux (§1.9, v2.11) | ⚠️ | Non exercés — le corpus n'en contient pas —, mais non protégés : la synchro envoie toute entrée `media` vers R2 sans filtre d'extension et le proxy sert un type inconnu en `application/octet-stream`, si bien qu'un RAW d'une série publique serait téléchargeable ([mdr-monorepo#244](https://github.com/izo/mdr-monorepo/issues/244)). Correction : diff, garde et snapshot publié sur `publishable(target)` du plugin 0.20.0, à la publication de celui-ci |
 | Tri date desc | ✅ | |
 
 **Extensions strictement site-spécifiques (hors spec)** :
@@ -255,7 +261,7 @@ Restent non implémentés les cinq profils que le plugin ne couvre pas : `event`
 
 ### Site `laurenceguenoun.com`
 
-**Conformité** : ✅ Conforme v2.8 (mise en conformité du 2026-08-23), plugin **0.18.0** en **couche data seule** : `baseSeriesSchema` et helpers, `injectRoutes: false`, `theme: 'none'`, pages et design entièrement maison.
+**Conformité** : ✅ Conforme v2.8 (mise en conformité du 2026-08-23), inchangée en v2.11 — ni ingestion, ni originaux, ni dossier de travail. Plugin **0.19.0** (2026-10-20, HTML identique à l'octet) en **couche data seule** : `baseSeriesSchema` et helpers, `injectRoutes: false`, `theme: 'none'`, pages et design entièrement maison.
 
 | Obligation | Statut | Note |
 |------------|--------|------|
@@ -274,7 +280,8 @@ Restent non implémentés les cinq profils que le plugin ne couvre pas : `event`
 
 - Noyau `HyperfocaleCore` sans accès au système de fichiers : **lecture tolérante, écriture stricte** (champs inconnus, ordre des clés et style YAML préservés ; n'émet que du Hyperfocale conforme).
 - Couvre le core, `iptc.*`, documents joints, manifeste `images.json`, `embeds` (§1.11), profils de l'Annexe G (date optionnelle selon le profil), validation (`hyperfocale check`).
-- **Non implémentés** : la couche 4 (le CMS écrit dans Dropbox, la synchro du site publie — décision du 2026-09-29), les originaux (§1.9 v2.11) et le profil `project` (G.12).
+- **Non implémentée** : la couche 4 (le CMS écrit dans Dropbox, la synchro du site publie — décision du 2026-09-29).
+- **Originaux (§1.9) et profil `project` (G.12)** : écrits dans `HyperfocaleCore` le 2026-10-20 ([cms#86](https://github.com/izo/hyperfocale-cms/pull/86)), ni compilés ni testés ; `specVersion` reste 2.10 jusqu'à `swift test` vert. Reste : l'import range encore un RAW parmi les pièces jointes (`MediaImport`).
 - Le canal GitHub (API Git data) est abandonné au profit de Dropbox seul.
 
 ### hyperfocale-vault (macOS)
@@ -287,9 +294,9 @@ Restent non implémentés les cinq profils que le plugin ne couvre pas : `event`
 
 ### Site `hyperfocale.app`
 
-**Conformité** : ⚠️ Site de l'écosystème, lui-même une archive Hyperfocale (une série par projet dans `src/content/series/`), lue par le plugin Astro. Il dépend encore de `@izo/hyperfocale` résolu depuis GitHub — nom antérieur au paquet npm `@regrets/hyperfocale` — et ses fiches citent la spec en 2.7-draft.
+**Conformité** : ✅ Site de l'écosystème, lui-même une archive Hyperfocale (une série par projet dans `src/content/series/`), lue par le plugin `@regrets/hyperfocale` **0.19.0** depuis npm (2026-10-20 ; il dépendait de `@izo/hyperfocale` résolu depuis GitHub). Fiches et pages alignées sur la 2.11 : quatre couches, douze profils.
 
-> Un second dépôt, `izo/hyperforcale-site` (graphie sic), porte du contenu de site vitrine en FR/EN figé en 2.1-draft, sans code.
+> Le dépôt `izo/hyperforcale-site` (graphie sic, contenu vitrine sans code) a été repris dans `hyperfocale.app` le 2026-10-20 et est à archiver.
 
 ### Exporter Lightroom (SwiftUI + Tauri, v0.1.0)
 
@@ -304,7 +311,7 @@ Restent non implémentés les cinq profils que le plugin ne couvre pas : `event`
 | Dual naming mode | ✅ | `original` ou `sequential` (01.jpg, 02.jpg...) — officialisé en §2.7 v2.1 |
 | Tri images | ⚠️ | Tri Lightroom (`customSortOrder, captureTime`), pas alphabétique — divergence intentionnelle préservant l'ordre éditorial |
 | Bloc `translations:` | ⚠️ | Implémenté côté SwiftUI uniquement — divergence Tauri ↔ SwiftUI à résoudre, pattern officialisé en §2.7 v2.1 |
-| Originaux (§1.9, v2.11) | ❌ | SwiftUI : en format de sortie *Original*, le master Lightroom est copié tel quel avec son extension — un master RAW finit dans `media/`, qu'un lecteur antérieur à v2.11 propose en téléchargement ([exporter-app#96](https://github.com/izo/hyperfocale-exporter-app/issues/96)). Tauri non vérifié : le backend Rust n'est pas dans le dépôt |
+| Originaux (§1.9, v2.11) | ❌ | SwiftUI : en format de sortie *Original*, le master Lightroom est copié tel quel avec son extension — un master RAW finit dans `media/`, qu'un lecteur antérieur à v2.11 propose en téléchargement ([exporter-app#96](https://github.com/izo/hyperfocale-exporter-app/issues/96)). Correctif écrit, non compilé : un RAW est converti en JPEG, nom conservé ([exporter-app#98](https://github.com/izo/hyperfocale-exporter-app/pull/98)). Tauri non vérifié : le backend Rust n'est pas dans le dépôt |
 
 ---
 
