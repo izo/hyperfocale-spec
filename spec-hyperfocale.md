@@ -14,7 +14,7 @@
 | Site `mathieu-drouet.com` | https://github.com/izo/mdr-monorepo | Consommateur grandeur nature (Astro) et **premier pipeline d'ingestion** (couche 4, via le plugin) | ✅ Conforme v2.10 : format (schéma du plugin), sections, `images.json`, couche 4 — ⚠️ originaux (§1.9 v2.11) non exercés, le corpus n'en contient pas |
 | Site `laurenceguenoun.com` | https://github.com/izo/laurenceguenoun | Consommateur en **couche data seule** (Astro) | ✅ Conforme v2.8 (`embeds[]` §1.11 depuis le 2026-08-12) — plugin 0.18.0, deux écarts assumés |
 | Hyperfocale CMS | https://github.com/izo/hyperfocale-cms | Éditeur Swift (CLI, macOS, iOS) : lecture tolérante, écriture stricte | ⚠️ Vise v2.10 hors couche 4 ; originaux (§1.9) et G.12 non implémentés |
-| Exporter Lightroom | https://github.com/izo/hyperfocale-exporter-app | Source de contenu : LR → format Hyperfocale | ✅ Conforme v2.1 — ⚠️ non revérifié depuis la v2.11 (originaux §1.9) |
+| Exporter Lightroom | https://github.com/izo/hyperfocale-exporter-app | Source de contenu : LR → format Hyperfocale | ⚠️ Conforme v2.1 — un export *Original* peut déposer un RAW dans `media/` (§1.9 v2.11) |
 | hyperfocale-vault | https://github.com/izo/hyperfocale-vault | Gestion de projets photo macOS : producteur du profil Projet (G.12) et export vers une série | ✅ Vise v2.11 (ADR-034) — vérifié contre §0 et G.12, pas contre les fixtures |
 | Site `hyperfocale.app` | https://github.com/izo/hyperfocale.app | Site de l'écosystème, lui-même une archive Hyperfocale (Astro) | ⚠️ Dépend encore de `@izo/hyperfocale` (nom antérieur au paquet npm) |
 
@@ -304,7 +304,7 @@ Restent non implémentés les cinq profils que le plugin ne couvre pas : `event`
 | Dual naming mode | ✅ | `original` ou `sequential` (01.jpg, 02.jpg...) — officialisé en §2.7 v2.1 |
 | Tri images | ⚠️ | Tri Lightroom (`customSortOrder, captureTime`), pas alphabétique — divergence intentionnelle préservant l'ordre éditorial |
 | Bloc `translations:` | ⚠️ | Implémenté côté SwiftUI uniquement — divergence Tauri ↔ SwiftUI à résoudre, pattern officialisé en §2.7 v2.1 |
-| Originaux (§1.9, v2.11) | ⚠️ | À vérifier : un export ne doit déposer dans `media/` que des images (formats de sortie JPEG, WebP, AVIF). Relevé du 2026-10-20 sans audit du code |
+| Originaux (§1.9, v2.11) | ❌ | SwiftUI : en format de sortie *Original*, le master Lightroom est copié tel quel avec son extension — un master RAW finit dans `media/`, qu'un lecteur antérieur à v2.11 propose en téléchargement ([exporter-app#96](https://github.com/izo/hyperfocale-exporter-app/issues/96)). Tauri non vérifié : le backend Rust n'est pas dans le dépôt |
 
 ---
 
