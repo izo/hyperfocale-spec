@@ -244,7 +244,7 @@ Restent non implémentés les cinq profils que le plugin ne couvre pas : `event`
 | Bloc `iptc.*` | ✅ | 549 `index*.md` le portent ; le site en retire les métadonnées des séries privées (ADR-012) |
 | Contenus embarqués (§1.11) | — | Non exercés : aucune série ne porte `embeds:` |
 | Ingestion (couche 4) | ✅ | Runner local sur `@regrets/hyperfocale/ingest` et `/ingest/fs` (plugin `^0.19.0`) : snapshot, diff, validation, garde. Dropbox fait foi (`MDR Content/`), aucune primitive générique dans le site. Garde site-spécifique `x-mdr-private-exposed` (§4.10, code `x-*`) |
-| Originaux (§1.9, v2.11) | — | Non exercés : le corpus n'en contient pas. Hérite de l'écart du plugin s'il en reçoit |
+| Originaux (§1.9, v2.11) | ⚠️ | Non exercés — le corpus n'en contient pas —, mais non protégés : la synchro envoie toute entrée `media` vers R2 sans filtre d'extension et le proxy sert un type inconnu en `application/octet-stream`, si bien qu'un RAW d'une série publique serait téléchargeable ([mdr-monorepo#244](https://github.com/izo/mdr-monorepo/issues/244)). La projection publiable de §4.11 est la correction attendue |
 | Tri date desc | ✅ | |
 
 **Extensions strictement site-spécifiques (hors spec)** :
