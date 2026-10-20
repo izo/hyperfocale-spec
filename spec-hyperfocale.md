@@ -14,7 +14,7 @@
 | Site `mathieu-drouet.com` | https://github.com/izo/mdr-monorepo | Consommateur grandeur nature (Astro) et **premier pipeline d'ingestion** (couche 4, via le plugin) | ✅ Conforme v2.10 : format (schéma du plugin), sections, `images.json`, couche 4 — ⚠️ originaux (§1.9 v2.11) non exercés, le corpus n'en contient pas |
 | Site `laurenceguenoun.com` | https://github.com/izo/laurenceguenoun | Consommateur en **couche data seule** (Astro) | ✅ Conforme v2.8, inchangé en v2.11 (`embeds[]` §1.11 depuis le 2026-08-12) — plugin 0.19.0, deux écarts assumés |
 | Hyperfocale CMS | https://github.com/izo/hyperfocale-cms | Éditeur Swift (CLI, macOS, iOS) : lecture tolérante, écriture stricte | ⚠️ Vise v2.10 hors couche 4 ; originaux (§1.9) et G.12 écrits, non encore éprouvés (PR [cms#86](https://github.com/izo/hyperfocale-cms/pull/86)) |
-| Exporter Lightroom | https://github.com/izo/hyperfocale-exporter-app | Source de contenu : LR → format Hyperfocale | ⚠️ Conforme v2.1 — un export *Original* peut déposer un RAW dans `media/` (§1.9 v2.11) ; correctif en PR ([exporter-app#98](https://github.com/izo/hyperfocale-exporter-app/pull/98)) |
+| Exporter Lightroom | https://github.com/izo/hyperfocale-exporter-app | Source de contenu : LR → format Hyperfocale | ⚠️ Conforme v2.1 — trois écarts ouverts : RAW dans `media/` (§1.9), slug legacy, règle de date (§2.7) ; correctifs RAW et date en PR ([exporter-app#98](https://github.com/izo/hyperfocale-exporter-app/pull/98)) |
 | hyperfocale-vault | https://github.com/izo/hyperfocale-vault | Gestion de projets photo macOS : producteur du profil Projet (G.12) et export vers une série | ✅ Vise v2.11 (ADR-034) — vérifié contre §0 et G.12, pas contre les fixtures |
 | Site `hyperfocale.app` | https://github.com/izo/hyperfocale.app | Site de l'écosystème, lui-même une archive Hyperfocale (Astro) | ✅ Plugin `@regrets/hyperfocale` 0.19.0 ; présente les quatre couches et les douze profils |
 
@@ -178,7 +178,7 @@ Section informative — un audit de conformité des implémentations connues, mi
 | Page d'index de section (§1.10) | ✅ | Implémentée en **v0.9.0** : champ `type`, exclusion des listings, `date` non requise pour une section. `isSection()` ne teste que `type` — jamais l'absence de date (« discriminant explicite »). Helpers `isSection()` / `getSections()` exposés ; la route de section reste au site consommateur (§1.10 la donne en PEUT) |
 | Séries imbriquées (§1.8) | ✅ | Implémentées en **v0.12.0** : `getSubSeries()` et line-up rendu sur la page du conteneur, tri par `lineup_order` puis date décroissante. Le helper ne retient que les entrées situées exactement un segment plus bas — une série rangée plus profond (§1.2) n'est pas une sous-série |
 | Profils de contenu (Annexe G) | ✅ | Les **11 profils** de l'annexe v2.10 sont couverts depuis la **v0.14.0**, le profil `project` (G.12) depuis la **v0.20.0** ; leurs prefix restent localisés en français, ce que §2.0.1 autorise |
-| Originaux (§1.9, v2.11) | ✅ | **v0.20.0** : `isOriginal()`, exclus de la galerie, des documents joints, de `files[]` et de la couverture ; l'exclusion se fait dès le glob, sans quoi Vite émettrait le fichier au build. ⚠️ Une graphie d'extension mixte (`.Raf`) est écartée du rendu mais reste copiée au build : le glob de Vite est sensible à la casse et ne liste que les graphies minuscule et majuscule |
+| Originaux (§1.9, v2.11) | ✅ | **v0.20.0** : `isOriginal()`, exclus de la galerie, des documents joints, de `files[]` et de la couverture ; l'exclusion se fait dès le glob, sans quoi Vite émettrait le fichier au build. Le motif du glob est insensible à la casse (une classe par lettre, `[rR][aA][fF]`) : une graphie mixte comme `.Raf` est exclue aussi ([#125](https://github.com/izo/hyperfocale-astro-plugins/issues/125)) |
 | Garde : originaux (§4.11, v2.11) | ✅ | **v0.20.0** : `publishable(snapshot)`, `guard-originals-excluded` (`count`, `bytes`), `guard-oversize` sur la projection, règle 12 de §4.10. Fixtures rejouées sur `main@51cbf73` (207 fichiers) |
 | Ingestion (couche 4) | ✅ | Implémentée en **v0.19.0**, en quatre sous-chemins **additifs** : `/ingest` (contrat, agnostique du runtime), `/ingest/fs`, `/ingest/dropbox`, `/ingest/webdav`, plus les commandes `validate`, `snapshot` et `diff` du CLI. Les 109 fixtures de `fixtures/ingestion/` (`main@18f48de`) sont copiées à une ref épinglée et rejouées en totalité. L'entrée racine n'atteint aucun code d'ingestion : rien ne change pour un site qui ne l'importe pas |
 | Contenus embarqués (§1.11) | ✅ | Implémentés en **v0.17.0** : champ `embeds`, `getSeriesEmbeds()` (résolution dans l'ordre du tableau, `playable` = plateforme reconnue + `id` présent), `<SeriesEmbeds>` rendu **en façade** (le poster s'affiche, l'iframe n'arrive qu'au clic ; sans JavaScript la façade reste un lien fonctionnel), liste de plateformes ouverte (valeur inconnue → repli en lien), posters exclus du scan de galerie. Vocabulaires (`EMBED_PLATFORMS`, `ATTACHMENT_KINDS`) exportés à la racine en v0.17.1 |
@@ -298,20 +298,21 @@ L'annexe est couverte en entier depuis la v0.20.0. Le nom de collection d'un pre
 
 > Le dépôt `izo/hyperforcale-site` (graphie sic, contenu vitrine sans code) a été repris dans `hyperfocale.app` le 2026-10-20 et est à archiver.
 
-### Exporter Lightroom (SwiftUI + Tauri, v0.1.0)
+### Exporter Lightroom (SwiftUI, v0.1.0)
 
-**Conformité** : ✅ Conforme (~95 %).
+**Conformité** : ⚠️ Conforme v2.1 sur le format, avec trois écarts ouverts (originaux, slug, date). Relevé le 2026-10-20 sur `main`. La version Tauri est abandonnée depuis le 2026-10-20 ([exporter-app#100](https://github.com/izo/hyperfocale-exporter-app/issues/100)) : son backend Rust n'a jamais été versionné.
 
 | Obligation | Statut | Note |
 |------------|--------|------|
-| Dossier `media/` | ✅ | Les deux impls |
-| Slug regex | ⚠️ | Slug pur côté output ; le format legacy `hyperfocale-{year}-{slug}-{seq}` est l'ID de session, pas le slug de dossier |
+| Dossier `media/` | ✅ | |
+| Slug regex | ⚠️ | `ExportService.generateSlug` produit encore le format legacy `hyperfocale-{year}-{slug}-{seq}`, qui respecte la regex mais n'est pas le slug du titre ([exporter-app#45](https://github.com/izo/hyperfocale-exporter-app/issues/45)) |
+| `date` (§2.7) | ⚠️ | §2.7 retient la photo la plus récente ; le code prend la date médiane. Décision du 2026-10-20 : le code s'aligne sur la spec, correctif écrit dans [exporter-app#98](https://github.com/izo/hyperfocale-exporter-app/pull/98), non compilé ([#44](https://github.com/izo/hyperfocale-exporter-app/issues/44)) |
 | Frontmatter core | ✅ | |
 | Bloc `iptc.*` | ✅ | Mapping complet depuis le catalogue Lightroom |
 | Dual naming mode | ✅ | `original` ou `sequential` (01.jpg, 02.jpg...) — officialisé en §2.7 v2.1 |
-| Tri images | ⚠️ | Tri Lightroom (`customSortOrder, captureTime`), pas alphabétique — divergence intentionnelle préservant l'ordre éditorial |
-| Bloc `translations:` | ⚠️ | Implémenté côté SwiftUI uniquement — divergence Tauri ↔ SwiftUI à résoudre, pattern officialisé en §2.7 v2.1 |
-| Originaux (§1.9, v2.11) | ❌ | SwiftUI : en format de sortie *Original*, le master Lightroom est copié tel quel avec son extension — un master RAW finit dans `media/`, qu'un lecteur antérieur à v2.11 propose en téléchargement ([exporter-app#96](https://github.com/izo/hyperfocale-exporter-app/issues/96)). Correctif écrit, non compilé : un RAW est converti en JPEG, nom conservé ([exporter-app#98](https://github.com/izo/hyperfocale-exporter-app/pull/98)). Tauri non vérifié : le backend Rust n'est pas dans le dépôt |
+| Tri images | ⚠️ | Ordre de la collection Lightroom (`positionInCollection`, puis `captureTime`), pas alphabétique — divergence intentionnelle préservant l'ordre éditorial |
+| Bloc `translations:` | ✅ | Pattern officialisé en §2.7 v2.1 |
+| Originaux (§1.9, v2.11) | ❌ | En format de sortie *Original*, le master Lightroom est copié tel quel avec son extension — un master RAW finit dans `media/`, qu'un lecteur antérieur à v2.11 propose en téléchargement ([exporter-app#96](https://github.com/izo/hyperfocale-exporter-app/issues/96)). Correctif écrit, non compilé : un RAW est converti en JPEG, nom conservé ([exporter-app#98](https://github.com/izo/hyperfocale-exporter-app/pull/98), à éprouver sur Mac : [#99](https://github.com/izo/hyperfocale-exporter-app/issues/99)) |
 
 ---
 
