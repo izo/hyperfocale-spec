@@ -2,9 +2,9 @@
 
 > **Source de vérité canonique.** Ce document définit le format Hyperfocale — un standard de gestion de **séries photo** portable entre SSG (Astro, Next.js, Hugo, 11ty...), vaults Obsidian, et CMS headless (Strapi, Sanity, Payload...). Toute évolution du format doit être proposée d'abord ici, dans ce dépôt.
 
-**Version** : 2.11-draft
+**Version** : 2.12-draft
 **Statut** : spécification active — source de vérité canonique
-**Dernière révision** : 2026-10-15 (§0.5 relevée le 2026-10-24)
+**Dernière révision** : 2026-10-24
 
 ### Implémentations de référence
 
@@ -629,7 +629,9 @@ Un adaptateur DOIT accepter les deux formes : une entrée de type chaîne équiv
 | Couverture | `cover` du frontmatter, sinon **première entrée du tableau** (et non la première par ordre alphabétique). |
 | Documents joints | Une clé `files` optionnelle complète `images`, avec les mêmes entrées qu'en §1.9 mode distant. |
 | Robustesse | JSON illisible, clé `images` absente ou non-tableau : l'adaptateur DOIT se rabattre sur `media/` et DEVRAIT signaler l'anomalie. Jamais d'échec de build. |
-| `images.json` | N'est jamais un média ni un document joint — c'est un fichier de métadonnées, au même titre qu'`index.md`. Il reste une donnée dérivée quand le corpus vient d'une source distante : un outil d'ingestion le classe `derived` (§4.3) et PEUT le régénérer depuis le snapshot plutôt que le reprendre de la source. |
+| `images.json` | N'est jamais un média ni un document joint — c'est un fichier de métadonnées, au même titre qu'`index.md`. Il reste une donnée dérivée quand le corpus vient d'une source distante : un outil d'ingestion le classe `derived` (§4.3) et PEUT le régénérer depuis le snapshot plutôt que le reprendre de la source. Il NE DOIT PAS en produire pour une série dont l'`index.md` porte `images:` — l'outil violerait lui-même la règle d'exclusivité (`images-conflict`, §4.10). *(v2.12)* |
+| Ordre éditorial dans une source distante | Un éditeur qui écrit dans une source distante (§1.2, couche 4) NE DOIT PAS y écrire d'`images.json` : l'ingestion le classe `derived` et PEUT le régénérer, si bien que l'ordre posé par l'auteur serait perdu sans diagnostic. Un ordre de galerie qui n'est pas l'ordre alphabétique des noms s'écrit dans le frontmatter, champ `images:`, avec des entrées relatives à `index.md` (`./media/03.jpg`) ; à défaut, par le nommage des fichiers (§1.6). Un ordre alphabétique ne s'écrit pas : le scan de `media/` le donne. *(v2.12)* |
+| Entrées locales de `images:` | La règle *Résolution des URLs* ci-dessus s'applique aussi aux entrées du tableau `images:` du frontmatter (§1.5) : une entrée relative (`./media/01.jpg`) désigne un fichier de `media/`, et un adaptateur DOIT la résoudre comme une entrée relative du manifeste. *(v2.12)* |
 
 ##### Pourquoi un fichier annexe plutôt que le frontmatter
 
@@ -3271,6 +3273,19 @@ La seule nouveauté hors de l'annexe est la catégorie `original` de §1.9, dont
 ---
 
 ## Changelog
+
+### 2.12-draft — 2026-10-24
+
+#### Ordre éditorial des images dans une source distante (§1.5.1)
+
+**Ajouts** :
+- §1.5.1 — trois règles du manifeste : un outil d'ingestion NE DOIT PAS produire d'`images.json` pour une série qui porte `images:` ; un éditeur NE DOIT PAS écrire d'`images.json` dans une source distante, un ordre éditorial s'écrit dans `images:` du frontmatter ou par le nommage ; les entrées relatives de `images:` se résolvent comme celles du manifeste.
+
+**Décisions normatives** :
+- **Dans une source distante, l'ordre éditorial vit dans `index.md`, jamais dans `images.json`.** Le manifeste y est une donnée dérivée (§4.3) que l'ingestion PEUT régénérer : un ordre qu'un éditeur y écrirait serait écrasé sans diagnostic. L'alternative — obliger l'ingestion à conserver un manifeste édité — est écartée : elle imposait de distinguer un manifeste éditorial d'un manifeste dérivé, donc de revoir la classification, le hash et les fixtures de la couche 4. L'alternative du nommage seul aussi : chaque réordonnancement renommerait les médias, donc changerait leurs clés de stockage.
+- **Aucune fixture ne change.** La couche 4 ne fixe pas la génération du manifeste ; le seul diagnostic concerné, `images-conflict`, existe déjà et s'applique tel quel.
+
+**Justification** : constaté le 2026-10-24 sur la chaîne Hyperfocale CMS → Dropbox → `mathieu-drouet.com` ([#33](https://github.com/izo/hyperfocale-spec/issues/33)). En nommage d'origine, le CMS écrivait un `images.json` pour porter un ordre non alphabétique ; l'ingestion du site l'ignorait comme donnée dérivée puis le régénérait en ordre alphabétique. La spec suggérait déjà la voie retenue (§1.5.1, *Pourquoi un fichier annexe* : « une série dont la liste d'images est éditoriale a toute raison de la garder dans son frontmatter ») sans la rendre obligatoire.
 
 ### 2.11-draft — 2026-10-15
 
