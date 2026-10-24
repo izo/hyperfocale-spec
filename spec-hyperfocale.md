@@ -64,7 +64,7 @@ Un contenu Hyperfocale est toujours un **dossier** avec cette structure stricte 
 |---------|------|-----------|
 | `<slug>/` | Identifiant de la série | `^[a-z0-9]+(-[a-z0-9]+)*$` |
 | `index.md` | Toutes les métadonnées + texte | Obligatoire |
-| `media/` | Médias de la série (images, documents joints, originaux) | Obligatoire, plat (pas de sous-dossiers) |
+| `media/` | Médias de la série (images, documents joints, originaux) | Plat (pas de sous-dossiers). Présent dès que la série a des fichiers locaux ; PEUT être absent sinon (§1.2) |
 
 ### Le fichier `index.md`
 
@@ -145,7 +145,7 @@ Toute implémentation (adaptateur, script, outil) qui lit du contenu Hyperfocale
 
 1. Parser le frontmatter YAML de `index.md`
 2. Exiger `title`, et `date` sauf dans une collection déclarée `dateRequired: false` (§1.3) ; ignorer les champs inconnus
-3. Scanner `media/` et trier les fichiers alphabétiquement — les images alimentent la galerie, les originaux sont ignorés, les autres fichiers sont des documents joints (§1.9)
+3. Scanner `media/` — absent, il vaut un `media/` vide — et trier les fichiers alphabétiquement — les images alimentent la galerie, les originaux sont ignorés, les autres fichiers sont des documents joints (§1.9)
 4. Utiliser `cover` ou la première image comme couverture (ni les documents joints ni les originaux ne sont jamais candidats)
 5. Exclure les entrées `draft: true` des listings publics
 6. Rendre le body Markdown
@@ -404,11 +404,26 @@ Chaque série est **autonome** : toutes ses données (métadonnées + médias) v
 | `<content-root>` | Libre selon la plateforme. Exemples : `src/content/` (Astro), `content/` (Next.js), racine du vault (Obsidian). |
 | `<slug>` | Identifiant unique. Minuscules, chiffres, tirets uniquement. Regex : `^[a-z0-9]+(-[a-z0-9]+)*$`. Utilisé dans les URLs. |
 | `index.md` | Obligatoire. Contient le frontmatter YAML et le body Markdown. Encodage UTF-8. |
-| `media/` | Obligatoire (peut être vide pour une série en brouillon). Plat — pas de sous-dossiers. |
+| `media/` | Plat — pas de sous-dossiers. Porte les fichiers locaux de la série ; PEUT être absent quand il n'y en a aucun (voir *Absence de `media/`*). |
 | Images | Formats alimentant la galerie : `.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`, `.tif`, `.tiff`. Pas de récursion dans `media/`. |
 | Originaux | RAW et sidecars de développement (liste fermée, §1.9) : acceptés dans `media/`, ignorés par les lecteurs. |
 | Documents joints | Tout autre type de fichier est accepté dans `media/` (PDF, vidéo, audio, archives…) et traité en document joint — voir §1.9. |
 | Nommage des images | Libre, mais recommandé : `01.jpg`, `02.jpg`... (padding 2+ chiffres pour l'ordre). |
+
+#### Absence de `media/` *(clarifié v2.13)*
+
+`media/` porte les fichiers locaux d'une série. Une série qui n'en a aucun PEUT ne pas avoir de `media/` :
+
+- images listées par `images:` (§1.5) ou par un manifeste `images.json` (§1.5.1) ;
+- médias embarqués seulement (§1.11) ;
+- conteneur sans galerie propre (§1.8) ;
+- brouillon encore vide.
+
+| Règle | Description |
+|-------|-------------|
+| Lecture | Un lecteur DOIT traiter un `media/` absent comme un `media/` vide : aucune image, aucun document joint, aucune erreur. |
+| Écriture | Un outil qui crée une série PEUT créer un `media/` vide ; aucun lecteur ne DOIT dépendre de sa présence. |
+| Raison | Ni Git ni un snapshot (§4.5) ne conservent un dossier vide : seuls des fichiers en sont des entrées. Un `media/` obligatoire mais vide disparaîtrait au premier commit ou à la première ingestion. |
 
 Un corpus PEUT résider sur un filesystem distant ou synchronisé (Dropbox, iCloud Drive, WebDAV…) : sa sémantique reste celle d'un filesystem, indépendamment du transport — la couche 4 définit comment un tel corpus devient un snapshot publiable.
 
@@ -1335,7 +1350,7 @@ Un plugin Obsidian qui comprend nativement le format Hyperfocale. Il s'installe 
 
 ##### Périmètre
 
-Le plugin opère uniquement sur les dossiers qui respectent le format Hyperfocale (présence de `index.md` avec `title` + `date` + dossier `media/`). Il ignore silencieusement les autres fichiers du vault.
+Le plugin opère uniquement sur les dossiers qui respectent le format Hyperfocale (présence d'un `index.md` portant `title`, §0) — ni `media/` (§1.2, *Absence de `media/`*) ni `date` (§1.3) n'en sont des conditions. Il ignore silencieusement les autres fichiers du vault.
 
 ##### Vues
 
@@ -2263,7 +2278,7 @@ Ces règles garantissent qu'un profil reste un contenu Hyperfocale valide au sen
 
 | Règle | Description |
 |-------|-------------|
-| **Squelette inchangé** | `<slug>/index.md` + `media/` (§0, §1.2). Aucun profil ne modifie la structure filesystem ni le slug regex. |
+| **Squelette inchangé** | `<slug>/index.md` + `media/` dès que le contenu a des fichiers locaux (§0, §1.2). Aucun profil ne modifie la structure filesystem ni le slug regex. |
 | **Core préservé** | Les champs core ne sont jamais renommés. `title` reste obligatoire ; `date` peut devenir optionnelle pour toute la collection du profil (`dateRequired: false`, §1.3) — un relâchement que le contrat prévoit, pas la suppression d'une obligation (§2.0.1). |
 | **Extension namespacée** | Tout vocabulaire de domaine vit sous **une** clé unique (`event`, `recipe`, `app`) pour ne jamais entrer en collision avec le core. |
 | **Invariants §0 respectés** | Body avant galerie, tri alphabétique de `media/`, `cover`/fallback, `draft`, passthrough des champs inconnus s'appliquent identiquement. |
@@ -3310,6 +3325,21 @@ Corrections de cohérence issues de la relecture intégrale de la 2.12-draft ([#
 - **Aucune fixture ne change** : `date-missing` (§4.10) appliquait déjà cette règle (`type: section` ou racine `dateRequired: false`).
 
 **Justification** : la 2.12 se contredisait. §0 et l'Annexe A exigeaient `date` de tout contenu qui n'est pas une section, huit profils de l'Annexe G la rendaient optionnelle par preset, et le changelog 2.6 affirmait qu'un preset ne pouvait pas le faire. Un lecteur qui suivait §0 à la lettre rejetait une recette valide.
+
+#### `media/` facultatif sans fichier local (§0, §1.2, §2.5, Annexe G)
+
+**Ajouts** :
+- §1.2 — *Absence de `media/`* : une série sans fichier local PEUT ne pas avoir de `media/` ; un lecteur DOIT traiter un `media/` absent comme un `media/` vide.
+
+**Modifications** :
+- §0 (anatomie, point 3 du contrat minimum), §1.2, périmètre du plugin Obsidian (§2.5, qui exigeait aussi `date`) et règle commune *Squelette inchangé* de l'Annexe G alignés.
+
+**Décisions normatives** :
+- **`media/` porte les fichiers locaux d'une série ; sans fichier local, il est facultatif.** Cas couverts : `images:` ou manifeste `images.json`, embeds seuls, conteneur sans galerie propre, brouillon vide.
+- **Absent vaut vide** : ni image, ni document joint, ni erreur. Un outil PEUT créer un `media/` vide à la création d'une série ; aucun lecteur ne DOIT en dépendre.
+- **Aucune fixture ne change** : la couche 4 n'a jamais exigé `media/` — `manifest/series/concert-2019` n'en a pas et se valide sans diagnostic.
+
+**Justification** : la 2.12 déclarait `media/` obligatoire (§0, §1.2) tout en décrivant des séries qui n'en ont pas : manifeste (§1.5.1 — 309 séries sur 332 de `mathieu-drouet.com` au 2026-07-26), conteneur sans galerie (§1.8), série d'embeds (§1.11). L'obligation était en outre intenable : ni Git ni un snapshot ne conservent un dossier vide, si bien que le `media/` vide d'un brouillon disparaissait au premier commit ou à la première ingestion.
 
 ### 2.12-draft — 2026-10-24
 
