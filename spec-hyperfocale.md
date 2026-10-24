@@ -2,7 +2,7 @@
 
 > **Source de vérité canonique.** Ce document définit le format Hyperfocale — un standard de gestion de **séries photo** portable entre SSG (Astro, Next.js, Hugo, 11ty...), vaults Obsidian, et CMS headless (Strapi, Sanity, Payload...). Toute évolution du format doit être proposée d'abord ici, dans ce dépôt.
 
-**Version** : 2.12-draft
+**Version** : 2.13-draft
 **Statut** : spécification active — source de vérité canonique
 **Dernière révision** : 2026-10-24
 
@@ -87,7 +87,7 @@ date: 2024-06-15
 ---
 ```
 
-Deux champs sont **obligatoires** : `title` (string) et `date` (ISO 8601).
+Deux champs sont **obligatoires** : `title` (string) et `date` (ISO 8601). `title` l'est toujours. `date` l'est par défaut : une **collection** entière PEUT la rendre optionnelle en se déclarant `dateRequired: false` (§1.3, *Date requise ou optionnelle*). Une page d'index de section ne porte pas de `date` (§1.10).
 
 #### Frontmatter complet
 
@@ -144,7 +144,7 @@ Ces règles s'appliquent quel que soit l'adaptateur ou la plateforme :
 Toute implémentation (adaptateur, script, outil) qui lit du contenu Hyperfocale **doit** :
 
 1. Parser le frontmatter YAML de `index.md`
-2. Exiger `title` et `date`, ignorer les champs inconnus
+2. Exiger `title`, et `date` sauf dans une collection déclarée `dateRequired: false` (§1.3) ; ignorer les champs inconnus
 3. Scanner `media/` et trier les fichiers alphabétiquement — les images alimentent la galerie, les originaux sont ignorés, les autres fichiers sont des documents joints (§1.9)
 4. Utiliser `cover` ou la première image comme couverture (ni les documents joints ni les originaux ne sont jamais candidats)
 5. Exclure les entrées `draft: true` des listings publics
@@ -167,7 +167,7 @@ Section informative — un audit de conformité des implémentations connues, mi
 | Obligation | Statut | Note |
 |------------|--------|------|
 | Slug regex | ✅ | Enforced par Astro |
-| `title` + `date` requis | ⚠️ | `dateRequired` est configurable via preset (par défaut conforme) |
+| `title` + `date` requis | ✅ | `dateRequired` configurable via preset, comme §1.3 et §2.0.1 le prévoient (défaut `true`) |
 | `description`, `cover`, `location` | ✅ | Tous optionnels, présents |
 | `draft` respecté | ✅ | |
 | `lang` lu | ✅ | Ajouté au schéma Zod (v0.3.0) |
@@ -446,10 +446,23 @@ Le frontmatter est en YAML, délimité par `---`. Il se divise en deux niveaux :
 | Champ | Type | Requis | Description |
 |-------|------|--------|-------------|
 | `title` | `string` | **oui** | Titre de la série |
-| `date` | `date` (ISO 8601) | **oui** | Date de la série, utilisée pour le tri. Format : `YYYY-MM-DD` |
+| `date` | `date` (ISO 8601) | **oui**, sauf collection `dateRequired: false` | Date de la série, utilisée pour le tri. Format : `YYYY-MM-DD` |
 | `description` | `string` | non | Description courte. Utilisée dans les cards, le SEO, les previews. |
 | `cover` | `string` | non | Chemin relatif vers l'image de couverture (`./media/01.jpg`). Si absent : première image par ordre alphabétique. |
 | `location` | `string` | non | Lieu associé à la série. Texte libre. |
+
+#### Date requise ou optionnelle *(clarifié v2.13)*
+
+`date` est requise par défaut. Une collection PEUT la rendre optionnelle pour **tous** ses contenus en se déclarant `dateRequired: false` : par son preset (§2.0.1) ou, pour un outil d'ingestion, par sa racine de validation (§4.10). Chaque profil de l'Annexe G indique la valeur de son preset.
+
+| Règle | Description |
+|-------|-------------|
+| Propriété de la collection | Le caractère requis de `date` se déclare pour une collection, jamais dans le fichier : un contenu ne peut pas s'en dispenser lui-même. |
+| Défaut | Sans déclaration, `dateRequired` vaut `true` : un lecteur qui ne connaît pas la collection exige `date`. |
+| Série sans date | Dans une collection où `date` est requise, une série sans `date` est invalide (`date-missing`, §4.10). |
+| Date présente | Dans une collection `dateRequired: false`, la `date` d'une série, si elle est présente, DOIT rester une date valide (`date-invalid`, §4.10). |
+| Section | Une page d'index de section (§1.10) n'est jamais soumise à la règle, quelle que soit la collection : elle se distingue par `type: section`, pas par l'absence de `date`. |
+| `title` | Toujours requis, dans toute collection. |
 
 #### Champs de workflow
 
@@ -724,7 +737,7 @@ Cas d'usage typiques :
 
 | Élément | Contrainte |
 |---------|-----------|
-| `index.md` du conteneur | Obligatoire. Mêmes règles que pour une série standard (`title`, `date` requis). |
+| `index.md` du conteneur | Obligatoire. Mêmes règles que pour une série standard (`title` requis ; `date` selon la collection, §1.3). |
 | `media/` du conteneur | **Optionnel**. Si absent, le conteneur n'a pas de galerie propre — il sert uniquement de point d'entrée vers ses sous-séries. |
 | Sous-séries | Chacune est une série complète et autonome (au sens des §1.1–1.6). Une sous-série ne peut **pas** elle-même contenir des sous-séries (pas de récursion au-delà d'un niveau). |
 | Ce qu'est un conteneur | Un dossier de série dont un **sous-dossier porte un `index.md`**. Un dossier sans `index.md` traversé pour atteindre une série est une section de rangement (§1.2), pas un conteneur — sa profondeur est libre. |
@@ -910,7 +923,7 @@ Le champ `type` est **réservé** au niveau du core. Son absence vaut `type: ser
 |-------|-------------|
 | Ce n'est pas un contenu de collection | Une page d'index de section est **exclue** des listings de séries, des flux de syndication (Annexe E) et du tri par date (§1.6). Un adaptateur PEUT lui générer une page de section, avec son body en tête et la liste de ses contenus en dessous. |
 | Pas de galerie | La section ne porte pas de `media/`. Un `cover` PEUT être renseigné pour l'illustrer dans une navigation ; il pointe alors vers une image d'un contenu de la section, en chemin relatif — même dérogation qu'en §1.8. |
-| Discriminant explicite | La distinction série / section se lit **uniquement** dans `type`. Un adaptateur ne DOIT jamais la deviner (par l'absence de `date`, par la présence de sous-dossiers, ou autrement) : une série sans `date` reste une série invalide. |
+| Discriminant explicite | La distinction série / section se lit **uniquement** dans `type`. Un adaptateur ne DOIT jamais la deviner (par l'absence de `date`, par la présence de sous-dossiers, ou autrement) : dans une collection où `date` est requise (§1.3), une série sans `date` reste une série invalide. |
 | Pas de contenu direct | Les contenus d'une section vivent dans ses sous-dossiers. Une section ne « contient » rien au sens de §1.8 : elle ne les regroupe pas éditorialement, elle les range. |
 | Imbrication | Une section PEUT contenir d'autres sections. Contrairement à §1.8, la profondeur n'est pas limitée : ce sont des dossiers de classement, pas des contenus. |
 | Robustesse | Un adaptateur qui n'implémente pas §1.10 DOIT **ignorer** un `index.md` portant `type: section` — sans erreur, et sans tenter de le valider comme série (validation qui échouerait sur `date`). |
@@ -923,7 +936,7 @@ Les deux formes rassemblent des séries ; elles ne sont pas interchangeables.
 |---|---|---|
 | Nature | Une **série** qui en regroupe d'autres | Un **rangement**, pas un contenu |
 | Intention | Éditoriale (un festival, un reportage chapitré) | Structurelle (une rubrique du site) |
-| `date` | Requise | Sans objet |
+| `date` | Selon la collection (§1.3) | Sans objet |
 | Galerie propre | Possible (`media/` optionnel) | Non |
 | Dans les listings de séries | Oui | Non |
 | Profondeur | Un seul niveau d'imbrication | Libre |
@@ -1019,6 +1032,7 @@ Tout adaptateur Hyperfocale **DOIT** :
 | Obligation | Description |
 |-----------|-------------|
 | Lire le frontmatter core | Parser `title`, `date`, `description`, `cover`, `location`, `draft`, `lang` |
+| Exiger les champs requis | `title` toujours ; `date` sauf dans une collection déclarée `dateRequired: false` ; jamais pour une page d'index de section (§1.3, §1.10) |
 | Ignorer les champs inconnus | Ne jamais échouer sur un champ frontmatter non reconnu |
 | Transmettre les extensions | Rendre accessible `iptc.*` et tout champ supplémentaire aux templates/composants |
 | Scanner `media/` | Mode local : glob les images, trier alphabétiquement |
@@ -1059,12 +1073,13 @@ hyperfocale({ preset: 'catalog' })  // fiches produit, prefix /catalog, date opt
 Tout preset DOIT respecter le contrat d'adaptateur §2.0. Un preset PEUT modifier :
 - Le nom de la collection (`collectionName`)
 - Le préfixe d'URL (`prefix`)
-- La conditionnalité de certains champs (ex : `dateRequired: false` pour les recettes intemporelles)
+- La conditionnalité de `date`, par `dateRequired: false` (recettes intemporelles…) — seul champ du core qu'un preset peut rendre optionnel. Ce n'est pas la suppression d'une obligation : le contrat (§0, §2.0) exige `date` sauf dans une collection ainsi déclarée (§1.3)
 - Le vocabulaire d'extension affiché à l'utilisateur
 
 Un preset NE DOIT PAS :
 - Modifier le slug regex
 - Supprimer les obligations du contrat d'adaptateur
+- Rendre `title` optionnel
 - Renommer les champs core (`title`, `date`, `description`, `cover`, etc.)
 
 Onze presets non-photo sont standardisés en **Annexe G — Profils de contenu** (`event`, `recipe`, `app`, `book`, `place`, `screen`, `portfolio`, `music`, `catalog`, `press`, `project`). L'ajout de nouveaux profils se discute par PR contre cette spec, en étendant cette annexe.
@@ -2112,9 +2127,9 @@ hyperfocale-lint ./content/series/
 
 Vérifications :
 - [ ] Chaque dossier série contient `index.md`
-- [ ] Frontmatter contient `title` et `date` — sauf `type: section`, où seul `title` est requis (§1.10)
+- [ ] Frontmatter contient `title`, et `date` sauf dans une collection `dateRequired: false` (§1.3) — une section ne requiert que `title` (§1.10)
 - [ ] `type`, si présent, vaut `series` ou `section`
-- [ ] Un `index.md` sans `date` déclare explicitement `type: section` (une série sans date reste une erreur)
+- [ ] Dans une collection où `date` est requise, un `index.md` sans `date` déclare explicitement `type: section` (une série sans date y reste une erreur)
 - [ ] `date` est au format ISO 8601
 - [ ] `slug` respecte le pattern `^[a-z0-9]+(-[a-z0-9]+)*$`
 - [ ] `cover` pointe vers un fichier existant dans `media/`
@@ -2240,7 +2255,7 @@ Un **profil de contenu** est une déclinaison du squelette pour un domaine donn�
 
 1. **Réutiliser le core tel quel** (`title`, `date`, `description`, `cover`, `location`, `draft`, `lang`, `tags`, `featured`).
 2. **Ajouter un bloc d'extension namespacé** propre au domaine (exactement comme `iptc:` l'est pour la photo) : `event:`, `recipe:`, `app:`.
-3. **Optionnellement, relâcher la conditionnalité de certains champs** via un preset d'adaptateur (§2.0.1) — typiquement `dateRequired: false`.
+3. **Optionnellement, rendre `date` optionnelle** pour la collection du profil, par `dateRequired: false` dans son preset (§2.0.1, §1.3).
 
 #### Règles communes à tous les profils
 
@@ -2249,7 +2264,7 @@ Ces règles garantissent qu'un profil reste un contenu Hyperfocale valide au sen
 | Règle | Description |
 |-------|-------------|
 | **Squelette inchangé** | `<slug>/index.md` + `media/` (§0, §1.2). Aucun profil ne modifie la structure filesystem ni le slug regex. |
-| **Core préservé** | Les champs core ne sont jamais renommés. `title` reste obligatoire ; `date` peut devenir optionnelle via preset (contrainte §2.0.1 : pas de suppression d'obligation du contrat). |
+| **Core préservé** | Les champs core ne sont jamais renommés. `title` reste obligatoire ; `date` peut devenir optionnelle pour toute la collection du profil (`dateRequired: false`, §1.3) — un relâchement que le contrat prévoit, pas la suppression d'une obligation (§2.0.1). |
 | **Extension namespacée** | Tout vocabulaire de domaine vit sous **une** clé unique (`event`, `recipe`, `app`) pour ne jamais entrer en collision avec le core. |
 | **Invariants §0 respectés** | Body avant galerie, tri alphabétique de `media/`, `cover`/fallback, `draft`, passthrough des champs inconnus s'appliquent identiquement. |
 | **Rétro-compatibilité** | Un adaptateur qui ne connaît pas un profil DOIT lire le contenu comme un contenu Hyperfocale standard (core + media + body) et ignorer le bloc d'extension sans erreur (passthrough §1.3). Aucun profil ne casse un lecteur existant. |
@@ -3273,6 +3288,28 @@ La seule nouveauté hors de l'annexe est la catégorie `original` de §1.9, dont
 ---
 
 ## Changelog
+
+### 2.13-draft — 2026-10-24
+
+Corrections de cohérence issues de la relecture intégrale de la 2.12-draft ([#37](https://github.com/izo/hyperfocale-spec/issues/37)).
+
+#### Caractère requis de `date` (§0, §1.3, §2.0, §2.0.1, Annexes A et G)
+
+**Ajouts** :
+- §1.3 — *Date requise ou optionnelle* : `date` est requise par défaut ; une collection la rend optionnelle pour tous ses contenus en se déclarant `dateRequired: false`, par son preset (§2.0.1) ou par sa racine de validation (§4.10).
+- §2.0 — obligation « Exiger les champs requis », jusqu'ici écrite au seul §0.
+
+**Modifications** :
+- §0 (frontmatter minimal, point 2 du contrat minimum), §1.8, §1.10, §2.0.1, Annexe A et règles communes de l'Annexe G alignés sur cette règle. §2.0.1 : un preset NE DOIT PAS rendre `title` optionnel.
+- §0.5 — l'option `dateRequired` du plugin Astro n'est plus notée comme un écart.
+
+**Décisions normatives** :
+- **Le caractère requis de `date` appartient à la collection, jamais au fichier.** Un contenu ne peut pas s'en dispenser lui-même ; sans déclaration, `dateRequired` vaut `true`.
+- **`dateRequired: false` n'est pas la suppression d'une obligation** : le contrat exige `date` sauf dans une collection ainsi déclarée. `date` est le seul champ du core qu'un preset peut rendre optionnel ; `title` ne l'est jamais.
+- **Une section échappe à la règle par `type: section`**, dans toute collection. Le changelog 2.6 justifiait §1.10 par l'impossibilité de relâcher `date` par preset ; la raison qui tient est autre : un preset vaut pour une collection entière, alors qu'une section vit **parmi** des séries datées — il fallait un discriminant par fichier.
+- **Aucune fixture ne change** : `date-missing` (§4.10) appliquait déjà cette règle (`type: section` ou racine `dateRequired: false`).
+
+**Justification** : la 2.12 se contredisait. §0 et l'Annexe A exigeaient `date` de tout contenu qui n'est pas une section, huit profils de l'Annexe G la rendaient optionnelle par preset, et le changelog 2.6 affirmait qu'un preset ne pouvait pas le faire. Un lecteur qui suivait §0 à la lettre rejetait une recette valide.
 
 ### 2.12-draft — 2026-10-24
 
