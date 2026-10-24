@@ -4,16 +4,16 @@
 
 **Version** : 2.11-draft
 **Statut** : spécification active — source de vérité canonique
-**Dernière révision** : 2026-10-15 (§0.5 relevée le 2026-10-20)
+**Dernière révision** : 2026-10-15 (§0.5 relevée le 2026-10-24)
 
 ### Implémentations de référence
 
 | Implémentation | Dépôt | Rôle | Conformité |
 |----------------|-------|------|------------|
-| Plugin Astro `@regrets/hyperfocale` | https://github.com/izo/hyperfocale-astro-plugins | Adaptateur Astro (couche 2) et outils d'ingestion (couche 4) | ✅ Conforme v2.11 sur `main` (v0.20.0 : originaux §1.9, garde §4.11, G.12) — publiée sur npm : v0.19.0 (conforme v2.10), la 0.20.0 y est en attente |
-| Site `mathieu-drouet.com` | https://github.com/izo/mdr-monorepo | Consommateur grandeur nature (Astro) et **premier pipeline d'ingestion** (couche 4, via le plugin) | ✅ Conforme v2.10 : format (schéma du plugin), sections, `images.json`, couche 4 — ⚠️ originaux (§1.9 v2.11) non exercés, le corpus n'en contient pas |
+| Plugin Astro `@regrets/hyperfocale` | https://github.com/izo/hyperfocale-astro-plugins | Adaptateur Astro (couche 2) et outils d'ingestion (couche 4) | ✅ Conforme v2.11 — v0.20.0 publiée sur npm le 2026-10-21 (originaux §1.9, garde §4.11, G.12) |
+| Site `mathieu-drouet.com` | https://github.com/izo/mdr-monorepo | Consommateur grandeur nature (Astro) et **premier pipeline d'ingestion** (couche 4, via le plugin) | ⚠️ Couche 4 conforme v2.11 (plugin 0.20.0, projection publiable) ; couche data en écart — loader sans passthrough, ordre du manifeste, couverture, `.tif`, documents joints ([mdr#307](https://github.com/izo/mdr-monorepo/issues/307), [#308](https://github.com/izo/mdr-monorepo/issues/308)) |
 | Site `laurenceguenoun.com` | https://github.com/izo/laurenceguenoun | Consommateur en **couche data seule** (Astro) | ✅ Conforme v2.8, inchangé en v2.11 (`embeds[]` §1.11 depuis le 2026-08-12) — plugin 0.19.0, deux écarts assumés |
-| Hyperfocale CMS | https://github.com/izo/hyperfocale-cms | Éditeur Swift (CLI, macOS, iOS) : lecture tolérante, écriture stricte | ⚠️ Vise v2.10 hors couche 4 ; originaux (§1.9) et G.12 écrits, non encore éprouvés (PR [cms#86](https://github.com/izo/hyperfocale-cms/pull/86)) |
+| Hyperfocale CMS | https://github.com/izo/hyperfocale-cms | Éditeur Swift (CLI, macOS, iOS) : lecture tolérante, écriture stricte | ⚠️ Vise v2.10 hors couche 4 ; originaux (§1.9) et G.12 écrits, non encore éprouvés (PR [cms#86](https://github.com/izo/hyperfocale-cms/pull/86)) ; n'écrit pas encore dans Dropbox, canal GitHub toujours présent ([cms#77](https://github.com/izo/hyperfocale-cms/issues/77), [#78](https://github.com/izo/hyperfocale-cms/issues/78)) |
 | Exporter Lightroom | https://github.com/izo/hyperfocale-exporter-app | Source de contenu : LR → format Hyperfocale | ⚠️ Conforme v2.1 — trois écarts ouverts : RAW dans `media/` (§1.9), slug legacy, règle de date (§2.7) ; correctifs RAW et date en PR ([exporter-app#98](https://github.com/izo/hyperfocale-exporter-app/pull/98)) |
 | hyperfocale-vault | https://github.com/izo/hyperfocale-vault | Gestion de projets photo macOS : producteur du profil Projet (G.12) et export vers une série | ✅ Vise v2.11 (ADR-034) — vérifié contre §0 et G.12, pas contre les fixtures |
 | Site `hyperfocale.app` | https://github.com/izo/hyperfocale.app | Site de l'écosystème, lui-même une archive Hyperfocale (Astro) | ✅ Plugin `@regrets/hyperfocale` 0.19.0 ; présente les quatre couches et les douze profils |
@@ -158,9 +158,9 @@ Toute implémentation (adaptateur, script, outil) qui lit du contenu Hyperfocale
 
 Section informative — un audit de conformité des implémentations connues, mis à jour à chaque révision majeure de la spec.
 
-### Plugin Astro `@regrets/hyperfocale` (v0.20.0 sur `main`, v0.19.0 sur npm)
+### Plugin Astro `@regrets/hyperfocale` (v0.20.0, publiée sur npm le 2026-10-21)
 
-**Conformité** : ✅ Conforme sur le contrat d'adaptateur (§2.0), obligations v2.6 comprises, aligné sur les profils de l'Annexe G depuis la v0.12.0, et **§1.11 (contenus embarqués) implémentée depuis la v0.17.0** — plus aucune obligation ouverte. **La couche 4 (ingestion) est implémentée depuis la v0.19.0** : les 109 fixtures cross-language de la spec (`main@18f48de`) passent toutes. **Les deux obligations rouvertes par la v2.11 sont refermées en v0.20.0** (fusionnée le 2026-10-20 ; publication npm en attente) : les originaux (§1.9) et leur exclusion par la garde de publication (§4.11). Jusqu'à sa publication, un site sur la 0.19.0 ne doit pas recevoir de dossier de travail (G.12).
+**Conformité** : ✅ Conforme sur le contrat d'adaptateur (§2.0), obligations v2.6 comprises, aligné sur les profils de l'Annexe G depuis la v0.12.0, et **§1.11 (contenus embarqués) implémentée depuis la v0.17.0** — plus aucune obligation ouverte. **La couche 4 (ingestion) est implémentée depuis la v0.19.0** : les 109 fixtures cross-language de la spec (`main@18f48de`) passent toutes. **Les deux obligations rouvertes par la v2.11 sont refermées en v0.20.0** (fusionnée le 2026-10-20, publiée sur npm le 2026-10-21) : les originaux (§1.9) et leur exclusion par la garde de publication (§4.11). Un site resté sur la 0.19.0 ne doit pas recevoir de dossier de travail (G.12).
 
 > Le paquet s'appelait `@izo/hyperfocale` jusqu'au 2026-08-04. Le scope `@izo` ne correspondait à aucun compte npm et aucune version n'avait jamais été publiée sous ce nom : le renommage n'a rien cassé.
 
@@ -201,7 +201,7 @@ Section informative — un audit de conformité des implémentations connues, mi
 - **v0.18.0** — helpers multi-collections : la plupart des helpers acceptent un nom de collection en argument (`collectionName` pour `querySeries`), `getAllSeries()` expose la collection brute, et le cache — jusqu'ici scalaire, il servait une collection pour une autre sur un site bilingue — est indexé par collection. Besoin remonté par `mathieu-drouet.com` (une collection par locale).
 - **v0.18.1** et **v0.18.2** — correctifs de sécurité, sans changement d'API : les données de contenu injectées dans un `<script>` (JSON-LD, lightbox) ne peuvent plus le refermer (`<` échappé en `\u003c`) ; `embeds[].id` ne peut plus détourner l'URL de lecture d'un embed.
 - **v0.19.0** — couche 4 (ingestion) : snapshot, diff, validation (§4.10), garde de publication fail-closed côté base (§4.11), providers filesystem, Dropbox et WebDAV, états de publication, CLI `validate` / `snapshot` / `diff`. Le frontmatter y est lu en schéma YAML 1.2 *core*, comme §4.10 le demande.
-- **v0.20.0** (sur `main`, non publiée au 2026-10-20) — spec 2.11 : originaux (§1.9), projection publiable et `guard-originals-excluded` (§4.11), preset `project` (G.12). Corrige au passage `.tif` et les extensions d'image en majuscules, classées en documents joints. `ORIGINAL_EXTENSIONS` et `PROJECT_STATUSES` exportés à la racine.
+- **v0.20.0** (publiée le 2026-10-21) — spec 2.11 : originaux (§1.9), projection publiable et `guard-originals-excluded` (§4.11), preset `project` (G.12). Corrige au passage `.tif` et les extensions d'image en majuscules, classées en documents joints. `ORIGINAL_EXTENSIONS` et `PROJECT_STATUSES` exportés à la racine.
 - Socle : **Astro 7.2.0**, TypeScript 7, Zod 4.
 
 **Presets vs Annexe G — écart refermé en v0.12.0** :
@@ -235,22 +235,27 @@ L'annexe est couverte en entier depuis la v0.20.0. Le nom de collection d'un pre
 
 ### Site `mathieu-drouet.com` (dépôt `izo/mdr-monorepo`)
 
-**Conformité** : ✅ Conforme v2.10 — format et couche 4. Relevé le 2026-10-20 sur `main`.
+**Conformité** : ⚠️ Couche 4 conforme v2.11 ; couche data (lecture) en écart sur §1.5.1, §1.6, §1.8, §1.9 et §2.0. Relevé le 2026-10-24 sur `main`. Le site garde son propre loader et son propre résolveur d'images : les helpers de lecture du plugin passent par `import.meta.glob` et ne lisent pas un corpus servi depuis `public/content` + R2 ([hyperfocale-astro-plugins#130](https://github.com/izo/hyperfocale-astro-plugins/issues/130)).
 
 > Le site vivait dans `izo/mathieu-drouet.com` jusqu'au 2026-08-22. Ce dépôt est archivé ; contenu et site sont dans `izo/mdr-monorepo`, organisé autour du contenu (`content/`) et consommé par le site Astro, les apps iOS/tvOS et Android, et un serveur MCP. Migration v2.1 terminée le 2026-05-19 (`docs/migration-spec-v2.1.md`).
 
 | Obligation | Statut | Note |
 |------------|--------|------|
 | Slug regex | ✅ | |
-| `title` + `date` requis | ✅ | `baseSeriesSchema({ dateRequired: true })` du plugin |
+| `title` + `date` requis | ⚠️ | `baseSeriesSchema({ dateRequired: true })` du plugin déclaré, mais jamais appliqué aux archives : le loader écrit le store sans `parseData` ([mdr#307](https://github.com/izo/mdr-monorepo/issues/307)) |
+| Passthrough (champs inconnus) | ❌ | Le loader des archives ne transmet qu'une liste blanche de 13 champs : `artist`, `genres`, `updated`, `images`, `lang`, `embeds`… sont perdus avant le schéma ([mdr#307](https://github.com/izo/mdr-monorepo/issues/307)) |
 | Dossier `media/` | ✅ | Médias hors dépôt (disque local + bucket R2 privé), servis par le Worker |
-| Manifeste d'images (§1.5.1) | ✅ | `images.json` lu d'abord — il reflète le contenu de R2, seule vérité en production |
+| Manifeste d'images (§1.5.1) | ⚠️ | `images.json` lu d'abord — il reflète le contenu de R2, seule vérité en production — mais l'ordre du tableau est retrié (couverture d'abord, puis alphabétique), la forme longue et la clé `files` sont ignorées ([mdr#308](https://github.com/izo/mdr-monorepo/issues/308)) |
+| Couverture par défaut (§1.6) | ⚠️ | Sans `cover`, une image tirée par hachage de l'identifiant, pas la première ([mdr#308](https://github.com/izo/mdr-monorepo/issues/308)) |
+| Pas de récursion (§1.8) | ⚠️ | Le scan de repli (contenu sans manifeste) parcourt tout le dossier de la série, sous-séries comprises ([mdr#308](https://github.com/izo/mdr-monorepo/issues/308)) |
+| Formats images (`.tif`, `.tiff`) | ❌ | Classés images par l'ingestion (envoyés à R2), filtrés par le site : jamais affichés ([mdr#308](https://github.com/izo/mdr-monorepo/issues/308)) |
+| Documents joints (§1.9), mode distant (§1.5) | ❌ | Non pris en charge : un document de `media/` part dans R2 et reste invisible, le proxy ne sert que des images ([mdr#308](https://github.com/izo/mdr-monorepo/issues/308)) |
 | Page d'index de section (§1.10) | ✅ | 16 `index.md` en `type: section` |
 | `draft` respecté | ✅ | |
-| Bloc `iptc.*` | ✅ | 549 `index*.md` le portent ; le site en retire les métadonnées des séries privées (ADR-012) |
+| Bloc `iptc.*` | ✅ | 548 `index*.md` le portent ; le site en retire les métadonnées des séries privées (ADR-012) |
 | Contenus embarqués (§1.11) | — | Non exercés : aucune série ne porte `embeds:` |
-| Ingestion (couche 4) | ✅ | Runner local sur `@regrets/hyperfocale/ingest` et `/ingest/fs` (plugin `^0.19.0`) : snapshot, diff, validation, garde. Dropbox fait foi (`MDR Content/`), aucune primitive générique dans le site. Garde site-spécifique `x-mdr-private-exposed` (§4.10, code `x-*`) |
-| Originaux (§1.9, v2.11) | ⚠️ | Non exercés — le corpus n'en contient pas —, mais non protégés : la synchro envoie toute entrée `media` vers R2 sans filtre d'extension et le proxy sert un type inconnu en `application/octet-stream`, si bien qu'un RAW d'une série publique serait téléchargeable ([mdr-monorepo#244](https://github.com/izo/mdr-monorepo/issues/244)). Correction : diff, garde et snapshot publié sur `publishable(target)` du plugin 0.20.0, à la publication de celui-ci |
+| Ingestion (couche 4) | ✅ | Runner local (agent launchd) sur `@regrets/hyperfocale/ingest`, `/ingest/dropbox` (source en vigueur : l'API Dropbox) et `/ingest/fs` (plugin `^0.20.0`) : snapshot, diff, validation, garde. Dropbox fait foi (`MDR Content/`), aucune primitive générique dans le site. Garde site-spécifique `x-mdr-private-exposed` (§4.10, code `x-*`) |
+| Originaux (§1.9, v2.11) | ✅ | Non exercés — le corpus n'en contient pas —, mais protégés depuis le 2026-10-20 ([mdr-monorepo#246](https://github.com/izo/mdr-monorepo/pull/246)) : diff, garde et snapshot publié passent par `publishable()` du plugin 0.20.0 |
 | Tri date desc | ✅ | |
 
 **Extensions strictement site-spécifiques (hors spec)** :
@@ -280,9 +285,10 @@ L'annexe est couverte en entier depuis la v0.20.0. Le nom de collection d'un pre
 
 - Noyau `HyperfocaleCore` sans accès au système de fichiers : **lecture tolérante, écriture stricte** (champs inconnus, ordre des clés et style YAML préservés ; n'émet que du Hyperfocale conforme).
 - Couvre le core, `iptc.*`, documents joints, manifeste `images.json`, `embeds` (§1.11), profils de l'Annexe G (date optionnelle selon le profil), validation (`hyperfocale check`).
-- **Non implémentée** : la couche 4 (le CMS écrit dans Dropbox, la synchro du site publie — décision du 2026-09-29).
+- **Non implémentée** : la couche 4. Décision du 2026-09-29 : le CMS écrit dans Dropbox, la synchro du site publie. Au 2026-10-24, le CMS n'a encore aucun code Dropbox ([cms#77](https://github.com/izo/hyperfocale-cms/issues/77)) ; sur macOS il peut ouvrir le dossier Dropbox local comme un dossier quelconque, non éprouvé.
+- **Écriture pour une cible distante** : un `images.json` d'ordre éditorial est écrasé par l'ingestion du site (§1.5.1 × §4.3, [spec#33](https://github.com/izo/hyperfocale-spec/issues/33)), `series_id` est facultatif, aucun `draft` par défaut ([cms#89](https://github.com/izo/hyperfocale-cms/issues/89)) ; codes de validation à aligner sur §4.10 ([cms#90](https://github.com/izo/hyperfocale-cms/issues/90)).
 - **Originaux (§1.9) et profil `project` (G.12)** : écrits dans `HyperfocaleCore` le 2026-10-20 ([cms#86](https://github.com/izo/hyperfocale-cms/pull/86)), ni compilés ni testés ; `specVersion` reste 2.10 jusqu'à `swift test` vert. Reste : l'import range encore un RAW parmi les pièces jointes (`MediaImport`).
-- Le canal GitHub (API Git data) est abandonné au profit de Dropbox seul.
+- Le canal GitHub (API Git data) est toujours présent ; son retrait au profit de Dropbox seul est prévu après l'espace de travail Dropbox ([cms#78](https://github.com/izo/hyperfocale-cms/issues/78)).
 
 ### hyperfocale-vault (macOS)
 
