@@ -186,7 +186,7 @@ Section informative — un audit de conformité des implémentations connues, mi
 | Contenus embarqués (§1.11) | ✅ | Implémentés en **v0.17.0** : champ `embeds`, `getSeriesEmbeds()` (résolution dans l'ordre du tableau, `playable` = plateforme reconnue + `id` présent), `<SeriesEmbeds>` rendu **en façade** (le poster s'affiche, l'iframe n'arrive qu'au clic ; sans JavaScript la façade reste un lien fonctionnel), liste de plateformes ouverte (valeur inconnue → repli en lien), posters exclus du scan de galerie. Vocabulaires (`EMBED_PLATFORMS`, `ATTACHMENT_KINDS`) exportés à la racine en v0.17.1 |
 | URLs (§1.6, v2.13) | ⚠️ | Routes injectées sur l'`id` du loader, c'est-à-dire sur le chemin (`${prefix}/[...slug]/`) : règle *Identité* respectée. Pagination encore à l'ancienne forme, `${prefix}/[...slug]/[page]/` : dès que la galerie d'un conteneur `festival` dépasse une page, sa page 2 et sa sous-série `2` prennent la même route `/series/festival/2/`. Relevé sur `main@f8d1a52` |
 | Passthrough racine (champs inconnus) | ✅ | `z.looseObject()` racine — les extensions site-spécifiques ne sont jamais rejetées (v0.4.0) |
-| Tri date desc | ✅ | |
+| Tri date desc | ⚠️ | `getSeriesList()` trie sur l'horodatage complet (`getTime()`), sans départage à égalité ; **depuis la 2.15**, seule la date calendaire compte et l'égalité se départage par titre puis chemin (§1.6). Les brouillons sont bien absents des listings et des routes en production (`getSeriesList()`). Relevé sur `main@f8d1a52` |
 
 **Changements depuis v0.4.0** :
 - **v0.7.0** — documents joints (§1.9) ; slot de layout du site consommateur (options `layout`, `injectRoutes`) ; `galleryLayout: 'grid' | 'column'` ; images locales ordonnées portant leur `alt`.
