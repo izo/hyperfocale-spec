@@ -1,9 +1,9 @@
 # Spécification — Hyperfocale Projet
 
-> **En rédaction.** Ce document décrit le **dossier de travail** Hyperfocale : un projet suivi à la source, de la première prise de contact à la livraison. Il se sépare de la spec web (`spec-hyperfocale.md`), qui décrit un contenu fait pour être publié. Les sections 1 et 2.1 sont rédigées au futur contrat (DOIT / PEUT) mais rien n'est encore figé : tant que le statut est « en rédaction », les décisions sont réversibles (§D). Réflexion d'origine : [#36](https://github.com/izo/hyperfocale-spec/issues/36).
+> **En rédaction.** Ce document décrit le **dossier de travail** Hyperfocale : un projet suivi à la source, de la première prise de contact à la livraison. Il se sépare de la spec web (`spec-hyperfocale.md`), qui décrit un contenu fait pour être publié. Les sections 1 et 2 sont rédigées au futur contrat (DOIT / PEUT) mais rien n'est encore figé : tant que le statut est « en rédaction », les décisions sont réversibles (§D). Réflexion d'origine : [#36](https://github.com/izo/hyperfocale-spec/issues/36).
 
-**Version** : 0.2-draft
-**Statut** : en rédaction — §1 et §2.1 rédigés, le reste est une esquisse
+**Version** : 0.3-draft
+**Statut** : en rédaction — §1 et §2 rédigés, le reste est une esquisse
 **Dernière révision** : 2026-10-25
 **Socle** : `spec-hyperfocale.md` 2.12-draft. La 2.13-draft en cours ([#37](https://github.com/izo/hyperfocale-spec/issues/37)) règle trois points dont ce document dépend : `date` portée par la collection, `media/` facultatif sans fichier local, ordre alphabétique défini.
 
@@ -141,23 +141,64 @@ Un outil qui lit des projets DOIT :
 
 ### 2.2 — Bloc `project:`
 
-Repris de G.12, tous les champs optionnels : `status`, `stage`, `client`, `contact`, `start`, `end`, `due`, `deliverables` (`name`, `date`), `tasks` (`title`, `done`, `due`).
+Les données de gestion vivent **dans le frontmatter de `index.md`**, sous la clé unique `project:` — pas dans un fichier voisin. Un projet reste un dossier autonome : le déplacer, c'est déplacer toutes ses données.
 
-*Pistes d'ajout* :
+Tous les champs sont optionnels. Un outil DOIT ignorer sans erreur ce qu'il ne supporte pas.
 
-| Clé | Où | Rôle |
-|---|---|---|
-| `next` | projet | Une seule prochaine action, concrète |
-| `owner` | projet | Responsable, en texte libre |
-| `priority` | projet, tâche | Slug ASCII : `basse` · `normale` · `haute` |
-| `assignee` | tâche | Personne en charge, en texte libre |
-| `stage` | tâche | Étape libre, pour une vue en colonnes |
-| `ref` | tâche, livrable | URL externe (issue, maquette) — seul lien admis |
-| `done` | livrable | Livré ou non ; lève l'ambiguïté de `date` |
+| Clé | Type | Description |
+|-----|------|-------------|
+| `status` | `string` | Cycle de vie (§2.3) |
+| `stage` | `string` | Étape du workflow, **libre** (« tri », « retouche », « livraison »…). La spec ne fixe aucune liste ; la valeur n'est jamais validée. |
+| `next` | `string` | La **prochaine action**, une seule, en texte libre (§2.2.1) |
+| `client` | `string` | Commanditaire |
+| `contact` | `string` | Contact chez le client, en texte libre (nom, e-mail, téléphone) |
+| `start` | `date` | Début du projet (pour un projet photo, de la prise de vue — sens de G.12) |
+| `end` | `date` | Fin de la production (pour un projet photo, de la prise de vue — sens de G.12) |
+| `due` | `date` | Échéance de livraison |
+| `deliverables` | `object[]` | Livrables, dans l'ordre du tableau : `name` (`string`, requis), `date` (`date`, livraison prévue ou effective) |
+| `tasks` | `object[]` | Tâches, dans l'ordre du tableau : `title` (`string`, requis), `done` (`boolean`, défaut `false`), `due` (`date`) |
+
+| Règle | Description |
+|-------|-------------|
+| Dates | `AAAA-MM-JJ`, comme `date` (§1.3 web). Aucun contrôle de cohérence n'est imposé entre `start`, `end` et `due` : un outil PEUT signaler `end` avant `start`, jamais le refuser. |
+| Ordre | L'ordre des tableaux `deliverables` et `tasks` fait foi. Aucun tri n'est appliqué. |
+| Entrée incomplète | Une entrée de `deliverables` sans `name`, ou de `tasks` sans `title`, DEVRAIT être signalée par un outil de gestion et ignorée à l'affichage — jamais un échec. |
+| Valeur mal typée | Une valeur d'un type inattendu (`due: "bientôt"`, `done: "oui"`) vaut « non renseignée » pour l'affichage, le tri et les filtres ; elle est conservée telle quelle à la réécriture et un outil DEVRAIT la signaler. |
+| Champs inconnus | Conservés partout : à la racine du frontmatter, dans `project:` et dans chaque entrée de `deliverables` et de `tasks` (passthrough). |
+| Confidentialité | Le bloc `project:` (client, contact, échéances) est privé. Un projet n'est pas rendu hors de l'outil de gestion (§5), et aucun balisage public ne l'émet. |
+
+#### 2.2.1 — La prochaine action *(décision D9)*
+
+`project.next` désigne **une** action concrète, la prochaine : « Envoyer la sélection à Claire », pas « Livraison ».
+
+| Règle | Description |
+|-------|-------------|
+| Une seule | `next` est une chaîne, jamais une liste. Plusieurs actions relèvent de `tasks`. |
+| Indépendante | Elle ne se calcule pas depuis `tasks` : ce n'est pas la première tâche non faite, c'est ce que l'utilisateur décide de faire ensuite. Un outil PEUT en proposer une ; il ne l'écrit jamais de lui-même (§4). |
+| Absente | Absente ou vide, il n'y a pas de prochaine action renseignée. Ce n'est pas une anomalie. |
+| Effacée | Une action faite s'efface (ou se remplace) : `next` ne garde pas d'historique. Le journal du projet est le body. |
 
 ### 2.3 — Statuts
 
-Repris de G.12 : `prospect` · `en-cours` · `livre` · `archive`. *Pistes d'ajout* : `en-pause` (une pause est un état normal, pas un échec) et `abandonne`. Aucun statut existant n'est renommé. Un statut absent reste « non renseigné » et ne se déduit jamais des dates.
+| Valeur | Sens |
+|--------|------|
+| `prospect` | Projet envisagé : premier contact, devis, date posée en option. Rien n'est confirmé. |
+| `en-cours` | Projet confirmé, de la prise de vue à la livraison : tri, retouche, export. |
+| `en-pause` | Projet confirmé, **suspendu** : aucune action n'est attendue avant sa reprise. Une pause est un état normal, pas un échec. |
+| `livre` | Livrables remis. Le projet peut encore recevoir une retouche ou donner lieu à une publication. |
+| `archive` | Projet clos, conservé pour mémoire. Plus aucune action attendue. |
+| `abandonne` | Projet arrêté **avant sa livraison** et qui ne reprendra pas. Il se distingue d'`archive`, qui clôt un projet mené à terme. |
+
+| Règle | Description |
+|-------|-------------|
+| Slugs ASCII | Ni accent ni majuscule, pour rester stables entre outils et comparables à l'octet. Le libellé affiché est libre (« En pause », « Abandonné »). |
+| Pas de machine à états | La spec ne définit aucune transition : un projet peut passer de `en-pause` à `en-cours`, ou de `abandonne` à `prospect`. Les statuts décrivent un état, pas un parcours imposé. |
+| Absent | `status` absent signifie *non renseigné*. Un outil NE DOIT PAS le déduire des dates, des tâches ni d'un autre champ. |
+| Inconnu | Une valeur inconnue est conservée et ne fait jamais échouer un outil, qui l'affiche comme non renseignée. |
+| Compatibilité | Les quatre valeurs de G.12 (`prospect`, `en-cours`, `livre`, `archive`) ne changent ni de forme ni de sens ; `en-pause` et `abandonne` sont additives. Un outil qui ne connaît que G.12 les traite en valeurs inconnues. |
+| Hors publication | Le statut est indépendant de `draft` : un projet `livre` reste un brouillon tant qu'il n'a pas été exporté. |
+
+*Pistes non retenues, en attente d'un besoin réel* : `owner` (responsable), `priority` (slug `basse` · `normale` · `haute`, projet et tâche), `assignee` et `stage` sur une tâche, `ref` (URL externe d'un ticket ou d'une maquette, seul lien admis), `done` sur un livrable (lève l'ambiguïté de `date`, « prévue ou effective »). Aucun n'est nécessaire à un projet mené seul.
 
 ### 2.4 — Écarté
 
@@ -227,10 +268,22 @@ Repris de G.12 et généralisé. L'export crée un **nouveau** dossier, contenu 
 | D6 | `title` optionnel | **Retenue (0.2)** : nom du dossier par défaut, jamais écrit en retour (§1.4) |
 | D7 | Un lot déclare-t-il `type: project` ? | **Retenue (0.2)** : oui — c'est ce qui distingue un lot d'un `index.md` quelconque dans un dossier de travail (§1.5). À confirmer à l'usage |
 | D8 | Dossiers de travail et ingestion web | Ouverte : la spec web (§4.3, §4.11) les classerait `other` et les publierait. Un projet n'étant jamais ingéré (§1.7), la question ne se pose que par erreur ; la garde pourrait les exclure comme les originaux |
+| D9 | `next`, `en-pause`, `abandonne` | **Retenues (0.3)** : la prochaine action unique (§2.2.1) et deux statuts additifs (§2.3). Les autres pistes d'ajout attendent un besoin réel |
 
 ---
 
 ## Changelog
+
+### 0.3-draft — 2026-10-25
+
+**Rédigé** : §2.2 (bloc `project:`, règles de dates, ordre, entrées incomplètes, valeurs mal typées, confidentialité), §2.2.1 (prochaine action) et §2.3 (statuts).
+
+**Décisions retenues** :
+- **D9** — `project.next`, la prochaine action : une seule, en texte libre, jamais calculée depuis `tasks` et jamais écrite par un outil de lui-même.
+- **`en-pause`** : projet confirmé et suspendu, état normal. **`abandonne`** : arrêté avant livraison, distinct d'`archive`. Les quatre statuts de G.12 sont inchangés ; aucune transition n'est définie.
+- **Une valeur mal typée vaut « non renseignée »** pour l'affichage et les filtres, est conservée à la réécriture et est signalée — comme une valeur de statut inconnue.
+
+**Écarté pour l'instant** : `owner`, `priority`, `assignee`, `stage` de tâche, `ref`, `done` de livrable — aucun besoin pour un projet mené seul.
 
 ### 0.2-draft — 2026-10-25
 
