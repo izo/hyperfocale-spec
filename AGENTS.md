@@ -11,6 +11,7 @@ Dépôt de **spécification uniquement** — pas de code, pas de build, pas de d
 ## Contenu
 
 - `spec-hyperfocale.md` — spec complète du format de contenu Hyperfocale (couches 1 à 4)
+- `spec-projet.md` — esquisse de la spec Projet (dossier de travail), distincte de la spec web ; développée sur la branche `spec/projet`, réflexion #36
 - `README.md` — présentation du projet
 - `fixtures/ingestion/` — fixtures de conformité de la couche 4 ; leur format est dans `fixtures/ingestion/README.md`
 
@@ -35,7 +36,7 @@ La version est dans le header de `spec-hyperfocale.md`.
 
 ## Règles de travail
 
-- Ne pas créer d'autres fichiers que `spec-hyperfocale.md`, `README.md`, `AGENTS.md` — et `fixtures/`, qui porte les fixtures de conformité cross-language de la couche 4 (décision epic #23)
+- Ne pas créer d'autres fichiers que `spec-hyperfocale.md`, `spec-projet.md`, `README.md`, `AGENTS.md` — et `fixtures/`, qui porte les fixtures de conformité cross-language de la couche 4 (décision epic #23)
 - Ne pas générer de code d'implémentation dans ce repo
 - Toute modification de la spec doit rester cohérente avec la section 0 (spec générique)
 
