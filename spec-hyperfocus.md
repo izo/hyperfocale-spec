@@ -2,7 +2,7 @@
 
 > **En rédaction.** **Hyperfocus** est le format du **dossier de travail** de l'écosystème Hyperfocale : un projet suivi à la source, de la première prise de contact à la livraison. Il se sépare de la spec web (`spec-hyperfocale.md`), qui décrit un contenu fait pour être publié. Les sections 1 et 2 sont rédigées au futur contrat (DOIT / PEUT) mais rien n'est encore figé : tant que le statut est « en rédaction », les décisions sont réversibles (§D). Réflexion d'origine : [#36](https://github.com/izo/hyperfocale-spec/issues/36).
 
-**Version** : 0.4-draft
+**Version** : 0.5-draft
 **Statut** : en rédaction — §1 et §2 rédigés, le reste est une esquisse
 **Dernière révision** : 2026-10-25
 **Socle** : `spec-hyperfocale.md` 2.12-draft. La 2.13-draft en cours ([#37](https://github.com/izo/hyperfocale-spec/issues/37)) règle trois points dont ce document dépend : `date` portée par la collection, `media/` facultatif sans fichier local, ordre alphabétique défini.
@@ -269,11 +269,23 @@ Repris de G.12 et généralisé. L'export crée un **nouveau** dossier, contenu 
 | D7 | Un lot déclare-t-il `type: project` ? | **Retenue (0.2)** : oui — c'est ce qui distingue un lot d'un `index.md` quelconque dans un dossier de travail (§1.5). À confirmer à l'usage |
 | D8 | Dossiers de travail et ingestion web | Ouverte : la spec web (§4.3, §4.11) les classerait `other` et les publierait. Un projet n'étant jamais ingéré (§1.7), la question ne se pose que par erreur ; la garde pourrait les exclure comme les originaux |
 | D9 | `next`, `en-pause`, `abandonne` | **Retenues (0.3)** : la prochaine action unique (§2.2.1) et deux statuts additifs (§2.3). Les autres pistes d'ajout attendent un besoin réel |
-| D10 | Périmètre des composants « projets » et « photos » d'Hyperfocale à porter dans Hyperfocus | Ouverte : G.12 seul, ou aussi les originaux (§1.9 web) et l'exporter Lightroom (§2.7 web) ? Voir le message de cadrage dans #36 |
+| D10 | Périmètre des composants « projets » et « photos » d'Hyperfocale à porter dans Hyperfocus | **Retenue (0.5)** : tout le côté photo — profil Projet (G.12), originaux (§1.9 web), exporter Lightroom (§2.7 web), métadonnées de prise de vue. La ligne exacte avec la série publiée reste à fixer (D13) |
+| D11 | Qui utilise Hyperfocus | **Retenue (0.5)** : une personne seule. Un dossier par projet, sans comptes, sans partage, sans règle de conflit entre auteurs |
+| D12 | Premier usage d'un agent | **Retenue (0.5)** : lire les projets et proposer une prochaine action par projet, sans rien écrire (niveau « proposer », §4). Les opérations d'écriture viennent ensuite |
+| D13 | Où passe la ligne entre photo travaillée (Hyperfocus) et photo publiée (Hyperfocale) | Ouverte : la série publiée est l'atome d'Hyperfocale et porte `iptc:` ; que devient la spec web si tout le côté photo passe dans Hyperfocus ? |
 
 ---
 
 ## Changelog
+
+### 0.5-draft — 2026-10-25
+
+**Décisions retenues** (cadrage du 2026-10-25) :
+- **D10** — le côté photo d'Hyperfocale passe dans Hyperfocus : profil Projet, originaux, exporter Lightroom, métadonnées de prise de vue.
+- **D11** — Hyperfocus sert d'abord **une personne seule** : pas de comptes, de partage ni de règle de conflit entre auteurs.
+- **D12** — le premier usage d'un agent est de **dire quoi faire ensuite** : lire et proposer, sans écrire.
+
+**Ouvert** : D13 — la ligne entre photo travaillée et photo publiée.
 
 ### 0.4-draft — 2026-10-25
 
