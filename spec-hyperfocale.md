@@ -2,7 +2,7 @@
 
 > **Source de vérité canonique.** Ce document définit le format Hyperfocale — un standard de gestion de **séries photo** portable entre SSG (Astro, Next.js, Hugo, 11ty...), vaults Obsidian, et CMS headless (Strapi, Sanity, Payload...). Toute évolution du format doit être proposée d'abord ici, dans ce dépôt.
 
-**Version** : 2.12-draft
+**Version** : 2.13-draft
 **Statut** : spécification active — source de vérité canonique
 **Dernière révision** : 2026-10-24
 
@@ -64,7 +64,7 @@ Un contenu Hyperfocale est toujours un **dossier** avec cette structure stricte 
 |---------|------|-----------|
 | `<slug>/` | Identifiant de la série | `^[a-z0-9]+(-[a-z0-9]+)*$` |
 | `index.md` | Toutes les métadonnées + texte | Obligatoire |
-| `media/` | Médias de la série (images, documents joints, originaux) | Obligatoire, plat (pas de sous-dossiers) |
+| `media/` | Médias de la série (images, documents joints, originaux) | Plat (pas de sous-dossiers). Présent dès que la série a des fichiers locaux ; PEUT être absent sinon (§1.2) |
 
 ### Le fichier `index.md`
 
@@ -87,7 +87,7 @@ date: 2024-06-15
 ---
 ```
 
-Deux champs sont **obligatoires** : `title` (string) et `date` (ISO 8601).
+Deux champs sont **obligatoires** : `title` (string) et `date` (ISO 8601). `title` l'est toujours. `date` l'est par défaut : une **collection** entière PEUT la rendre optionnelle en se déclarant `dateRequired: false` (§1.3, *Date requise ou optionnelle*). Une page d'index de section ne porte pas de `date` (§1.10).
 
 #### Frontmatter complet
 
@@ -123,11 +123,12 @@ Ces règles s'appliquent quel que soit l'adaptateur ou la plateforme :
 | Règle | Description |
 |-------|-------------|
 | **Corps avant galerie** | Le body Markdown s'affiche avant les images |
-| **Tri des images** | Alphabétique par nom de fichier (d'où `01.jpg`, `02.jpg`...) |
+| **Tri des images** | Alphabétique par nom de fichier, au sens strict : ordre des octets UTF-8 du nom en NFC, casse comprise (§1.6). `10.jpg` précède `9.jpg`, `B.jpg` précède `a.jpg` — d'où le nommage `01.jpg`, `02.jpg`... |
 | **Couverture** | `cover` du frontmatter, sinon première image alphabétique |
 | **Tri des séries** | Date décroissante dans les listings |
 | **Brouillons** | `draft: true` → exclu des listings en production |
-| **Formats images** | `.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`, `.tif`, `.tiff` — seuls formats alimentant la galerie |
+| **Formats images** | `.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`, `.tif`, `.tiff` — seuls formats alimentant la galerie. L'extension se compare sans tenir compte de la casse : `DSCF0001.JPG` est une image |
+| **Fichiers système** | Un nom qui commence par `.` (`.DS_Store`, `._01.jpg`), `Thumbs.db`, `desktop.ini` et `Icon\r` (§4.2) ne sont jamais des médias : ni image, ni original, ni document joint |
 | **Originaux** | RAW et sidecars (`.raf`, `.cr3`, `.nef`, `.dng`, `.xmp`… — liste fermée, §1.9) sont des originaux : ignorés par les lecteurs — ni galerie, ni documents joints, ni couverture |
 | **Documents joints** | Tout autre fichier de `media/`, ni image ni original, est un document joint (§1.9), listé après la galerie |
 | **Pas de récursion** | `media/` est plat, pas de sous-dossiers |
@@ -144,8 +145,8 @@ Ces règles s'appliquent quel que soit l'adaptateur ou la plateforme :
 Toute implémentation (adaptateur, script, outil) qui lit du contenu Hyperfocale **doit** :
 
 1. Parser le frontmatter YAML de `index.md`
-2. Exiger `title` et `date`, ignorer les champs inconnus
-3. Scanner `media/` et trier les fichiers alphabétiquement — les images alimentent la galerie, les originaux sont ignorés, les autres fichiers sont des documents joints (§1.9)
+2. Exiger `title`, et `date` sauf dans une collection déclarée `dateRequired: false` (§1.3) ; ignorer les champs inconnus
+3. Scanner `media/` — absent, il vaut un `media/` vide — en ignorant les fichiers système (§4.2), et trier les fichiers alphabétiquement au sens de §1.6 — les images alimentent la galerie, les originaux sont ignorés, les autres fichiers sont des documents joints (§1.9)
 4. Utiliser `cover` ou la première image comme couverture (ni les documents joints ni les originaux ne sont jamais candidats)
 5. Exclure les entrées `draft: true` des listings publics
 6. Rendre le body Markdown
@@ -160,14 +161,14 @@ Section informative — un audit de conformité des implémentations connues, mi
 
 ### Plugin Astro `@regrets/hyperfocale` (v0.20.0, publiée sur npm le 2026-10-21)
 
-**Conformité** : ✅ Conforme sur le contrat d'adaptateur (§2.0), obligations v2.6 comprises, aligné sur les profils de l'Annexe G depuis la v0.12.0, et **§1.11 (contenus embarqués) implémentée depuis la v0.17.0** — plus aucune obligation ouverte. **La couche 4 (ingestion) est implémentée depuis la v0.19.0** : les 109 fixtures cross-language de la spec (`main@18f48de`) passent toutes. **Les deux obligations rouvertes par la v2.11 sont refermées en v0.20.0** (fusionnée le 2026-10-20, publiée sur npm le 2026-10-21) : les originaux (§1.9) et leur exclusion par la garde de publication (§4.11). Un site resté sur la 0.19.0 ne doit pas recevoir de dossier de travail (G.12).
+**Conformité** : ✅ Conforme sur le contrat d'adaptateur (§2.0), obligations v2.6 comprises, aligné sur les profils de l'Annexe G depuis la v0.12.0, et **§1.11 (contenus embarqués) implémentée depuis la v0.17.0** — plus aucune obligation ouverte. **La couche 4 (ingestion) est implémentée depuis la v0.19.0** : les 109 fixtures cross-language de la spec (`main@18f48de`) passent toutes. **Les deux obligations rouvertes par la v2.11 sont refermées en v0.20.0** (fusionnée le 2026-10-20, publiée sur npm le 2026-10-21) : les originaux (§1.9) et leur exclusion par la garde de publication (§4.11). Un site resté sur la 0.19.0 ne doit pas recevoir de dossier de travail (G.12). La 2.13 ouvre un écart hors du contrat §2.0 : la forme de la route de pagination (§1.6).
 
 > Le paquet s'appelait `@izo/hyperfocale` jusqu'au 2026-08-04. Le scope `@izo` ne correspondait à aucun compte npm et aucune version n'avait jamais été publiée sous ce nom : le renommage n'a rien cassé.
 
 | Obligation | Statut | Note |
 |------------|--------|------|
 | Slug regex | ✅ | Enforced par Astro |
-| `title` + `date` requis | ⚠️ | `dateRequired` est configurable via preset (par défaut conforme) |
+| `title` + `date` requis | ✅ | `dateRequired` configurable via preset, comme §1.3 et §2.0.1 le prévoient (défaut `true`) |
 | `description`, `cover`, `location` | ✅ | Tous optionnels, présents |
 | `draft` respecté | ✅ | |
 | `lang` lu | ✅ | Ajouté au schéma Zod (v0.3.0) |
@@ -182,6 +183,7 @@ Section informative — un audit de conformité des implémentations connues, mi
 | Garde : originaux (§4.11, v2.11) | ✅ | **v0.20.0** : `publishable(snapshot)`, `guard-originals-excluded` (`count`, `bytes`), `guard-oversize` sur la projection, règle 12 de §4.10. Fixtures rejouées sur `main@51cbf73` (207 fichiers) |
 | Ingestion (couche 4) | ✅ | Implémentée en **v0.19.0**, en quatre sous-chemins **additifs** : `/ingest` (contrat, agnostique du runtime), `/ingest/fs`, `/ingest/dropbox`, `/ingest/webdav`, plus les commandes `validate`, `snapshot` et `diff` du CLI. Les 109 fixtures de `fixtures/ingestion/` (`main@18f48de`) sont copiées à une ref épinglée et rejouées en totalité. L'entrée racine n'atteint aucun code d'ingestion : rien ne change pour un site qui ne l'importe pas |
 | Contenus embarqués (§1.11) | ✅ | Implémentés en **v0.17.0** : champ `embeds`, `getSeriesEmbeds()` (résolution dans l'ordre du tableau, `playable` = plateforme reconnue + `id` présent), `<SeriesEmbeds>` rendu **en façade** (le poster s'affiche, l'iframe n'arrive qu'au clic ; sans JavaScript la façade reste un lien fonctionnel), liste de plateformes ouverte (valeur inconnue → repli en lien), posters exclus du scan de galerie. Vocabulaires (`EMBED_PLATFORMS`, `ATTACHMENT_KINDS`) exportés à la racine en v0.17.1 |
+| URLs (§1.6, v2.13) | ⚠️ | Routes injectées sur l'`id` du loader, c'est-à-dire sur le chemin (`${prefix}/[...slug]/`) : règle *Identité* respectée. Pagination encore à l'ancienne forme, `${prefix}/[...slug]/[page]/` : dès que la galerie d'un conteneur `festival` dépasse une page, sa page 2 et sa sous-série `2` prennent la même route `/series/festival/2/`. Relevé sur `main@f8d1a52` |
 | Passthrough racine (champs inconnus) | ✅ | `z.looseObject()` racine — les extensions site-spécifiques ne sont jamais rejetées (v0.4.0) |
 | Tri date desc | ✅ | |
 
@@ -404,11 +406,26 @@ Chaque série est **autonome** : toutes ses données (métadonnées + médias) v
 | `<content-root>` | Libre selon la plateforme. Exemples : `src/content/` (Astro), `content/` (Next.js), racine du vault (Obsidian). |
 | `<slug>` | Identifiant unique. Minuscules, chiffres, tirets uniquement. Regex : `^[a-z0-9]+(-[a-z0-9]+)*$`. Utilisé dans les URLs. |
 | `index.md` | Obligatoire. Contient le frontmatter YAML et le body Markdown. Encodage UTF-8. |
-| `media/` | Obligatoire (peut être vide pour une série en brouillon). Plat — pas de sous-dossiers. |
+| `media/` | Plat — pas de sous-dossiers. Porte les fichiers locaux de la série ; PEUT être absent quand il n'y en a aucun (voir *Absence de `media/`*). |
 | Images | Formats alimentant la galerie : `.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`, `.tif`, `.tiff`. Pas de récursion dans `media/`. |
 | Originaux | RAW et sidecars de développement (liste fermée, §1.9) : acceptés dans `media/`, ignorés par les lecteurs. |
 | Documents joints | Tout autre type de fichier est accepté dans `media/` (PDF, vidéo, audio, archives…) et traité en document joint — voir §1.9. |
 | Nommage des images | Libre, mais recommandé : `01.jpg`, `02.jpg`... (padding 2+ chiffres pour l'ordre). |
+
+#### Absence de `media/` *(clarifié v2.13)*
+
+`media/` porte les fichiers locaux d'une série. Une série qui n'en a aucun PEUT ne pas avoir de `media/` :
+
+- images listées par `images:` (§1.5) ou par un manifeste `images.json` (§1.5.1) ;
+- médias embarqués seulement (§1.11) ;
+- conteneur sans galerie propre (§1.8) ;
+- brouillon encore vide.
+
+| Règle | Description |
+|-------|-------------|
+| Lecture | Un lecteur DOIT traiter un `media/` absent comme un `media/` vide : aucune image, aucun document joint, aucune erreur. |
+| Écriture | Un outil qui crée une série PEUT créer un `media/` vide ; aucun lecteur ne DOIT dépendre de sa présence. |
+| Raison | Ni Git ni un snapshot (§4.5) ne conservent un dossier vide : seuls des fichiers en sont des entrées. Un `media/` obligatoire mais vide disparaîtrait au premier commit ou à la première ingestion. |
 
 Un corpus PEUT résider sur un filesystem distant ou synchronisé (Dropbox, iCloud Drive, WebDAV…) : sa sémantique reste celle d'un filesystem, indépendamment du transport — la couche 4 définit comment un tel corpus devient un snapshot publiable.
 
@@ -446,10 +463,23 @@ Le frontmatter est en YAML, délimité par `---`. Il se divise en deux niveaux :
 | Champ | Type | Requis | Description |
 |-------|------|--------|-------------|
 | `title` | `string` | **oui** | Titre de la série |
-| `date` | `date` (ISO 8601) | **oui** | Date de la série, utilisée pour le tri. Format : `YYYY-MM-DD` |
+| `date` | `date` (ISO 8601) | **oui**, sauf collection `dateRequired: false` | Date de la série, utilisée pour le tri. Format : `YYYY-MM-DD` |
 | `description` | `string` | non | Description courte. Utilisée dans les cards, le SEO, les previews. |
 | `cover` | `string` | non | Chemin relatif vers l'image de couverture (`./media/01.jpg`). Si absent : première image par ordre alphabétique. |
 | `location` | `string` | non | Lieu associé à la série. Texte libre. |
+
+#### Date requise ou optionnelle *(clarifié v2.13)*
+
+`date` est requise par défaut. Une collection PEUT la rendre optionnelle pour **tous** ses contenus en se déclarant `dateRequired: false` : par son preset (§2.0.1) ou, pour un outil d'ingestion, par sa racine de validation (§4.10). Chaque profil de l'Annexe G indique la valeur de son preset.
+
+| Règle | Description |
+|-------|-------------|
+| Propriété de la collection | Le caractère requis de `date` se déclare pour une collection, jamais dans le fichier : un contenu ne peut pas s'en dispenser lui-même. |
+| Défaut | Sans déclaration, `dateRequired` vaut `true` : un lecteur qui ne connaît pas la collection exige `date`. |
+| Série sans date | Dans une collection où `date` est requise, une série sans `date` est invalide (`date-missing`, §4.10). |
+| Date présente | Dans une collection `dateRequired: false`, la `date` d'une série, si elle est présente, DOIT rester une date valide (`date-invalid`, §4.10). |
+| Section | Une page d'index de section (§1.10) n'est jamais soumise à la règle, quelle que soit la collection : elle se distingue par `type: section`, pas par l'absence de `date`. |
+| `title` | Toujours requis, dans toute collection. |
 
 #### Champs de workflow
 
@@ -654,8 +684,8 @@ Un adaptateur antérieur à v2.6 ignore le fichier et ne trouve aucune image (`m
 
 | Règle | Description |
 |-------|-------------|
-| Scan | Mode local : glob `media/*.{jpg,jpeg,png,webp,avif,tif,tiff}`. Pas de récursion. |
-| Tri | Alphabétique par nom de fichier. D'où le nommage recommandé `01.jpg`, `02.jpg`. |
+| Scan | Mode local : les fichiers situés directement dans `media/` dont l'extension — partie du nom qui suit son dernier point, comparée en minuscules (§4.1) — est `jpg`, `jpeg`, `png`, `webp`, `avif`, `tif` ou `tiff`. Pas de récursion. Les fichiers système (§4.2 : nom commençant par `.`, `Thumbs.db`, `desktop.ini`, `Icon\r`) sont ignorés. Un glob littéral `media/*.{jpg,…}` ne suffit pas : il est sensible à la casse sur la plupart des systèmes de fichiers et manque `DSCF0001.JPG`. |
+| Tri | Alphabétique par nom de fichier, défini comme l'ordre canonique de §4.1 : comparaison des octets UTF-8 du nom normalisé en NFC, casse préservée — ni collation locale, ni tri « naturel » des nombres. `10.jpg` précède `9.jpg`, `B.jpg` précède `a.jpg`, `DSCF0002.JPG` précède `dscf0001.jpg`. D'où le nommage recommandé `01.jpg`, `02.jpg`, à padding constant. |
 | Couverture | `cover` du frontmatter. Fallback : première image par ordre alphabétique. |
 | Alt text | Mode local : l'adaptateur PEUT extraire depuis EXIF/IPTC embarqué ou utiliser le nom de fichier. Mode distant : champ `alt` de chaque image. |
 
@@ -679,10 +709,17 @@ Un adaptateur antérieur à v2.6 ignore le fichier et ne trouve aucune image (`m
 | Route | Description |
 |-------|-------------|
 | `/<prefix>/` | Liste de toutes les séries |
-| `/<prefix>/<slug>/` | Page d'une série (body + galerie) |
-| `/<prefix>/<slug>/<page>/` | Pages suivantes (à partir de la page 2) |
+| `/<prefix>/<chemin>/` | Page d'une série (body + galerie) |
+| `/<prefix>/<chemin>/page/<n>/` | Pages suivantes de la galerie, `<n>` ≥ 2 |
 
-Le `<prefix>` est configurable par l'adaptateur (défaut recommandé : `series`).
+Le `<prefix>` est configurable par l'adaptateur (défaut recommandé : `series`). `<chemin>` est le chemin du dossier de la série relatif à la racine de la collection, segments de rangement compris (§1.2) ; il peut donc compter plusieurs segments. Pour la forme canonique `<content-root>/series/<slug>/`, il se réduit au slug.
+
+| Règle | Description |
+|-------|-------------|
+| Identité *(v2.13)* | Une route se construit sur le chemin, jamais sur le slug seul, qui PEUT ne pas être unique (§1.2) : `concerts/bretagne-2024/` et `festivals/bretagne-2024/` ont deux routes distinctes. |
+| Pagination *(v2.13)* | La page 1 est la route de la série elle-même ; `/page/1/` n'est pas une route (un adaptateur PEUT la rediriger). Le segment `page` sépare la pagination des sous-séries (§1.8), dont le slug peut être un nombre : `/<conteneur>/2/` est une sous-série, `/<conteneur>/page/2/` la page 2 de la galerie du conteneur. |
+| Segment réservé *(v2.13)* | Un dossier nommé `page` situé directement dans un dossier de série est réservé : une série rangée sous `<série>/page/2/` aurait la route de la page 2 de `<série>`. Le lint DEVRAIT le signaler (Annexe A). |
+| Ancienne forme | Jusqu'à la v2.12, la pagination s'écrivait `/<prefix>/<slug>/<page>/`. Un adaptateur qui l'a servie DEVRAIT rediriger une telle URL vers `/<prefix>/<chemin>/page/<n>/` quand aucune série n'occupe ce chemin. |
 
 ### 1.7 — Ajout d'une série
 
@@ -724,7 +761,7 @@ Cas d'usage typiques :
 
 | Élément | Contrainte |
 |---------|-----------|
-| `index.md` du conteneur | Obligatoire. Mêmes règles que pour une série standard (`title`, `date` requis). |
+| `index.md` du conteneur | Obligatoire. Mêmes règles que pour une série standard (`title` requis ; `date` selon la collection, §1.3). |
 | `media/` du conteneur | **Optionnel**. Si absent, le conteneur n'a pas de galerie propre — il sert uniquement de point d'entrée vers ses sous-séries. |
 | Sous-séries | Chacune est une série complète et autonome (au sens des §1.1–1.6). Une sous-série ne peut **pas** elle-même contenir des sous-séries (pas de récursion au-delà d'un niveau). |
 | Ce qu'est un conteneur | Un dossier de série dont un **sous-dossier porte un `index.md`**. Un dossier sans `index.md` traversé pour atteindre une série est une section de rangement (§1.2), pas un conteneur — sa profondeur est libre. |
@@ -746,10 +783,10 @@ Cette résolution traverse les sous-dossiers — c'est une dérogation explicite
 
 | Route | Description |
 |-------|-------------|
-| `/<prefix>/<slug-conteneur>/` | Page du conteneur : body + galerie propre éventuelle + liste des sous-séries (line-up). |
-| `/<prefix>/<slug-conteneur>/<sous-slug>/` | Page d'une sous-série : comportement standard (body + galerie). |
+| `/<prefix>/<chemin-conteneur>/` | Page du conteneur : body + galerie propre éventuelle + liste des sous-séries (line-up). |
+| `/<prefix>/<chemin-conteneur>/<sous-slug>/` | Page d'une sous-série : comportement standard (body + galerie). |
 
-L'adaptateur DOIT générer ces deux niveaux d'URL automatiquement à partir de la structure filesystem.
+L'adaptateur DOIT générer ces deux niveaux d'URL automatiquement à partir de la structure filesystem. `<chemin-conteneur>` suit la règle *Identité* de §1.6 ; la pagination de l'une ou l'autre page passe par le segment `page` (§1.6), si bien qu'une sous-série nommée `2` ne se confond jamais avec la page 2 du conteneur.
 
 #### Listing global
 
@@ -782,7 +819,7 @@ Une série n'est pas limitée aux images : `media/` accepte **tous les types de 
 
 #### Classes de médias
 
-La classification se fait par extension de fichier, en minuscules. Un adaptateur PEUT affiner (détection MIME) mais DOIT rester prévisible.
+La classification se fait par extension de fichier — partie du nom qui suit son dernier point (§4.1) —, comparée en minuscules : `01.JPG` est une `image`, `Notes.PDF` un `document`. Un adaptateur PEUT affiner (détection MIME) mais DOIT rester prévisible. Les fichiers système (§4.2) ne sont classés dans aucune classe : un lecteur les ignore.
 
 | Classe | Extensions | Rendu recommandé |
 |--------|-----------|------------------|
@@ -800,10 +837,10 @@ La classification se fait par extension de fichier, en minuscules. Un adaptateur
 | Règle | Description |
 |-------|-------------|
 | Galerie | Seule la classe `image` alimente la galerie et la lightbox. Les invariants §0 / §1.6 sont inchangés. |
-| Pièces jointes | Les autres classes sont exposées en **liste de documents joints**, affichée **après** la galerie. Tri alphabétique par nom de fichier. |
+| Pièces jointes | Les autres classes sont exposées en **liste de documents joints**, affichée **après** la galerie. Tri alphabétique par nom de fichier, au sens de §1.6. |
 | Couverture | `cover` DOIT référencer une image. Les documents joints ne sont jamais candidats au fallback de couverture. |
 | Lecteurs | Un adaptateur PEUT rendre `video` / `audio` en lecteurs intégrés ; à défaut, il les liste en pièces jointes. |
-| Robustesse | Un lecteur DOIT ignorer sans erreur tout fichier de type inconnu dans `media/`. |
+| Robustesse | Un lecteur NE DOIT jamais échouer sur un fichier de type inconnu dans `media/` : il le classe `file` et le liste en document joint. |
 | `index.md` | N'est jamais un document joint (c'est le fichier de métadonnées de la série). |
 
 #### Originaux *(introduit v2.11)*
@@ -910,7 +947,7 @@ Le champ `type` est **réservé** au niveau du core. Son absence vaut `type: ser
 |-------|-------------|
 | Ce n'est pas un contenu de collection | Une page d'index de section est **exclue** des listings de séries, des flux de syndication (Annexe E) et du tri par date (§1.6). Un adaptateur PEUT lui générer une page de section, avec son body en tête et la liste de ses contenus en dessous. |
 | Pas de galerie | La section ne porte pas de `media/`. Un `cover` PEUT être renseigné pour l'illustrer dans une navigation ; il pointe alors vers une image d'un contenu de la section, en chemin relatif — même dérogation qu'en §1.8. |
-| Discriminant explicite | La distinction série / section se lit **uniquement** dans `type`. Un adaptateur ne DOIT jamais la deviner (par l'absence de `date`, par la présence de sous-dossiers, ou autrement) : une série sans `date` reste une série invalide. |
+| Discriminant explicite | La distinction série / section se lit **uniquement** dans `type`. Un adaptateur ne DOIT jamais la deviner (par l'absence de `date`, par la présence de sous-dossiers, ou autrement) : dans une collection où `date` est requise (§1.3), une série sans `date` reste une série invalide. |
 | Pas de contenu direct | Les contenus d'une section vivent dans ses sous-dossiers. Une section ne « contient » rien au sens de §1.8 : elle ne les regroupe pas éditorialement, elle les range. |
 | Imbrication | Une section PEUT contenir d'autres sections. Contrairement à §1.8, la profondeur n'est pas limitée : ce sont des dossiers de classement, pas des contenus. |
 | Robustesse | Un adaptateur qui n'implémente pas §1.10 DOIT **ignorer** un `index.md` portant `type: section` — sans erreur, et sans tenter de le valider comme série (validation qui échouerait sur `date`). |
@@ -923,7 +960,7 @@ Les deux formes rassemblent des séries ; elles ne sont pas interchangeables.
 |---|---|---|
 | Nature | Une **série** qui en regroupe d'autres | Un **rangement**, pas un contenu |
 | Intention | Éditoriale (un festival, un reportage chapitré) | Structurelle (une rubrique du site) |
-| `date` | Requise | Sans objet |
+| `date` | Selon la collection (§1.3) | Sans objet |
 | Galerie propre | Possible (`media/` optionnel) | Non |
 | Dans les listings de séries | Oui | Non |
 | Profondeur | Un seul niveau d'imbrication | Libre |
@@ -1019,9 +1056,10 @@ Tout adaptateur Hyperfocale **DOIT** :
 | Obligation | Description |
 |-----------|-------------|
 | Lire le frontmatter core | Parser `title`, `date`, `description`, `cover`, `location`, `draft`, `lang` |
+| Exiger les champs requis | `title` toujours ; `date` sauf dans une collection déclarée `dateRequired: false` ; jamais pour une page d'index de section (§1.3, §1.10) |
 | Ignorer les champs inconnus | Ne jamais échouer sur un champ frontmatter non reconnu |
 | Transmettre les extensions | Rendre accessible `iptc.*` et tout champ supplémentaire aux templates/composants |
-| Scanner `media/` | Mode local : glob les images, trier alphabétiquement |
+| Scanner `media/` | Mode local : lister les images de `media/` — extension comparée en minuscules, fichiers système (§4.2) ignorés — et les trier dans l'ordre alphabétique de §1.6 |
 | Exposer les documents joints | Lister les documents joints de `media/` — ni images ni originaux — (tri alphabétique) et les rendre accessibles aux templates (§1.9) — *conformité v2.5* |
 | Ignorer les originaux | Ne jamais placer un original (§1.9 — RAW, sidecars) dans la galerie, la lightbox, les documents joints ni le fallback de couverture — *conformité v2.11* |
 | Supporter le mode distant | Si `images` est présent, l'utiliser à la place de `media/` ; si `files` est présent, l'utiliser pour les pièces jointes |
@@ -1059,12 +1097,13 @@ hyperfocale({ preset: 'catalog' })  // fiches produit, prefix /catalog, date opt
 Tout preset DOIT respecter le contrat d'adaptateur §2.0. Un preset PEUT modifier :
 - Le nom de la collection (`collectionName`)
 - Le préfixe d'URL (`prefix`)
-- La conditionnalité de certains champs (ex : `dateRequired: false` pour les recettes intemporelles)
+- La conditionnalité de `date`, par `dateRequired: false` (recettes intemporelles…) — seul champ du core qu'un preset peut rendre optionnel. Ce n'est pas la suppression d'une obligation : le contrat (§0, §2.0) exige `date` sauf dans une collection ainsi déclarée (§1.3)
 - Le vocabulaire d'extension affiché à l'utilisateur
 
 Un preset NE DOIT PAS :
 - Modifier le slug regex
 - Supprimer les obligations du contrat d'adaptateur
+- Rendre `title` optionnel
 - Renommer les champs core (`title`, `date`, `description`, `cover`, etc.)
 
 Onze presets non-photo sont standardisés en **Annexe G — Profils de contenu** (`event`, `recipe`, `app`, `book`, `place`, `screen`, `portfolio`, `music`, `catalog`, `press`, `project`). L'ajout de nouveaux profils se discute par PR contre cette spec, en étendant cette annexe.
@@ -1124,8 +1163,8 @@ export default defineConfig({
 | Route | Page |
 |-------|------|
 | `/<prefix>/` | Liste des séries |
-| `/<prefix>/[slug]/` | Détail série + galerie |
-| `/<prefix>/[slug]/[page]/` | Pagination galerie |
+| `/<prefix>/[...chemin]/` | Détail série + galerie — `chemin` est un paramètre rest, qui peut compter plusieurs segments (§1.6) |
+| `/<prefix>/[...chemin]/page/[n]/` | Pagination galerie, `n` ≥ 2 |
 
 #### Composants exposés
 
@@ -1175,11 +1214,11 @@ Structure de pages recommandée :
 app/
 ├── series/
 │   ├── page.tsx              ← liste des séries
-│   └── [slug]/
-│       ├── page.tsx          ← détail série
-│       └── [page]/
-│           └── page.tsx      ← pagination
+│   └── [...chemin]/
+│       └── page.tsx          ← détail série ; un chemin terminé par page/<n> est la page <n> de sa galerie
 ```
+
+Un segment catch-all est forcément le dernier : la pagination se reconnaît donc dans la page elle-même, à ses deux derniers segments (`page`, `<n>`), selon §1.6.
 
 #### Composants React
 
@@ -1320,7 +1359,7 @@ Un plugin Obsidian qui comprend nativement le format Hyperfocale. Il s'installe 
 
 ##### Périmètre
 
-Le plugin opère uniquement sur les dossiers qui respectent le format Hyperfocale (présence de `index.md` avec `title` + `date` + dossier `media/`). Il ignore silencieusement les autres fichiers du vault.
+Le plugin opère uniquement sur les dossiers qui respectent le format Hyperfocale (présence d'un `index.md` portant `title`, §0) — ni `media/` (§1.2, *Absence de `media/`*) ni `date` (§1.3) n'en sont des conditions. Il ignore silencieusement les autres fichiers du vault.
 
 ##### Vues
 
@@ -2112,9 +2151,9 @@ hyperfocale-lint ./content/series/
 
 Vérifications :
 - [ ] Chaque dossier série contient `index.md`
-- [ ] Frontmatter contient `title` et `date` — sauf `type: section`, où seul `title` est requis (§1.10)
+- [ ] Frontmatter contient `title`, et `date` sauf dans une collection `dateRequired: false` (§1.3) — une section ne requiert que `title` (§1.10)
 - [ ] `type`, si présent, vaut `series` ou `section`
-- [ ] Un `index.md` sans `date` déclare explicitement `type: section` (une série sans date reste une erreur)
+- [ ] Dans une collection où `date` est requise, un `index.md` sans `date` déclare explicitement `type: section` (une série sans date y reste une erreur)
 - [ ] `date` est au format ISO 8601
 - [ ] `slug` respecte le pattern `^[a-z0-9]+(-[a-z0-9]+)*$`
 - [ ] `cover` pointe vers un fichier existant dans `media/`
@@ -2127,6 +2166,7 @@ Vérifications :
 - [ ] Pas de mélange mode local / mode distant / manifeste dans la même série
 - [ ] `images.json` (si présent) est un JSON valide dont la clé `images` est un tableau (§1.5.1)
 - [ ] Aucune série imbriquée au-delà d'un niveau — un conteneur §1.8 n'est jamais lui-même une sous-série (la profondeur de rangement §1.2, elle, n'est pas contrainte)
+- [ ] Aucun dossier nommé `page` directement dans un dossier de série — segment réservé à la pagination (§1.6)
 - [ ] Chaque entrée `embeds:` porte une `url` (§1.11)
 - [ ] Chaque `embeds[].poster` en chemin relatif pointe vers un fichier existant de `media/`
 - [ ] Aucun `poster` d'embed n'est aussi listé dans `images:` ou `attachments:` — une image est une photo de la série ou la vignette d'un embed, pas les deux
@@ -2240,7 +2280,7 @@ Un **profil de contenu** est une déclinaison du squelette pour un domaine donn�
 
 1. **Réutiliser le core tel quel** (`title`, `date`, `description`, `cover`, `location`, `draft`, `lang`, `tags`, `featured`).
 2. **Ajouter un bloc d'extension namespacé** propre au domaine (exactement comme `iptc:` l'est pour la photo) : `event:`, `recipe:`, `app:`.
-3. **Optionnellement, relâcher la conditionnalité de certains champs** via un preset d'adaptateur (§2.0.1) — typiquement `dateRequired: false`.
+3. **Optionnellement, rendre `date` optionnelle** pour la collection du profil, par `dateRequired: false` dans son preset (§2.0.1, §1.3).
 
 #### Règles communes à tous les profils
 
@@ -2248,8 +2288,8 @@ Ces règles garantissent qu'un profil reste un contenu Hyperfocale valide au sen
 
 | Règle | Description |
 |-------|-------------|
-| **Squelette inchangé** | `<slug>/index.md` + `media/` (§0, §1.2). Aucun profil ne modifie la structure filesystem ni le slug regex. |
-| **Core préservé** | Les champs core ne sont jamais renommés. `title` reste obligatoire ; `date` peut devenir optionnelle via preset (contrainte §2.0.1 : pas de suppression d'obligation du contrat). |
+| **Squelette inchangé** | `<slug>/index.md` + `media/` dès que le contenu a des fichiers locaux (§0, §1.2). Aucun profil ne modifie la structure filesystem ni le slug regex. |
+| **Core préservé** | Les champs core ne sont jamais renommés. `title` reste obligatoire ; `date` peut devenir optionnelle pour toute la collection du profil (`dateRequired: false`, §1.3) — un relâchement que le contrat prévoit, pas la suppression d'une obligation (§2.0.1). |
 | **Extension namespacée** | Tout vocabulaire de domaine vit sous **une** clé unique (`event`, `recipe`, `app`) pour ne jamais entrer en collision avec le core. |
 | **Invariants §0 respectés** | Body avant galerie, tri alphabétique de `media/`, `cover`/fallback, `draft`, passthrough des champs inconnus s'appliquent identiquement. |
 | **Rétro-compatibilité** | Un adaptateur qui ne connaît pas un profil DOIT lire le contenu comme un contenu Hyperfocale standard (core + media + body) et ignorer le bloc d'extension sans erreur (passthrough §1.3). Aucun profil ne casse un lecteur existant. |
@@ -3273,6 +3313,74 @@ La seule nouveauté hors de l'annexe est la catégorie `original` de §1.9, dont
 ---
 
 ## Changelog
+
+### 2.13-draft — 2026-10-24
+
+Corrections de cohérence issues de la relecture intégrale de la 2.12-draft ([#37](https://github.com/izo/hyperfocale-spec/issues/37)).
+
+#### Caractère requis de `date` (§0, §1.3, §2.0, §2.0.1, Annexes A et G)
+
+**Ajouts** :
+- §1.3 — *Date requise ou optionnelle* : `date` est requise par défaut ; une collection la rend optionnelle pour tous ses contenus en se déclarant `dateRequired: false`, par son preset (§2.0.1) ou par sa racine de validation (§4.10).
+- §2.0 — obligation « Exiger les champs requis », jusqu'ici écrite au seul §0.
+
+**Modifications** :
+- §0 (frontmatter minimal, point 2 du contrat minimum), §1.8, §1.10, §2.0.1, Annexe A et règles communes de l'Annexe G alignés sur cette règle. §2.0.1 : un preset NE DOIT PAS rendre `title` optionnel.
+- §0.5 — l'option `dateRequired` du plugin Astro n'est plus notée comme un écart.
+
+**Décisions normatives** :
+- **Le caractère requis de `date` appartient à la collection, jamais au fichier.** Un contenu ne peut pas s'en dispenser lui-même ; sans déclaration, `dateRequired` vaut `true`.
+- **`dateRequired: false` n'est pas la suppression d'une obligation** : le contrat exige `date` sauf dans une collection ainsi déclarée. `date` est le seul champ du core qu'un preset peut rendre optionnel ; `title` ne l'est jamais.
+- **Une section échappe à la règle par `type: section`**, dans toute collection. Le changelog 2.6 justifiait §1.10 par l'impossibilité de relâcher `date` par preset ; la raison qui tient est autre : un preset vaut pour une collection entière, alors qu'une section vit **parmi** des séries datées — il fallait un discriminant par fichier.
+- **Aucune fixture ne change** : `date-missing` (§4.10) appliquait déjà cette règle (`type: section` ou racine `dateRequired: false`).
+
+**Justification** : la 2.12 se contredisait. §0 et l'Annexe A exigeaient `date` de tout contenu qui n'est pas une section, huit profils de l'Annexe G la rendaient optionnelle par preset, et le changelog 2.6 affirmait qu'un preset ne pouvait pas le faire. Un lecteur qui suivait §0 à la lettre rejetait une recette valide.
+
+#### `media/` facultatif sans fichier local (§0, §1.2, §2.5, Annexe G)
+
+**Ajouts** :
+- §1.2 — *Absence de `media/`* : une série sans fichier local PEUT ne pas avoir de `media/` ; un lecteur DOIT traiter un `media/` absent comme un `media/` vide.
+
+**Modifications** :
+- §0 (anatomie, point 3 du contrat minimum), §1.2, périmètre du plugin Obsidian (§2.5, qui exigeait aussi `date`) et règle commune *Squelette inchangé* de l'Annexe G alignés.
+
+**Décisions normatives** :
+- **`media/` porte les fichiers locaux d'une série ; sans fichier local, il est facultatif.** Cas couverts : `images:` ou manifeste `images.json`, embeds seuls, conteneur sans galerie propre, brouillon vide.
+- **Absent vaut vide** : ni image, ni document joint, ni erreur. Un outil PEUT créer un `media/` vide à la création d'une série ; aucun lecteur ne DOIT en dépendre.
+- **Aucune fixture ne change** : la couche 4 n'a jamais exigé `media/` — `manifest/series/concert-2019` n'en a pas et se valide sans diagnostic.
+
+**Justification** : la 2.12 déclarait `media/` obligatoire (§0, §1.2) tout en décrivant des séries qui n'en ont pas : manifeste (§1.5.1 — 309 séries sur 332 de `mathieu-drouet.com` au 2026-07-26), conteneur sans galerie (§1.8), série d'embeds (§1.11). L'obligation était en outre intenable : ni Git ni un snapshot ne conservent un dossier vide, si bien que le `media/` vide d'un brouillon disparaissait au premier commit ou à la première ingestion.
+
+#### Ordre alphabétique, casse des extensions et fichiers système (§0, §1.6, §1.9, §2.0)
+
+**Modifications** :
+- §1.6 — *Tri* : l'ordre « alphabétique » des fichiers de `media/` est l'ordre canonique de §4.1 (octets UTF-8 du nom en NFC, casse préservée). *Scan* : le glob littéral est remplacé par une règle — extension comparée en minuscules, fichiers système ignorés.
+- §0 (règles invariantes, point 3 du contrat minimum), §1.9 (classification, tri des documents joints) et §2.0 (obligation *Scanner `media/`*) renvoient à cette définition. Nouvelle règle invariante *Fichiers système*.
+- §1.9 — *Robustesse* : un fichier de type inconnu est classé `file` et listé en document joint, comme le dit le tableau des classes — et non « ignoré ».
+
+**Décisions normatives** :
+- **« Alphabétique » veut dire octets UTF-8, pas collation.** `10.jpg` précède `9.jpg`, `B.jpg` précède `a.jpg`. Le tri « naturel » des nombres et la collation locale sont écartés : ni l'un ni l'autre ne donne le même résultat en TypeScript et en Swift, et la couverture par défaut en dépend. L'ordre est celui que la couche 4 fixe déjà pour les chemins (§4.1) ; le nommage à padding constant (`01.jpg`) reste la façon d'imposer un ordre lisible.
+- **L'extension se compare en minuscules partout**, scan de galerie compris : `DSCF0001.JPG` est une image. Un glob littéral sensible à la casse n'est pas conforme.
+- **Les fichiers que la couche 4 exclut (§4.2) ne sont jamais des médias.** Sans cette règle, un `.DS_Store` ou un `._01.jpg` d'un volume macOS tombait dans « tout le reste » et devenait un document joint proposé au téléchargement.
+- **Aucune fixture ne change** : la couche 4 ne trie pas la galerie et classait déjà par extension en minuscules ; l'ordre canonique y est déjà exercé (identifiants §4.6 dans `snapshot-id/`, collisions dans `paths/collision.json`).
+
+**Justification** : la 2.12 triait « alphabétiquement » sans dire comment, et décrivait le scan par un glob `media/*.{jpg,…}` qui, pris à la lettre, manque `DSCF0002.JPG` — la couverture de l'exemple G.12. Le plugin Astro avait corrigé la casse de lui-même en v0.20.0 ; la spec, non. Deux lecteurs conformes pouvaient ainsi ordonner la même galerie différemment et choisir une couverture différente.
+
+#### Routes construites sur le chemin, pagination sous `page/` (§1.6, §1.8, §2.1, §2.2, Annexe A)
+
+**Modifications** :
+- §1.6 — *URLs* : `/<prefix>/<chemin>/` pour une série, `/<prefix>/<chemin>/page/<n>/` (`<n>` ≥ 2) pour la pagination, et quatre règles : *Identité*, *Pagination*, *Segment réservé*, *Ancienne forme*.
+- §1.8 (routes du conteneur), §2.1 (routes injectées), §2.2 (arborescence Next.js) et Annexe A (dossier `page` réservé) alignés.
+- §0.5 — plugin Astro : routes déjà construites sur le chemin ; pagination à l'ancienne forme, écart ouvert.
+
+**Décisions normatives** :
+- **Une route se construit sur le chemin, jamais sur le slug seul.** §1.2 l'affirmait depuis la v2.6 (« le chemin relatif est la clé de routage ») ; §1.6 routait encore par `<slug>`. Pour la forme canonique `series/<slug>/`, rien ne change.
+- **La pagination passe sous un segment `page`.** L'ancienne forme `/<slug>/<page>/` se confondait avec une sous-série dont le slug est un nombre — `2` est un slug valide. Écarté : interdire les slugs numériques, qui casse des contenus existants pour un problème de routage.
+- **`page` est réservé directement dans un dossier de série**, seul cas où une série rangée pourrait encore prendre une route de pagination. Le lint le signale ; aucun diagnostic de couche 4 n'est ajouté.
+- **L'ancienne forme se redirige** quand aucune série n'occupe le chemin, pour ne pas casser les liens publiés.
+- **Aucune fixture ne change** : la couche 4 ne construit pas de route.
+
+**Justification** : §1.6 routait par slug alors que §1.2 dit le slug non unique, et sa route de pagination entrait en collision avec les sous-séries de §1.8. Le cas est réel dans le plugin Astro (`main@f8d1a52`) : dès que la galerie d'un conteneur `festival` dépasse une page, sa page 2 et sa sous-série `2` produisent toutes deux `/series/festival/2/`.
 
 ### 2.12-draft — 2026-10-24
 
