@@ -1,8 +1,8 @@
 # Spécification — Format de contenu Hyperfocale
 
-> **Source de vérité canonique.** Ce document définit le format Hyperfocale — un standard de gestion de **séries photo** portable entre SSG (Astro, Next.js, Hugo, 11ty...), vaults Obsidian, et CMS headless (Strapi, Sanity, Payload...). Toute évolution du format doit être proposée d'abord ici, dans ce dépôt.
+> **Source de vérité canonique.** Ce document définit le format Hyperfocale — un standard de **séries photo pour le web**, portable entre SSG (Astro, Next.js, Hugo, 11ty...), vaults Obsidian, et CMS headless (Strapi, Sanity, Payload...). Le travail qui précède la publication — projets, originaux, sélection — relève d'**Hyperfocus** (`spec-hyperfocus.md`), qui découle de cette spec. Toute évolution du format doit être proposée d'abord ici, dans ce dépôt.
 
-**Version** : 2.13-draft
+**Version** : 2.14-draft
 **Statut** : spécification active — source de vérité canonique
 **Dernière révision** : 2026-10-24
 
@@ -15,7 +15,7 @@
 | Site `laurenceguenoun.com` | https://github.com/izo/laurenceguenoun | Consommateur en **couche data seule** (Astro) | ✅ Conforme v2.8, inchangé en v2.11 (`embeds[]` §1.11 depuis le 2026-08-12) — plugin 0.19.0, deux écarts assumés |
 | Hyperfocale CMS | https://github.com/izo/hyperfocale-cms | Éditeur Swift (CLI, macOS, iOS) : lecture tolérante, écriture stricte | ⚠️ Vise v2.10 hors couche 4 ; originaux (§1.9) et G.12 écrits, non encore éprouvés (PR [cms#86](https://github.com/izo/hyperfocale-cms/pull/86)) ; n'écrit pas encore dans Dropbox, canal GitHub toujours présent ([cms#77](https://github.com/izo/hyperfocale-cms/issues/77), [#78](https://github.com/izo/hyperfocale-cms/issues/78)) |
 | Exporter Lightroom | https://github.com/izo/hyperfocale-exporter-app | Source de contenu : LR → format Hyperfocale | ⚠️ Conforme v2.1 — trois écarts ouverts : RAW dans `media/` (§1.9), slug legacy, règle de date (§2.7) ; correctifs RAW et date en PR ([exporter-app#98](https://github.com/izo/hyperfocale-exporter-app/pull/98)) |
-| hyperfocale-vault | https://github.com/izo/hyperfocale-vault | Gestion de projets photo macOS : producteur du profil Projet (G.12) et export vers une série | ✅ Vise v2.11 (ADR-034) — vérifié contre §0 et G.12, pas contre les fixtures |
+| hyperfocale-vault | https://github.com/izo/hyperfocale-vault | Gestion de projets photo macOS : producteur du dossier de travail (G.12, repris par Hyperfocus) et export vers une série | ✅ Vise v2.11 (ADR-034) — vérifié contre §0 et G.12, pas contre les fixtures ; à relever contre Hyperfocus |
 | Site `hyperfocale.app` | https://github.com/izo/hyperfocale.app | Site de l'écosystème, lui-même une archive Hyperfocale (Astro) | ✅ Plugin `@regrets/hyperfocale` 0.19.0 ; présente les quatre couches et les douze profils |
 
 Le détail de conformité par implémentation est en **§0.5 — État des implémentations**.
@@ -139,6 +139,7 @@ Ces règles s'appliquent quel que soit l'adaptateur ou la plateforme :
 - Une base de données — pas de relations entre séries, pas de joins
 - Un CMS — pas d'interface d'administration
 - Un format propriétaire — du Markdown standard lisible par n'importe quel outil
+- Un outil de gestion de projet — le suivi d'un travail en cours (statuts, tâches, échéances, originaux) est le périmètre d'**Hyperfocus**, pas de cette spec
 
 ### Contrat minimum d'un lecteur Hyperfocale
 
@@ -223,11 +224,11 @@ Le plugin expose un preset par profil de l'annexe, sous le nom de l'annexe : `se
 | `book` | `/livres` | `book` → `/books` | ✅ v0.14.0 ; prefix localisé |
 | `place` | `/lieux` | `place` → `/places` | ✅ v0.14.0 ; prefix localisé |
 | `screen` | `/ecrans` | `screen` → `/screens` | ✅ v0.14.0 ; prefix localisé |
-| `project` | `/suivi` | `project` → `/projects` | ✅ v0.20.0 ; prefix localisé ; collection `work`, `projects` étant prise par `portfolio` depuis la v0.8.0 |
+| `project` | `/suivi` | `project` → `/projects` | ✅ v0.20.0 ; prefix localisé ; collection `work`, `projects` étant prise par `portfolio` depuis la v0.8.0 ; **depuis la 2.14**, un dossier migré vers Hyperfocus (`type: project`) est refusé par le schéma du plugin (`type` énuméré, `main@f8d1a52`) : décision D18 d'Hyperfocus (§7.4) |
 
 Les prefix divergents ne sont pas des non-conformités — la colonne de l'Annexe G est un **prefix recommandé**, et un preset PEUT fixer le sien (§2.0.1) ; le plugin les a simplement localisés en français. Le squelette, le slug regex et les champs core sont préservés, conformément aux interdits de §2.0.1.
 
-L'annexe est couverte en entier depuis la v0.20.0. Le nom de collection d'un preset n'est pas normé par l'annexe : `work` pour `project` n'est pas un écart.
+Les dix profils de l'annexe sont couverts depuis la v0.14.0. Depuis la 2.14, le preset `project` (v0.20.0) n'a plus de profil correspondant dans l'annexe : G.12 est passé dans Hyperfocus, et le preset refuse un dossier migré (`type: project`) — décision D18 d'Hyperfocus (§7.4). Le nom de collection d'un preset n'est pas normé par l'annexe : `work` pour `project` n'est pas un écart.
 
 **Extensions au-delà du contrat** :
 - `featured: boolean` (boost ranking) — pattern utile, officialisé en §1.3 v2.1
@@ -299,6 +300,7 @@ L'annexe est couverte en entier depuis la v0.20.0. Le nom de collection d'un pre
 - **Producteur G.12** : un projet est un dossier `<slug>/index.md` + `media/` portant les originaux ; `draft: true` toujours écrit, aucun `type`, bloc `project:` et `iptc:`. Le fichier fait foi, les champs inconnus et le body sont préservés.
 - **Export vers une série** (« Exporter en série web… ») : nouveau dossier `<slug>/`, `media/` d'images rendues seulement, sans bloc `project:` — la voie de publication que la v2.11 prescrit.
 - **Écart** : vérifié contre les règles de §0 et G.12, pas contre les fixtures de `fixtures/ingestion/`, absentes du dépôt.
+- **Hyperfocus (2.14)** : G.12 est repris par Hyperfocus (`spec-hyperfocus.md`, en rédaction). Le vault produit encore un dossier **sans** `type: project` ; sa conformité à Hyperfocus n'est pas relevée.
 
 ### Site `hyperfocale.app`
 
@@ -346,6 +348,7 @@ L'annexe est couverte en entier depuis la v0.20.0. Le nom de collection d'un pre
 
 - L'implémentation des adaptateurs (chacun a sa propre spec)
 - Le design visuel (libre, seul le contrat de données est spécifié)
+- Le travail à la source — projets, originaux, sélection, chaîne de développement : c'est le périmètre d'**Hyperfocus**, qui découle de cette spec et n'en est pas un profil
 - Le workflow d'édition (chaque outil a le sien) — la couche 4 fixe seulement ce qui passe d'une source éditoriale à un snapshot publié, pas la façon d'éditer
 - L'infrastructure de production (hébergeur, CDN, stockage des médias) — choix du consommateur
 
@@ -489,7 +492,7 @@ Le frontmatter est en YAML, délimité par `---`. Il se divise en deux niveaux :
 | `lang` | `string` | non | Code langue ISO 639-1 (`fr`, `en`...). Pour les sites multilingues. |
 | `featured` | `boolean` | non | `true` = série mise en avant (boost dans les listings, sections "à la une"). Défaut : `false`. *Officialisé en v2.1 à partir du pattern observé dans plusieurs implémentations.* |
 | `tags` | `string[]` | non | Tags éditoriaux libres. **Distincts** de `iptc.keywords` (qui suit le vocabulaire IPTC normalisé). Voir note ci-dessous. *Officialisé en v2.1.* |
-| `type` | `string` | non | Nature du contenu. Défaut : `series`. Seule autre valeur normative : `section` — le fichier est alors une page d'index de section et non une série (§1.10). *Introduit en v2.6.* |
+| `type` | `string` | non | Nature du contenu. Défaut : `series`. Seule autre valeur normative : `section` — le fichier est alors une page d'index de section et non une série (§1.10). *Introduit en v2.6.* La valeur `project` est **réservée à Hyperfocus** : elle désigne un dossier de travail qui ne se publie pas. Un lecteur de cette spec ne la lit pas comme une série : l'ingestion la refuse (`type-invalid`, §4.10) et un adaptateur DEVRAIT la refuser explicitement plutôt que d'afficher le dossier. *Réservée en v2.14.* |
 | `embeds` | `object[]` | non | Médias hébergés par une plateforme tierce et joués dans la page (Vimeo, YouTube, SoundCloud…). Distincts des documents joints §1.9, qui vivent dans `media/`. Voir §1.11. *Introduit en v2.8.* |
 
 > **Relation `tags` ↔ `iptc.keywords`** : `tags` est un vocabulaire éditorial libre, géré par l'auteur (ex : `featured`, `portrait`, `intimite`). `iptc.keywords` suit le standard IPTC et peut être peuplé automatiquement depuis les métadonnées image (ex : depuis Lightroom). Les deux peuvent coexister. Les adaptateurs DEVRAIENT permettre la recherche par les deux.
@@ -845,7 +848,7 @@ La classification se fait par extension de fichier — partie du nom qui suit so
 
 #### Originaux *(introduit v2.11)*
 
-Un dossier de travail — un projet photo géré à la source dès la prise de vue (G.12) — porte dans `media/` les fichiers sortis du boîtier et ceux des logiciels de développement : les RAW, et les fichiers annexes (*sidecars*) qui décrivent leurs réglages. Ce sont des **originaux**. Ils ne sont pas faits pour être montrés : un RAW ne s'affiche pas dans un navigateur, un `.xmp` n'est lisible que par un logiciel, et ni l'un ni l'autre n'a vocation à sortir du dossier.
+Un dossier de travail — un projet photo géré à la source dès la prise de vue (Hyperfocus, `spec-hyperfocus.md`) — porte dans `media/` les fichiers sortis du boîtier et ceux des logiciels de développement : les RAW, et les fichiers annexes (*sidecars*) qui décrivent leurs réglages. Ce sont des **originaux**. Ils ne sont pas faits pour être montrés : un RAW ne s'affiche pas dans un navigateur, un `.xmp` n'est lisible que par un logiciel, et ni l'un ni l'autre n'a vocation à sortir du dossier.
 
 | Catégorie | Extensions (liste fermée, insensible à la casse) |
 |-----------|--------------------------------------------------|
@@ -864,7 +867,7 @@ Un dossier de travail — un projet photo géré à la source dès la prise de v
 
 ##### Compatibilité
 
-Un lecteur antérieur à v2.11 classe les originaux en documents joints de classe `file` et les **propose en téléchargement** après la galerie. Aucun contenu publié n'est cassé — une série publiée n'a aucune raison de porter un RAW — mais un dossier de travail lu par un tel lecteur laisse fuir ses originaux. La règle qui en découle ne dépend d'aucune version d'adaptateur : **un dossier de travail ne se publie jamais directement**, il se publie par export (G.12). La garde de publication v2.11 (§4.11) protège en plus contre l'erreur, mais seulement quand l'outil d'ingestion la connaît. La prise en charge des originaux est requise pour la conformité v2.11 (§2.0).
+Un lecteur antérieur à v2.11 classe les originaux en documents joints de classe `file` et les **propose en téléchargement** après la galerie. Aucun contenu publié n'est cassé — une série publiée n'a aucune raison de porter un RAW — mais un dossier de travail lu par un tel lecteur laisse fuir ses originaux. La règle qui en découle ne dépend d'aucune version d'adaptateur : **un dossier de travail ne se publie jamais directement**, il se publie par export (Hyperfocus, §5). La garde de publication v2.11 (§4.11) protège en plus contre l'erreur, mais seulement quand l'outil d'ingestion la connaît. La prise en charge des originaux est requise pour la conformité v2.11 (§2.0).
 
 #### Métadonnées des documents joints (optionnel)
 
@@ -1106,7 +1109,7 @@ Un preset NE DOIT PAS :
 - Rendre `title` optionnel
 - Renommer les champs core (`title`, `date`, `description`, `cover`, etc.)
 
-Onze presets non-photo sont standardisés en **Annexe G — Profils de contenu** (`event`, `recipe`, `app`, `book`, `place`, `screen`, `portfolio`, `music`, `catalog`, `press`, `project`). L'ajout de nouveaux profils se discute par PR contre cette spec, en étendant cette annexe.
+Dix presets non-photo sont standardisés en **Annexe G — Profils de contenu** (`event`, `recipe`, `app`, `book`, `place`, `screen`, `portfolio`, `music`, `catalog`, `press`), comme extensions hors noyau. Le profil Projet (`project`), qui y figurait jusqu'à la v2.13 sous G.12, relève d'**Hyperfocus**. L'ajout de nouveaux profils se discute par PR contre cette spec, en étendant cette annexe.
 
 ### 2.1 — Adaptateur Astro
 
@@ -1463,6 +1466,8 @@ Le mapping vers un CMS suit ce schéma :
 ### 2.7 — Exporter Lightroom (source de contenu)
 
 **Dépôt** : https://github.com/izo/hyperfocale-exporter-app
+
+> **Hyperfocus (2.14).** À terme, la chaîne de travail Lightroom — du catalogue à une sélection d'images — relève d'**Hyperfocus**, qui reprend le côté photo en amont de la publication. Cette section reste le contrat de l'exporter tant que cette chaîne n'est pas définie côté Hyperfocus ; le **dossier produit** est, dans tous les cas, une série Hyperfocale, et ce qui le décrit ici ne change pas.
 
 L'exporter Lightroom est un **plugin d'export Adobe Lightroom Classic / Lightroom** qui génère du contenu au format Hyperfocale directement depuis le catalogue photo.
 
@@ -2091,7 +2096,7 @@ La **projection publiable** reprend le snapshot à l'identique — `format`, `ve
 - `guard-oversize` s'évalue sur la projection : un RAW de 80 Mo ne bloque pas une publication dont il est exclu.
 - `guard-originals-excluded` est de sévérité `info` : l'exclusion est le comportement attendu, le diagnostic en rapporte le poids — un dossier de travail confié par erreur à l'ingestion se voit à ses `bytes`.
 - Un snapshot publié par un outil antérieur à v2.11 peut contenir des originaux. Le premier diff vers une projection les range en `deleted` ; ils comptent dans `maxDeletedMediaRatio`, et c'est voulu : leur retrait est une suppression réelle de la production.
-- Cette exclusion est un filet, pas un mode de publication : un dossier de travail se publie par export (G.12), entre autres parce que la garde ne retire pas le bloc `project:` de son `index.md`.
+- Cette exclusion est un filet, pas un mode de publication : un dossier de travail se publie par export (Hyperfocus, §5), entre autres parce que la garde ne retire pas le bloc `project:` de son `index.md`.
 
 ### 4.12 — Fixtures de conformité
 
@@ -2276,6 +2281,8 @@ L'adaptateur DOIT documenter quelle(s) stratégie(s) il supporte. Un adaptateur 
 
 La section 0 décrit un **squelette universel** : un dossier autonome = `index.md` (frontmatter core + body Markdown) + `media/`. Jusqu'à la v2.2, ce squelette n'avait qu'une seule déclinaison : la **série photo**. Cette annexe officialise l'idée qu'un même squelette peut porter **d'autres types de contenu**.
 
+> **Extensions hors noyau *(2.14)*.** Hyperfocale est une spec photo pour le web : son noyau est la série photo et son bloc `iptc:`. Les profils de cette annexe sont des **extensions** : ils restent normatifs pour qui les implémente, mais aucun adaptateur n'a à les supporter pour être conforme au noyau (§2.0). Le travail à la source n'est pas un profil : il relève d'Hyperfocus.
+
 Un **profil de contenu** est une déclinaison du squelette pour un domaine donné. Il n'invente rien au niveau structurel — il se contente de :
 
 1. **Réutiliser le core tel quel** (`title`, `date`, `description`, `cover`, `location`, `draft`, `lang`, `tags`, `featured`).
@@ -2311,7 +2318,7 @@ Ces règles garantissent qu'un profil reste un contenu Hyperfocale valide au sen
 | Musique | une sortie | `music` | `/music` | optionnelle (= sortie) | `music:` | schema.org/MusicAlbum |
 | Catalogue | un produit | `catalog` | `/catalog` | optionnelle | `catalog:` | schema.org/Product |
 | Presse | une parution | `press` | `/press` | requise (= parution) | `press:` | schema.org/NewsArticle |
-| Projet | un projet photo, géré à la source | `project` | `/projects` | requise (= prise de vue) | `project:` | schema.org/CreativeWork |
+| ~~Projet~~ | *passé dans Hyperfocus (G.12)* | — | — | — | — | — |
 
 ---
 
@@ -3154,165 +3161,61 @@ Pour proposer un profil supplémentaire (livre, lieu, produit e-commerce...), un
 5. **Le preset d'adaptateur** (collection, prefix) — dans le respect des contraintes §2.0.1.
 6. La démonstration que les **invariants §0** restent satisfaits.
 
+Un profil décrit un contenu **publié** : un travail en cours, avec son suivi, relève d'Hyperfocus et non d'un profil.
+
 Un profil ne DOIT jamais : renommer un champ core, modifier le slug regex, supprimer une obligation du contrat d'adaptateur (§2.0), ou exiger une récursion dans `media/`.
 
 ---
 
-### G.12 — Profil Projet (`project`) *(introduit v2.11)*
+### G.12 — Profil Projet : passé dans Hyperfocus *(introduit v2.11, retiré en v2.14)*
 
-**Cas d'usage** : gérer un projet photo à la source, dès la prise de vue — commande, reportage, série personnelle — dans un outil de gestion (l'application macOS [hyperfocale-vault](https://github.com/izo/hyperfocale-vault)), un coffre Obsidian ou un simple dossier. L'atome est **un projet photo en cours ou livré** : un dossier de travail qui porte les originaux, les images de l'appareil et les informations de suivi.
+Le profil Projet décrivait un dossier de travail — un projet photo suivi à la source, avec ses originaux, son client et ses échéances. Ce n'est pas un contenu publié : il relève d'**Hyperfocus** (`spec-hyperfocus.md`), qui découle de cette spec.
 
-```
-mariage-dupont-2026/
-├── index.md
-└── media/
-    ├── DSCF0001.RAF
-    ├── DSCF0001.xmp
-    ├── DSCF0001.JPG
-    ├── devis.pdf
-    └── …
-```
+| Ce que décrivait G.12 | Où le trouver |
+|---|---|
+| Le bloc `project:` et ses champs | Hyperfocus §2.2 |
+| Les statuts | Hyperfocus §2.3 (les quatre de G.12, plus `en-pause` et `abandonne`) |
+| Le nom du dossier, le titre, `date` | Hyperfocus §1.3, §1.4, §2.1 |
+| La publication par export | Hyperfocus §5 |
+| Les règles d'un outil de gestion | Hyperfocus §4 |
+| Migrer un dossier G.12 | Hyperfocus §7 : ajouter `type: project` |
 
-> **Un dossier de travail, pas une publication.** Les autres profils décrivent un contenu fait pour être publié. Un projet en est la matière première : ses originaux (§1.9) et son bloc `project:` — client, contact, échéances — n'ont pas vocation à sortir. Il se publie par **export** (voir *Publication*), jamais tel quel.
->
-> **Distinction avec `portfolio` (G.7).** Un portfolio présente une réalisation livrée, au public. Un projet suit le travail en cours, pour soi. Un même travail peut passer de l'un à l'autre : le projet reste la source, l'entrée de portfolio ou la série publiée en est un export.
+**Ce qui reste normatif ici**, parce que les lecteurs et la publication en ont besoin :
 
-#### Mapping du core
+- les **originaux** (§1.9) : un lecteur les ignore, la liste fermée est dans cette spec ;
+- la **projection publiable** et la garde (§4.11), qui retirent les originaux d'un snapshot — mais pas le contenu de l'`index.md` ;
+- la règle qu'**un dossier de travail ne se publie jamais directement** : il se publie par export ;
+- la valeur `type: project`, réservée à Hyperfocus (§1.3).
 
-| Champ core | Sens dans le profil |
-|------------|---------------------|
-| `title` | Nom du projet |
-| `date` | Date de prise de vue, ou de début du projet — **requise**, sert au tri. Preset `dateRequired: true`. |
-| `description` | Résumé du projet |
-| `cover` | Image choisie parmi les images de `media/` — jamais un original (§1.9) |
-| `location` | Lieu de la prise de vue |
-| `draft` | **`true` par défaut**, écrit explicitement à la création (voir *Règles*) |
-| `media/` | Originaux (RAW, sidecars), images (JPEG de l'appareil, exports), documents de travail (devis, contrat, feuille de route) — à plat |
-
-#### Bloc d'extension `project:`
-
-Les données de gestion vivent **dans le frontmatter de `index.md`**, sous la clé `project:` — pas dans un fichier voisin. Un projet reste un dossier autonome : le déplacer, c'est déplacer toutes ses données (§1.1).
-
-Tous les champs sont optionnels. Un adaptateur DOIT les ignorer sans erreur s'il ne les supporte pas.
-
-| Clé | Type | Description |
-|-----|------|-------------|
-| `status` | `string` | Cycle de vie : `prospect` · `en-cours` · `livre` · `archive` (voir *Statuts*) |
-| `stage` | `string` | Étape du workflow, **libre** (« tri », « retouche », « export », « livraison »…). La spec ne fixe aucune liste : chaque photographe a la sienne. |
-| `client` | `string` | Commanditaire |
-| `contact` | `string` | Contact chez le client, en texte libre (nom, e-mail, téléphone) |
-| `start` | `date` (ISO 8601) | Début du projet ou de la prise de vue |
-| `end` | `date` (ISO 8601) | Fin de la prise de vue |
-| `due` | `date` (ISO 8601) | Échéance de livraison |
-| `deliverables` | `object[]` | Livrables, dans l'ordre du tableau : `name` (`string`, requis), `date` (`date`, livraison prévue ou effective) |
-| `tasks` | `object[]` | Tâches, dans l'ordre du tableau : `title` (`string`, requis), `done` (`boolean`, défaut `false`), `due` (`date`) |
-
-Les dates s'écrivent `AAAA-MM-JJ`, comme `date` (§1.3). Une entrée de `deliverables` sans `name`, ou de `tasks` sans `title`, DEVRAIT être signalée par un outil de gestion et ignorée à l'affichage — jamais un échec.
-
-##### Statuts
-
-| Valeur | Sens |
-|--------|------|
-| `prospect` | Projet envisagé : premier contact, devis, date posée en option. Rien n'est confirmé. |
-| `en-cours` | Projet confirmé, de la prise de vue à la livraison : tri, retouche, export. |
-| `livre` | Livrables remis. Le projet peut encore recevoir une retouche ou donner lieu à une publication. |
-| `archive` | Projet clos, conservé pour mémoire. Plus aucune action attendue. |
-
-Les valeurs sont des **slugs ASCII** — ni accent ni majuscule — pour rester stables entre outils et comparables à l'octet ; le libellé affiché est libre (« En cours », « Livré », « Archivé »). `status` absent signifie *non renseigné* : un outil ne DOIT PAS le déduire des dates. Une valeur inconnue DOIT être conservée et ne fait jamais échouer un outil, qui l'affiche comme non renseignée. Le statut est indépendant de `draft` : un projet `livre` reste un brouillon tant qu'il n'a pas été exporté.
-
-#### Exemple
-
-```yaml
----
-title: "Mariage Dupont"
-date: 2026-06-14
-description: "Mariage de Claire et Julien Dupont"
-cover: "./media/DSCF0002.JPG"
-location: "Arles, France"
-draft: true
-lang: fr
-
-project:
-  status: en-cours
-  stage: "tri"
-  client: "Famille Dupont"
-  contact: "claire.dupont@example.com"
-  start: 2026-06-14
-  end: 2026-06-15
-  due: 2026-07-01
-  deliverables:
-    - name: "Galerie web"
-      date: 2026-07-01
-    - name: "Tirages 30x40"
-  tasks:
-    - title: "Envoyer la sélection"
-      done: false
-      due: 2026-06-20
-    - title: "Sauvegarder les cartes"
-      done: true
-
-attachments:
-  - file: "./media/devis.pdf"
-    title: "Devis signé"
----
-
-Notes de prise de vue : cérémonie à 15 h, vin d'honneur dans la cour.
-```
-
-C'est l'`index.md` du corpus `fixtures/ingestion/corpora/originals/`.
-
-#### Vocabulaire externe
-
-Un projet n'est pas publié : aucun balisage public n'est attendu, et un adaptateur web NE DOIT PAS émettre le bloc `project:` dans un balisage. Pour l'échange entre outils, le profil s'aligne sur `schema.org/CreativeWork` — `project.status` correspond à `creativeWorkStatus`. Les métadonnées photo restent sous `iptc:`, inchangé.
-
-#### Preset & règles métier spécifiques
-
-```ts
-hyperfocale({ preset: 'project' })  // collection 'projects', prefix /projects, dateRequired: true
-```
-
-| Règle | Description |
-|-------|-------------|
-| Tri | Date décroissante (§1.6). Un outil de gestion PEUT trier par `project.due` ascendant ou grouper par `project.status`. |
-| Brouillon | Un outil qui crée un projet DOIT écrire `draft: true` **explicitement**. Un lecteur qui ignore le profil applique le défaut du core (`false`) : seul un `draft` écrit protège le dossier d'un listing public. |
-| Originaux | `media/` porte les originaux à plat ; un lecteur les ignore (§1.9), l'ingestion les retire du snapshot publié (§4.11). |
-| Confidentialité | Un adaptateur qui rend un projet hors de l'outil de gestion NE DOIT PAS rendre le bloc `project:`. |
-| Pas de `type: project` | `type` n'admet que `series` et `section` (§1.3) : un projet n'en porte pas, ou porte `type: series`. Comme les autres profils, il se déclare par son preset. |
-
-#### Publication : par export
-
-Un dossier de projet NE DOIT PAS être publié tel quel. Il se publie par un **export** qui crée un **nouveau** dossier `<slug>/` :
-
-- un contenu de type série (`type` absent ou `series`), au squelette standard ;
-- un `media/` qui ne contient **que des images** (§1.2) — ni originaux, ni documents de travail ;
-- un frontmatter repris au choix de l'outil (`title`, `date`, `description`, `cover`, `location`, `lang`, `tags`, `iptc:`), **sans le bloc `project:`**, qui NE DOIT PAS être recopié ;
-- un slug libre : il PEUT différer de celui du projet.
-
-Trois raisons interdisent de publier le dossier de travail : un lecteur antérieur à v2.11 proposerait ses originaux en téléchargement (§1.9, *Compatibilité*) ; son `index.md` porte des données privées (client, contact) ; et la garde v2.11 (§4.11), qui retire les originaux, laisse le bloc `project:` en place. L'export est une copie : le projet reste la source, et la spec ne standardise pas le lien entre les deux. Un outil PEUT en garder la trace dans un champ libre du projet, transmis par passthrough.
-
-#### Outil de gestion
-
-Un outil de gestion PEUT traiter `index.md` comme **source de vérité** du projet : il le lit, et le réécrit quand l'utilisateur modifie le projet. En réécrivant, il DOIT :
-
-- préserver les champs qu'il ne connaît pas — à la racine du frontmatter, dans `project:` et dans chaque entrée de `deliverables` et de `tasks` (passthrough §1.3) ;
-- préserver le body Markdown à l'identique, octet pour octet.
-
-Il DEVRAIT préserver l'ordre des clés et les commentaires YAML qu'il ne modifie pas : `index.md` reste un fichier édité aussi à la main, dans Obsidian ou un éditeur de texte.
-
-#### Invariants §0
-
-| Invariant | Dans le profil |
-|-----------|----------------|
-| Squelette | `<slug>/index.md` + `media/`, slug regex inchangé. |
-| `media/` plat | Les originaux sont à plat, à côté de leurs images — aucun `media/originals/` (§1.9). |
-| Core | Aucun champ renommé ; `date` reste requise ; le vocabulaire de gestion vit sous la seule clé `project:`. |
-| Lecteur qui ignore le profil | Il lit une série en brouillon : les JPEG en galerie, le devis en document joint, les originaux ignorés (§1.9) — ou, avant v2.11, listés en documents joints, raison de la publication par export. |
-
-La seule nouveauté hors de l'annexe est la catégorie `original` de §1.9, dont le profil a besoin mais qui vaut pour tout contenu.
+Un dossier G.12 existant reste lisible par Hyperfocus : c'est un projet auquel il manque `type: project`. Le corpus `fixtures/ingestion/corpora/originals/` en reste le témoin pour la couche 4 : un dossier de travail avec RAW, sidecars et JPEG, tel que la garde le traite.
 
 ---
 
 ## Changelog
+
+### 2.14-draft — 2026-10-25
+
+#### Hyperfocale, spec photo pour le web ; le travail à la source passe dans Hyperfocus
+
+**Modifications** :
+- En-tête, §0 (*Ce que n'est PAS le format*) et Philosophie : Hyperfocale est une spec de **séries photo pour le web**. Le travail qui précède la publication relève d'**Hyperfocus** (`spec-hyperfocus.md`), qui découle de cette spec.
+- **G.12 — Profil Projet est retiré** de l'annexe et remplacé par un renvoi vers Hyperfocus (tableau de correspondance). §1.9, §2.0.1, §4.11, G.11 et la vue d'ensemble de l'Annexe G alignés ; §2.0.1 compte désormais **dix** presets non photo.
+- **Annexe G** : les profils sont des **extensions hors noyau** — normatifs pour qui les implémente, jamais requis pour la conformité au noyau (§2.0).
+- **§1.3** : la valeur `type: project` est **réservée à Hyperfocus**. L'ingestion la refuse déjà (`type-invalid`) ; un adaptateur DEVRAIT la refuser explicitement plutôt que d'afficher le dossier.
+- §2.7 : note de renvoi — la chaîne Lightroom relève à terme d'Hyperfocus, la section reste le contrat de l'exporter d'ici là.
+- §0.5 : hyperfocale-vault repris par Hyperfocus (non relevé) ; preset `project` du plugin Astro, qui refuse `type: project`.
+
+**Décisions normatives** :
+- **Ce qui reste dans Hyperfocale** : la série publiée et son `iptc:`, les images et la galerie, le classement des originaux (§1.9, un lecteur et la garde en ont besoin), la couche 4. La ligne passe **à l'export**.
+- **Un dossier de travail ne se publie jamais directement** : règle conservée ici, sous le nom d'Hyperfocus.
+- **`type: project` est refusé, pas ignoré.** Le comportement de l'ingestion et du plugin de référence devient la règle ; il évite qu'un dossier de travail s'affiche comme une série.
+- **§2.7 n'est pas déménagée** : Hyperfocus ne définit pas encore comment la chaîne Lightroom alimente un projet. Déplacer le texte avant aurait retiré à l'exporter son contrat.
+
+**Aucune fixture ne change.** `invalid-type-invalid` (valeur `galerie`) n'est pas concernée ; le corpus `originals` reste le témoin de la garde.
+
+**Dépendances** : cette version suppose la 2.13 ([#38](https://github.com/izo/hyperfocale-spec/pull/38)) et renvoie à `spec-hyperfocus.md`, qui vit sur la branche `spec/projet` : les deux doivent être fusionnées ensemble ou dans cet ordre.
+
+**Justification** : cadrage du 2026-10-25 ([#36](https://github.com/izo/hyperfocale-spec/issues/36)) — Hyperfocus reprend la gestion de projet et le côté photo en amont ; Hyperfocale reste la spec photo pour le web.
 
 ### 2.13-draft — 2026-10-24
 

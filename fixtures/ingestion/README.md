@@ -42,7 +42,7 @@ Arborescence d'entrée. Un provider filesystem la parcourt récursivement ; chaq
 | `manifest` | couverture trouvée dans `images.json` par suffixe (chemin absolu au site) et par résolution (chemin relatif) ; manifeste + médias locaux | aucun |
 | `attachments` | documents joints §1.9, fichier vide | aucun |
 | `embeds` | contenus embarqués §1.11, plateforme inconnue, poster en couverture | aucun |
-| `originals` | dossier de travail du profil `project` (G.12) : RAW `.RAF`, sidecars `.xmp`, JPEG de l'appareil (extensions en majuscules), devis PDF | aucun |
+| `originals` | dossier de travail (ex-profil `project` G.12, repris par Hyperfocus) : RAW `.RAF`, sidecars `.xmp`, JPEG de l'appareil (extensions en majuscules), devis PDF | aucun |
 | `roots` | racines de validation (`validation/roots.json`, `validation/roots-default.json`) | selon la racine |
 | `invalid-<code>` | un corpus par diagnostic de validation `error` ou `warning` qui dépend du contenu | exactement `<code>` |
 | `cover-cumulative` | `cover` relatif vers un document joint absent : deux diagnostics sur le même fichier | `cover-not-found` + `cover-not-image` |
