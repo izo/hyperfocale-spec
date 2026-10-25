@@ -1,9 +1,9 @@
 # Spécification — Hyperfocale Projet
 
-> **Esquisse.** Ce document décrit le **dossier de travail** Hyperfocale : un projet suivi à la source, de la première prise de contact à la livraison. Il se sépare de la spec web (`spec-hyperfocale.md`), qui décrit un contenu fait pour être publié. Rien n'y est encore normatif : les décisions à trancher sont en §D. Réflexion d'origine : [#36](https://github.com/izo/hyperfocale-spec/issues/36).
+> **En rédaction.** Ce document décrit le **dossier de travail** Hyperfocale : un projet suivi à la source, de la première prise de contact à la livraison. Il se sépare de la spec web (`spec-hyperfocale.md`), qui décrit un contenu fait pour être publié. Les sections 1 et 2.1 sont rédigées au futur contrat (DOIT / PEUT) mais rien n'est encore figé : tant que le statut est « en rédaction », les décisions sont réversibles (§D). Réflexion d'origine : [#36](https://github.com/izo/hyperfocale-spec/issues/36).
 
-**Version** : 0.1-draft
-**Statut** : esquisse — non normative
+**Version** : 0.2-draft
+**Statut** : en rédaction — §1 et §2.1 rédigés, le reste est une esquisse
 **Dernière révision** : 2026-10-25
 **Socle** : `spec-hyperfocale.md` 2.12-draft. La 2.13-draft en cours ([#37](https://github.com/izo/hyperfocale-spec/issues/37)) règle trois points dont ce document dépend : `date` portée par la collection, `media/` facultatif sans fichier local, ordre alphabétique défini.
 
@@ -32,7 +32,7 @@ La spec web impose à tout contenu des contraintes nées de la publication : slu
 | | Socle commun | Spec web | Spec Projet |
 |---|---|---|---|
 | Unité | dossier + `index.md` (frontmatter + body) + `media/` | contenu publiable | dossier de travail |
-| `media/` | plat ; classes image / document joint / original (§1.9 web) | galerie, documents joints | idem, plus des **dossiers de travail** à côté (§1.3) |
+| `media/` | plat ; classes image / document joint / original (§1.9 web) | galerie, documents joints | idem, plus des **dossiers de travail** à côté (§1.6) |
 | Nom de dossier | — | slug obligatoire | **libre** : le nom du dossier fait l'identité |
 | `title` | — | requis | optionnel, nom du dossier par défaut |
 | `date` | — | requise par défaut | optionnelle (`project.start`, `project.due`…) |
@@ -48,32 +48,81 @@ La spec web impose à tout contenu des contraintes nées de la publication : slu
 
 ## 1 — Le dossier projet
 
+### 1.1 — Définition
+
+Un **projet** est un dossier de travail : un dossier dont l'`index.md` déclare `type: project` (§1.2). Il porte ses fichiers, ses notes et ses informations de suivi. Il n'est pas fait pour être publié : il se publie par export (§5).
+
 ```
 Projets/                        ← rangement, profondeur libre
 └── clients/Acme/
     └── Refonte site/           ← projet
-        ├── index.md
+        ├── index.md            ← type: project
         ├── media/              ← partie montrable : images, devis, comptes rendus
-        ├── Maquettes/          ← lot (§3)
+        ├── Maquettes/          ← lot (§3) : index.md avec type: project
         │   ├── index.md
         │   └── media/
-        └── sources/            ← dossier de travail, sans index.md
+        └── sources/            ← dossier de travail (§1.5) : pas d'index.md projet
             └── maquette.psd
 ```
 
-### 1.1 — Discriminant
+### 1.2 — Discriminant *(décision D1)*
 
-*Piste* : `type: project` dans `index.md` (décision D1). Il voyage avec le dossier quand on le déplace ; l'ingestion web le refuse déjà (`type-invalid`, §4.10 web), donc un dossier projet confié par erreur à un pipeline web bloque la publication.
+| Règle | Description |
+|-------|-------------|
+| Déclaration | Un dossier est un projet si, et seulement si, son `index.md` déclare `type: project`. |
+| Jamais deviné | Un outil NE DOIT PAS reconnaître un projet à la présence d'un bloc `project:`, à l'absence de `date` ou à la forme du dossier : seul `type` compte, comme pour une section de la spec web (§1.10 web). |
+| Un fichier, un rôle | `type` n'admet qu'une valeur par fichier : un `index.md` de projet n'est ni une série ni une section. |
+| Dossier voisin | Un `index.md` sans `type: project`, rencontré dans un projet, n'est pas un projet — par exemple l'export HTML d'un site rangé dans un dossier de travail. |
+| Lecteur de la spec web | Une ingestion web refuse la valeur (`type-invalid`, §4.10 web) et bloque donc la publication d'un dossier projet confié par erreur à un pipeline web. Un adaptateur web qui ne connaît pas la valeur la traite comme un champ inconnu (passthrough) et lit le dossier comme une série ; c'est pourquoi un outil qui crée un projet écrit aussi `draft: true`, aussi longtemps que cette compatibilité compte (§7). |
 
-### 1.2 — Nom du dossier
+### 1.3 — Nom du dossier *(décision D5)*
 
-*Piste* : libre, contraint seulement par les règles de chemin du socle (§4.1 web : NFC, pas de caractère de contrôle). Le nom du dossier sert de titre quand `title` est absent ; l'export le convertit en slug (§5).
+Le **nom du dossier** identifie le projet. Il est libre : la regex de slug de la spec web (§1.2 web) ne s'applique pas, puisqu'un projet n'a pas d'URL.
 
-### 1.3 — Dossiers de travail
+| Règle | Description |
+|-------|-------------|
+| Contraintes | Celles d'un segment de chemin du socle (§4.1 web) : forme NFC, aucun caractère de contrôle, aucun `/`. Un nom qui commence par `.` est un fichier système (§4.2 web) et n'est pas un projet. |
+| Espaces, accents, majuscules | Admis et préservés. `Refonte site` est un nom valide. |
+| Collision | Deux dossiers frères dont les noms sont égaux après NFC puis minuscule simple (§4.1 web) sont en collision : le projet ne s'ouvre pas de façon fiable sur Dropbox ou APFS, qui sont insensibles à la casse. |
+| Identité | Le chemin du dossier relatif à la racine de l'espace de projets. Deux projets de même nom rangés à des endroits différents sont distincts. |
+| Renommer | Renommer le dossier change l'identité du projet. C'est une opération de l'utilisateur, jamais d'un outil. |
 
-Un sous-dossier **sans** `index.md` dans un projet est un dossier de travail : il fait partie du projet et se déplace avec lui, un lecteur l'ignore (ni galerie, ni documents joints, ni couverture), et il ne sort jamais du projet — l'export ne le reprend pas.
+### 1.4 — Titre *(décision D6)*
 
-*À rédiger : son statut pour un outil d'ingestion (`kind: other`, couche 4 web).*
+`title` est facultatif. Le **titre affiché** d'un projet est son `title` s'il est présent et non vide ; sinon le nom du dossier, tel quel — sans transformation de casse ni de ponctuation. Un outil qui écrit `title` NE DOIT PAS le dériver silencieusement du nom du dossier : un `title` absent reste absent.
+
+### 1.5 — Contenu d'un projet
+
+| Élément | Rôle |
+|---------|------|
+| `index.md` | Frontmatter (§2) et notes libres. Obligatoire. |
+| `media/` | Partie montrable : images, documents, originaux. Plat, facultatif s'il est vide (§1.2 web). Les classes de fichiers du socle s'appliquent (§1.9 web). |
+| Lot | Sous-dossier dont l'`index.md` déclare `type: project` (§3). |
+| Dossier de travail | Tout autre sous-dossier que `media/` : il appartient au projet (§1.6). |
+
+Un dossier sans `index.md` projet est un **rangement** quand il contient un projet ou un lot à une profondeur quelconque, et un **dossier de travail** sinon. Le critère est mécanique : il ne dépend ni du nom du dossier ni de son contenu en fichiers.
+
+### 1.6 — Dossiers de travail
+
+Un dossier de travail (`sources/`, `admin/`, `rendus/`…) fait partie du projet : il se déplace avec lui, avec tout ce qu'il contient, sous-dossiers compris — la profondeur y est libre, contrairement à `media/`.
+
+| Règle | Description |
+|-------|-------------|
+| Lecture | Un lecteur l'ignore : ni galerie, ni documents joints, ni couverture. Ses fichiers ne sont jamais des médias du projet. |
+| Opaque | Son contenu n'est pas interprété. Un `index.md` qui s'y trouve sans `type: project` n'est pas lu comme un contenu. |
+| Export | L'export (§5) ne le reprend jamais. |
+| Préservation | Un outil de gestion NE DOIT PAS y modifier, y renommer ni y supprimer de fichier de lui-même. |
+
+### 1.7 — Contrat minimum d'un lecteur Projet
+
+Un outil qui lit des projets DOIT :
+
+1. parser le frontmatter YAML de `index.md` et conserver les champs inconnus (passthrough) ;
+2. reconnaître un projet à `type: project`, et à rien d'autre (§1.2) ;
+3. calculer le titre affiché (§1.4) ;
+4. ne jamais échouer sur un champ, un statut ou un fichier inconnu ;
+5. traiter `media/` selon le socle — absent, il vaut un `media/` vide — et ignorer les dossiers de travail (§1.6) ;
+6. ne jamais publier un projet tel quel (§5).
 
 ---
 
@@ -82,11 +131,13 @@ Un sous-dossier **sans** `index.md` dans un projet est un dossier de travail : i
 ### 2.1 — Core assoupli
 
 | Champ | Dans un projet |
-|---|---|
-| `title` | Optionnel ; à défaut, le nom du dossier |
-| `date` | Optionnelle ; un projet au stade `prospect` n'a pas encore de date |
-| `description`, `cover`, `location`, `lang`, `tags` | Sens du socle |
-| `draft` | Sans objet dans la spec Projet ; écrit `true` tant que la compatibilité G.12 l'exige (§7) |
+|-------|----------------|
+| `type` | **Requis**, valeur `project` (§1.2). |
+| `title` | Facultatif ; à défaut, le nom du dossier (§1.4). |
+| `date` | Facultative : un projet `prospect` n'a pas encore de date. Présente, elle DOIT être une date valide ; elle sert au tri (date décroissante) quand elle existe. |
+| `description`, `location`, `lang`, `tags` | Sens du socle (§1.3 web). |
+| `cover` | Une image de `media/` — jamais un original, jamais un fichier d'un dossier de travail (§1.9 web). |
+| `draft` | Sans objet pour la spec Projet, qui ne publie rien. Un outil qui crée un projet écrit `draft: true` explicitement, tant que des lecteurs web qui ignorent `type: project` peuvent croiser le dossier (§1.2, §7). |
 
 ### 2.2 — Bloc `project:`
 
@@ -116,7 +167,7 @@ Dépendances entre tâches ou projets (relations) ; avancement stocké (donnée 
 
 ## 3 — Lots et sous-lots
 
-Un sous-dossier **avec** `index.md` est un lot. *Pistes* : un lot porte son propre bloc `project:` ; il n'hérite de rien de son parent ; le statut d'un projet ne se calcule jamais à partir de ses lots ; la profondeur est libre (décision D4).
+Un sous-dossier dont l'`index.md` déclare `type: project` est un lot (§1.5, décision D7) ; un `index.md` sans cette déclaration n'en fait pas un lot. *Pistes* : un lot porte son propre bloc `project:` ; il n'hérite de rien de son parent ; le statut d'un projet ne se calcule jamais à partir de ses lots ; la profondeur est libre (décision D4).
 
 ---
 
@@ -168,16 +219,30 @@ Repris de G.12 et généralisé. L'export crée un **nouveau** dossier, contenu 
 
 | # | Décision | Piste |
 |---|---|---|
-| D1 | Discriminant | `type: project` |
+| D1 | Discriminant | **Retenue (0.2)** : `type: project`, seul discriminant (§1.2) |
 | D2 | Socle | `spec-hyperfocale.md` porte le socle, ce document s'y réfère ; extraction d'un socle autonome plus tard |
 | D3 | Dépôt et versions | Fichier à part, version propre (`0.x-draft`), qui cite la version web dont il dépend ; développé sur la branche `spec/projet` |
 | D4 | Profondeur des lots | Libre, l'export aplatit |
-| D5 | Nom de dossier libre | Contraint seulement par §4.1 web ; slug produit à l'export |
-| D6 | `title` optionnel | Nom du dossier par défaut |
+| D5 | Nom de dossier libre | **Retenue (0.2)** : contraint seulement par §4.1 web ; slug produit à l'export (§1.3) |
+| D6 | `title` optionnel | **Retenue (0.2)** : nom du dossier par défaut, jamais écrit en retour (§1.4) |
+| D7 | Un lot déclare-t-il `type: project` ? | **Retenue (0.2)** : oui — c'est ce qui distingue un lot d'un `index.md` quelconque dans un dossier de travail (§1.5). À confirmer à l'usage |
+| D8 | Dossiers de travail et ingestion web | Ouverte : la spec web (§4.3, §4.11) les classerait `other` et les publierait. Un projet n'étant jamais ingéré (§1.7), la question ne se pose que par erreur ; la garde pourrait les exclure comme les originaux |
 
 ---
 
 ## Changelog
+
+### 0.2-draft — 2026-10-25
+
+**Rédigé** : §1 (définition, discriminant, nom du dossier, titre, contenu, dossiers de travail, contrat minimum d'un lecteur) et §2.1 (core assoupli).
+
+**Décisions retenues** :
+- **D1** — `type: project` est le seul discriminant d'un projet ; il n'est jamais deviné.
+- **D5** — le nom du dossier est libre, contraint seulement par les règles de chemin du socle ; il fait l'identité du projet.
+- **D6** — `title` est facultatif, le nom du dossier tient lieu de titre affiché, et aucun outil ne l'écrit en retour.
+- **D7** — un lot déclare `type: project`, ce qui distingue lot, rangement et dossier de travail par un critère mécanique.
+
+**Ouvert** : D8 (dossiers de travail face à l'ingestion web).
 
 ### 0.1-draft — 2026-10-25
 
