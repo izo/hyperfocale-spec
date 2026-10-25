@@ -1467,7 +1467,7 @@ Le mapping vers un CMS suit ce schéma :
 
 **Dépôt** : https://github.com/izo/hyperfocale-exporter-app
 
-> **Hyperfocus (2.14).** À terme, la chaîne de travail Lightroom — du catalogue à une sélection d'images — relève d'**Hyperfocus**, qui reprend le côté photo en amont de la publication. Cette section reste le contrat de l'exporter tant que cette chaîne n'est pas définie côté Hyperfocus ; le **dossier produit** est, dans tous les cas, une série Hyperfocale, et ce qui le décrit ici ne change pas.
+> **Hyperfocus (2.14).** L'exporter a deux destinations. Celle décrite ici — un dossier de **série** — reste le contrat de cette section : c'est un export vers Hyperfocale, et elle ne déménage pas. Sa seconde destination, qui dépose des images dans le `media/` d'un **projet**, relève d'Hyperfocus ([§10](https://github.com/izo/hyperfocus/blob/main/spec-hyperfocus.md)) ; aucun exporter n'est tenu de l'offrir pour rester conforme à cette spec.
 
 L'exporter Lightroom est un **plugin d'export Adobe Lightroom Classic / Lightroom** qui génère du contenu au format Hyperfocale directement depuis le catalogue photo.
 
