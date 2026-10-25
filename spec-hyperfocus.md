@@ -1,8 +1,8 @@
-# Spécification — Hyperfocale Projet
+# Spécification — Hyperfocus
 
-> **En rédaction.** Ce document décrit le **dossier de travail** Hyperfocale : un projet suivi à la source, de la première prise de contact à la livraison. Il se sépare de la spec web (`spec-hyperfocale.md`), qui décrit un contenu fait pour être publié. Les sections 1 et 2 sont rédigées au futur contrat (DOIT / PEUT) mais rien n'est encore figé : tant que le statut est « en rédaction », les décisions sont réversibles (§D). Réflexion d'origine : [#36](https://github.com/izo/hyperfocale-spec/issues/36).
+> **En rédaction.** **Hyperfocus** est le format du **dossier de travail** de l'écosystème Hyperfocale : un projet suivi à la source, de la première prise de contact à la livraison. Il se sépare de la spec web (`spec-hyperfocale.md`), qui décrit un contenu fait pour être publié. Les sections 1 et 2 sont rédigées au futur contrat (DOIT / PEUT) mais rien n'est encore figé : tant que le statut est « en rédaction », les décisions sont réversibles (§D). Réflexion d'origine : [#36](https://github.com/izo/hyperfocale-spec/issues/36).
 
-**Version** : 0.3-draft
+**Version** : 0.4-draft
 **Statut** : en rédaction — §1 et §2 rédigés, le reste est une esquisse
 **Dernière révision** : 2026-10-25
 **Socle** : `spec-hyperfocale.md` 2.12-draft. La 2.13-draft en cours ([#37](https://github.com/izo/hyperfocale-spec/issues/37)) règle trois points dont ce document dépend : `date` portée par la collection, `media/` facultatif sans fichier local, ordre alphabétique défini.
@@ -29,7 +29,7 @@ Changelog
 
 La spec web impose à tout contenu des contraintes nées de la publication : slug utilisable en URL, `date` requise pour le tri, imbrication limitée à un niveau pour les routes, `draft` comme garde-fou. Le profil G.12 (v2.11) fait entrer un dossier de travail dans ces contraintes et les contourne une à une. Ce document les lève pour le dossier de travail, et garde le reste.
 
-| | Socle commun | Spec web | Spec Projet |
+| | Socle commun | Hyperfocale (spec web) | Hyperfocus |
 |---|---|---|---|
 | Unité | dossier + `index.md` (frontmatter + body) + `media/` | contenu publiable | dossier de travail |
 | `media/` | plat ; classes image / document joint / original (§1.9 web) | galerie, documents joints | idem, plus des **dossiers de travail** à côté (§1.6) |
@@ -137,7 +137,7 @@ Un outil qui lit des projets DOIT :
 | `date` | Facultative : un projet `prospect` n'a pas encore de date. Présente, elle DOIT être une date valide ; elle sert au tri (date décroissante) quand elle existe. |
 | `description`, `location`, `lang`, `tags` | Sens du socle (§1.3 web). |
 | `cover` | Une image de `media/` — jamais un original, jamais un fichier d'un dossier de travail (§1.9 web). |
-| `draft` | Sans objet pour la spec Projet, qui ne publie rien. Un outil qui crée un projet écrit `draft: true` explicitement, tant que des lecteurs web qui ignorent `type: project` peuvent croiser le dossier (§1.2, §7). |
+| `draft` | Sans objet pour Hyperfocus, qui ne publie rien. Un outil qui crée un projet écrit `draft: true` explicitement, tant que des lecteurs web qui ignorent `type: project` peuvent croiser le dossier (§1.2, §7). |
 
 ### 2.2 — Bloc `project:`
 
@@ -269,10 +269,17 @@ Repris de G.12 et généralisé. L'export crée un **nouveau** dossier, contenu 
 | D7 | Un lot déclare-t-il `type: project` ? | **Retenue (0.2)** : oui — c'est ce qui distingue un lot d'un `index.md` quelconque dans un dossier de travail (§1.5). À confirmer à l'usage |
 | D8 | Dossiers de travail et ingestion web | Ouverte : la spec web (§4.3, §4.11) les classerait `other` et les publierait. Un projet n'étant jamais ingéré (§1.7), la question ne se pose que par erreur ; la garde pourrait les exclure comme les originaux |
 | D9 | `next`, `en-pause`, `abandonne` | **Retenues (0.3)** : la prochaine action unique (§2.2.1) et deux statuts additifs (§2.3). Les autres pistes d'ajout attendent un besoin réel |
+| D10 | Périmètre des composants « projets » et « photos » d'Hyperfocale à porter dans Hyperfocus | Ouverte : G.12 seul, ou aussi les originaux (§1.9 web) et l'exporter Lightroom (§2.7 web) ? Voir le message de cadrage dans #36 |
 
 ---
 
 ## Changelog
+
+### 0.4-draft — 2026-10-25
+
+**Renommage** : la spec s'appelle **Hyperfocus**, pour la distinguer d'**Hyperfocale**, la spec web. `spec-projet.md` devient `spec-hyperfocus.md`. Hyperfocale décrit un contenu fait pour être publié ; Hyperfocus décrit le travail qui le précède — projets et photos, à la source.
+
+**Intention enregistrée** : les composants « projets » et « photos » d'Hyperfocale doivent être implémentés dans Hyperfocus. Leur périmètre exact est la décision D10, ouverte.
 
 ### 0.3-draft — 2026-10-25
 
