@@ -2,7 +2,7 @@
 
 > **En rédaction.** **Hyperfocus** est le format du **dossier de travail** de l'écosystème Hyperfocale : un projet suivi à la source, de la première prise de contact à la livraison. Il se sépare de la spec web (`spec-hyperfocale.md`), qui décrit un contenu fait pour être publié. Les sections 1 et 2 sont rédigées au futur contrat (DOIT / PEUT) mais rien n'est encore figé : tant que le statut est « en rédaction », les décisions sont réversibles (§D). Réflexion d'origine : [#36](https://github.com/izo/hyperfocale-spec/issues/36).
 
-**Version** : 0.5-draft
+**Version** : 0.6-draft
 **Statut** : en rédaction — §1 et §2 rédigés, le reste est une esquisse
 **Dernière révision** : 2026-10-25
 **Socle** : `spec-hyperfocale.md` 2.12-draft. La 2.13-draft en cours ([#37](https://github.com/izo/hyperfocale-spec/issues/37)) règle trois points dont ce document dépend : `date` portée par la collection, `media/` facultatif sans fichier local, ordre alphabétique défini.
@@ -20,6 +20,7 @@
 6. Interopérabilité
 7. Compatibilité avec les dossiers G.12
 8. Fixtures
+9. Reprise des composants d'Hyperfocale
 D. Décisions ouvertes
 Changelog
 
@@ -252,7 +253,48 @@ Repris de G.12 et généralisé. L'export crée un **nouveau** dossier, contenu 
 
 ## 8 — Fixtures
 
-*À décider* : si le contrat d'export (§5) et les opérations (§4) deviennent normatifs, ils prennent des fixtures, dans `fixtures/projet/`, sur le modèle de `fixtures/ingestion/`.
+*À décider* : si le contrat d'export (§5) et les opérations (§4) deviennent normatifs, ils prennent des fixtures, dans `fixtures/hyperfocus/`, sur le modèle de `fixtures/ingestion/`.
+
+---
+
+## 9 — Reprise des composants d'Hyperfocale *(décisions D10 et D13)*
+
+**Hyperfocus** couvre la gestion de projet et la photo **jusqu'à la publication** ; **Hyperfocale** couvre le web. La ligne passe à l'export (§5) : tout ce qui précède est Hyperfocus, la série publiée est Hyperfocale.
+
+| | Hyperfocus | Hyperfocale |
+|---|---|---|
+| Objet | le dossier de travail | le contenu publié |
+| Photo | originaux, sidecars, sélection, prise de vue, chaîne Lightroom | la série publiée : images, `iptc:`, galerie |
+| Projet | suivi, tâches, livrables, statuts | — |
+| Sortie | un export (§5) | un contenu lu par les adaptateurs |
+
+### 9.1 — Ce qui passe dans Hyperfocus
+
+| Composant d'Hyperfocale | Où il est aujourd'hui | Devenir |
+|---|---|---|
+| Profil Projet (`project`) | G.12 | Repris par Hyperfocus (§1 à §3). G.12 devient un renvoi. |
+| Chaîne Lightroom → dossier | §2.7 *Exporter Lightroom* | Étape de travail : le mapping catalogue → métadonnées, le nommage, les paramètres d'export. Le **dossier produit** reste une série Hyperfocale. |
+| Règles d'un outil de gestion | G.12 *Outil de gestion*, §1.5.1 *Ordre éditorial* (règles d'éditeur) | Reprises dans §4 : préserver les champs inconnus et le body, ordre des clés. |
+| Sélection et ordre éditorial des images avant publication | §1.5.1 | Décidés dans le projet ; la série publiée en porte le résultat (`images:`, nommage). |
+
+### 9.2 — Ce qui reste dans Hyperfocale
+
+| Composant | Pourquoi |
+|---|---|
+| La série photo et son bloc `iptc:` | C'est le contenu publié : un site doit pouvoir l'afficher. |
+| Le classement des originaux dans `media/` (§1.9) | Un **lecteur** web DOIT ignorer un RAW ou un sidecar, et la garde de publication (§4.11) les retire. La liste fermée reste donc normative côté web. Hyperfocus s'y réfère et ne la redéfinit pas. |
+| Les images, la galerie, le mode distant, les manifestes, les embeds | Format de publication. |
+| La couche 4 (ingestion), ses fixtures | Elle fait passer une source éditoriale à une production ; un projet n'en relève pas (§1.7). |
+| L'annexe C (IPTC ↔ EXIF) | Les adaptateurs qui extraient l'EXIF en ont besoin. *À confirmer* (D14). |
+
+### 9.3 — Conséquences pour la spec web
+
+Ces changements touchent `spec-hyperfocale.md` : ils sont faits sur sa propre branche, pas sur celle d'Hyperfocus.
+
+- G.12 est remplacé par un renvoi vers Hyperfocus ; la vue d'ensemble de l'Annexe G, §2.0.1 et les changelogs 2.11 et suivants cessent d'y décrire le projet comme un profil web.
+- §2.7 ne garde que le format du dossier produit ; le reste renvoie à Hyperfocus.
+- §0.5 : hyperfocale-vault, l'exporter Lightroom et le CMS sont relevés contre **Hyperfocus** pour ce qui relève du travail à la source, contre Hyperfocale pour le dossier publié.
+- Une version mineure de la spec web (2.14) porte ce déménagement.
 
 ---
 
@@ -272,11 +314,22 @@ Repris de G.12 et généralisé. L'export crée un **nouveau** dossier, contenu 
 | D10 | Périmètre des composants « projets » et « photos » d'Hyperfocale à porter dans Hyperfocus | **Retenue (0.5)** : tout le côté photo — profil Projet (G.12), originaux (§1.9 web), exporter Lightroom (§2.7 web), métadonnées de prise de vue. La ligne exacte avec la série publiée reste à fixer (D13) |
 | D11 | Qui utilise Hyperfocus | **Retenue (0.5)** : une personne seule. Un dossier par projet, sans comptes, sans partage, sans règle de conflit entre auteurs |
 | D12 | Premier usage d'un agent | **Retenue (0.5)** : lire les projets et proposer une prochaine action par projet, sans rien écrire (niveau « proposer », §4). Les opérations d'écriture viennent ensuite |
-| D13 | Où passe la ligne entre photo travaillée (Hyperfocus) et photo publiée (Hyperfocale) | Ouverte : la série publiée est l'atome d'Hyperfocale et porte `iptc:` ; que devient la spec web si tout le côté photo passe dans Hyperfocus ? |
+| D13 | Où passe la ligne entre photo travaillée (Hyperfocus) et photo publiée (Hyperfocale) | **Retenue (0.6)** : à l'export (§5). Hyperfocus possède tout ce qui précède la publication ; Hyperfocale garde la série publiée avec son `iptc:` (§9) |
+| D14 | L'annexe C (IPTC ↔ EXIF) | Ouverte : reste côté web tant que des adaptateurs extraient l'EXIF ; pourrait être partagée avec Hyperfocus (chaîne Lightroom) |
 
 ---
 
 ## Changelog
+
+### 0.6-draft — 2026-10-25
+
+**Ajouts** : §9 — reprise des composants d'Hyperfocale : ce qui passe dans Hyperfocus (profil Projet, chaîne Lightroom, règles d'un outil de gestion, sélection avant publication), ce qui reste dans Hyperfocale (série publiée et `iptc:`, classement des originaux, couche 4), conséquences pour la spec web.
+
+**Décision retenue** :
+- **D13** — la ligne entre la photo travaillée et la photo publiée passe **à l'export**. Hyperfocus possède tout ce qui précède la publication ; Hyperfocale garde la série publiée telle quelle. Aucun site ni adaptateur n'est touché.
+- La liste fermée des originaux reste normative dans la spec web : un lecteur web et la garde de publication en ont besoin. Hyperfocus s'y réfère.
+
+**Ouvert** : D14 — l'annexe C (IPTC ↔ EXIF).
 
 ### 0.5-draft — 2026-10-25
 
