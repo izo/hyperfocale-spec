@@ -484,7 +484,7 @@ Le frontmatter est en YAML, délimité par `---`. Il se divise en deux niveaux :
 | Section | Une page d'index de section (§1.10) n'est jamais soumise à la règle, quelle que soit la collection : elle se distingue par `type: section`, pas par l'absence de `date`. |
 | `title` | Toujours requis, dans toute collection. |
 
-#### Champs de workflow
+#### Champs de workflow et de nature
 
 | Champ | Type | Requis | Description |
 |-------|------|--------|-------------|
@@ -1403,7 +1403,7 @@ Le plugin opère uniquement sur les dossiers qui respectent le format Hyperfocal
 
 | Comportement | Description |
 |-------------|-------------|
-| **Détection automatique** | À l'ouverture d'un fichier `index.md` dans `<seriesRoot>/*/`, basculer en vue galerie |
+| **Détection automatique** | À l'ouverture d'un fichier `index.md` situé n'importe où sous `<seriesRoot>` (découverte récursive, §1.2), basculer en vue galerie |
 | **Fallback** | Si `media/` est vide ou manquant, afficher le body Markdown normalement sans erreur |
 | **Tri des images** | Identique à la spec core : alphabétique par nom de fichier |
 | **Couverture** | `cover` du frontmatter ou première image alphabétique |
@@ -2166,7 +2166,7 @@ Vérifications :
 - [ ] Dans une collection où `date` est requise, un `index.md` sans `date` déclare explicitement `type: section` (une série sans date y reste une erreur)
 - [ ] `date` est au format ISO 8601
 - [ ] `slug` respecte le pattern `^[a-z0-9]+(-[a-z0-9]+)*$`
-- [ ] `cover` pointe vers un fichier existant dans `media/`
+- [ ] Un `cover` relatif désigne un fichier existant : une image de `media/`, ou — pour un conteneur (§1.8) ou une section (§1.10) — une image d'un contenu qu'il regroupe ; une URL ou un chemin absolu au site n'est pas vérifié
 - [ ] `media/` ne contient pas de sous-dossiers
 - [ ] Chaque fichier de `media/` est classé (image, original ou document joint, §1.9)
 - [ ] `cover` pointe vers une image (jamais un document joint ni un original)
@@ -2188,7 +2188,7 @@ Les outils d'ingestion (couche 4) expriment la plupart de ces vérifications dan
 
 Pour migrer un projet utilisant la spec v1 (Astro plugin) :
 
-1. **Frontmatter** : déplacer `camera` sous `iptc.camera`, `tags` sous `iptc.keywords`
+1. **Frontmatter** : déplacer `camera` sous `iptc.camera` ; les anciens `tags` qui étaient des mots-clés IPTC passent sous `iptc.keywords`, ceux qui étaient éditoriaux restent dans `tags`, champ du core depuis la v2.1 (§1.3)
 2. **Structure** : aucun changement (déjà compatible)
 3. **Imports** : `hyperfocale/components` → `hyperfocale/astro/components`
 4. **Config** : ajouter le préfixe du package (`hyperfocale/astro`)
@@ -2236,7 +2236,7 @@ Les adaptateurs web DEVRAIENT exposer un flux de syndication :
 
 ### F — Internationalisation
 
-Pour les sites multilingues, trois stratégies sont supportées. Chaque projet choisit **une** stratégie et s'y tient — pas de mélange dans un même projet.
+Pour les sites multilingues, quatre stratégies sont supportées. Chaque projet choisit **une** stratégie et s'y tient — pas de mélange dans un même projet.
 
 **Stratégie 1 — Préfixe de langue dans le chemin** :
 ```
@@ -2291,7 +2291,7 @@ La section 0 décrit un **squelette universel** : un dossier autonome = `index.m
 
 Un **profil de contenu** est une déclinaison du squelette pour un domaine donné. Il n'invente rien au niveau structurel — il se contente de :
 
-1. **Réutiliser le core tel quel** (`title`, `date`, `description`, `cover`, `location`, `draft`, `lang`, `tags`, `featured`).
+1. **Réutiliser le core tel quel** (`title`, `date`, `description`, `cover`, `location`, `draft`, `lang`, `tags`, `featured`, `type`).
 2. **Ajouter un bloc d'extension namespacé** propre au domaine (exactement comme `iptc:` l'est pour la photo) : `event:`, `recipe:`, `app:`.
 3. **Optionnellement, rendre `date` optionnelle** pour la collection du profil, par `dateRequired: false` dans son preset (§2.0.1, §1.3).
 
@@ -2307,6 +2307,9 @@ Ces règles garantissent qu'un profil reste un contenu Hyperfocale valide au sen
 | **Invariants §0 respectés** | Body avant galerie, tri alphabétique de `media/`, `cover`/fallback, `draft`, passthrough des champs inconnus s'appliquent identiquement. |
 | **Rétro-compatibilité** | Un adaptateur qui ne connaît pas un profil DOIT lire le contenu comme un contenu Hyperfocale standard (core + media + body) et ignorer le bloc d'extension sans erreur (passthrough §1.3). Aucun profil ne casse un lecteur existant. |
 | **Alignement externe** | Chaque profil DEVRAIT s'aligner sur un vocabulaire externe reconnu (schema.org), comme la photo s'aligne sur IPTC, pour l'interop et le balisage SEO. |
+| **Ordre de tri propre** *(v2.15)* | Un profil PEUT définir un ordre canonique alternatif au tri par date, à documenter dans son preset (`screen.order`, G.6 ; les pistes de `music.tracks`, G.8). C'est une dérogation à §1.6, pas aux invariants de §0. |
+| **Fichiers désignés** *(v2.15)* | Un champ d'extension qui désigne un fichier de `media/` (`catalog.datasheet`, `press.clipping`) s'écrit comme un nom de fichier ou comme `./media/<nom>` ; un adaptateur résout les deux. La couche 4 ne valide pas ces champs. |
+| **Vocabulaires fermés** *(v2.15)* | Un profil nouveau écrit ses valeurs fermées en slugs ASCII (minuscules, sans accent, `_` ou `-`). Les vocabulaires déjà publiés — dont les valeurs accentuées de `recipe` — sont conservés : un lecteur les accepte tels quels. |
 | **Sens de `media/`** | `media/` garde son rôle : un dossier plat de médias liés au contenu (affiches, photos du plat, captures d'écran, originaux d'un dossier de travail...). |
 
 #### Vue d'ensemble
@@ -2566,7 +2569,7 @@ featured: true
 tags: [lightroom, photo, export]
 
 app:
-  platform: [macos, windows]
+  platform: [macos]
   version: "0.1.0"
   status: beta
   category: "Photo"
@@ -2575,7 +2578,7 @@ app:
   store:
     web: "https://github.com/izo/hyperfocale-exporter-app/releases"
   repository: "https://github.com/izo/hyperfocale-exporter-app"
-  tech: [SwiftUI, Tauri, Rust]
+  tech: [SwiftUI]
   developer: "Mathieu Drouet"
   license: MIT
 ---
@@ -2793,9 +2796,11 @@ hyperfocale({ preset: 'place' })  // collection 'places', prefix /places, dateRe
 | `theme` | `string` | Thème visuel actif sur l'écran |
 | `duration` | `duration` (ISO 8601) | Durée d'affichage des écrans temporisés (`PT2.5S`) |
 | `skippable` | `boolean` | L'utilisateur peut-il sauter cet écran ? Défaut `false` |
-| `next` | `string[]` | Slugs des écrans suivants possibles (graphe de navigation) |
-| `prev` | `string` | Slug de l'écran précédent |
+| `next` | `string[]` | Chemins des écrans suivants possibles (graphe de navigation) |
+| `prev` | `string` | Chemin de l'écran précédent |
 | `llm_context` | `string` | Chemin vers un contexte LLM lu par un assistant conversationnel quand l'écran est actif (base de connaissance contextuelle) |
+
+> **`next` et `prev` sont des indications de navigation, pas des jointures.** Ils désignent un écran par son chemin (§1.2) ; un chemin qui ne désigne rien est ignoré, et aucune lecture du contenu n'en dépend. Le principe de §0 (« pas de relations entre séries ») reste vrai.
 
 > **`screen` est une séquence, pas une collection.** Contrairement aux profils G.1–G.5 (tri par date desc), l'ordre canonique d'un contenu `screen` est `screen.order` ascendant. Le champ `next`/`prev` permet d'exprimer un graphe de navigation non-linéaire (branches, easter-eggs) au-delà de l'ordre plat.
 
@@ -3162,7 +3167,7 @@ Pour proposer un profil supplémentaire (livre, lieu, produit e-commerce...), un
 
 1. **L'atome** et le cas d'usage.
 2. **Le mapping du core** (sens de `title`/`date`/`cover`/`media`, `dateRequired` ou non).
-3. **Le bloc d'extension namespacé** (clé unique, table de champs, tous optionnels).
+3. **Le bloc d'extension namespacé** (clé unique, table de champs, tous optionnels — sauf les champs que le profil déclare requis explicitement, comme `screen.order` et `screen.kind`).
 4. **Le vocabulaire externe** d'alignement (schema.org ou équivalent).
 5. **Le preset d'adaptateur** (collection, prefix) — dans le respect des contraintes §2.0.1.
 6. La démonstration que les **invariants §0** restent satisfaits.
