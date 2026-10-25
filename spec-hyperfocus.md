@@ -2,10 +2,10 @@
 
 > **En rédaction.** **Hyperfocus** est le format du **dossier de travail** de l'écosystème Hyperfocale : un projet suivi à la source, de la première prise de contact à la livraison. Il se sépare de la spec web (`spec-hyperfocale.md`), qui décrit un contenu fait pour être publié. Toutes les sections sont rédigées au futur contrat (DOIT / PEUT) mais rien n'est encore figé : tant que le statut est « en rédaction », les décisions sont réversibles (§D). Réflexion d'origine : [#36](https://github.com/izo/hyperfocale-spec/issues/36).
 
-**Version** : 0.11-draft
+**Version** : 0.12-draft
 **Statut** : en rédaction — toutes les sections ont une première rédaction ; §0 et §8 restent à compléter
 **Dernière révision** : 2026-10-25
-**Socle** : `spec-hyperfocale.md` 2.12-draft. La 2.13-draft en cours ([#37](https://github.com/izo/hyperfocale-spec/issues/37)) règle trois points dont ce document dépend : `date` portée par la collection, `media/` facultatif sans fichier local, ordre alphabétique défini.
+**Socle** : `spec-hyperfocale.md` 2.14-draft (2.12 sur `main` à ce jour). La 2.13-draft en cours ([#37](https://github.com/izo/hyperfocale-spec/issues/37)) règle trois points dont ce document dépend : `date` portée par la collection, `media/` facultatif sans fichier local, ordre alphabétique défini.
 
 ---
 
@@ -520,7 +520,7 @@ Les valeurs attendues se calculent hors dépôt, comme pour la couche 4 : aucun 
 | Composant d'Hyperfocale | Où il est aujourd'hui | Devenir |
 |---|---|---|
 | Profil Projet (`project`) | G.12 | Repris par Hyperfocus (§1 à §3). G.12 devient un renvoi. |
-| Chaîne Lightroom → dossier | §2.7 *Exporter Lightroom* | Étape de travail : le mapping catalogue → métadonnées, le nommage, les paramètres d'export. Le **dossier produit** reste une série Hyperfocale. |
+| Chaîne Lightroom → dossier | §2.7 *Exporter Lightroom* | Étape de travail : le mapping catalogue → métadonnées, le nommage, les paramètres d'export. Le **dossier produit** reste une série Hyperfocale. **Pas encore déménagée** : tant qu'Hyperfocus ne définit pas comment l'exporter alimente un projet (D19), §2.7 reste son contrat côté web. |
 | Règles d'un outil de gestion | G.12 *Outil de gestion*, §1.5.1 *Ordre éditorial* (règles d'éditeur) | Reprises dans §4 : préserver les champs inconnus et le body, ordre des clés. |
 | Sélection et ordre éditorial des images avant publication | §1.5.1 | Décidés dans le projet ; la série publiée en porte le résultat (`images:`, nommage). |
 
@@ -536,12 +536,17 @@ Les valeurs attendues se calculent hors dépôt, comme pour la couche 4 : aucun 
 
 ### 9.3 — Conséquences pour la spec web
 
-Ces changements touchent `spec-hyperfocale.md` : ils sont faits sur sa propre branche, pas sur celle d'Hyperfocus.
+Ces changements touchent `spec-hyperfocale.md` et sont portés par sa **2.14-draft**, sur la branche `spec/web-2.14`, pas sur celle d'Hyperfocus.
 
-- G.12 est remplacé par un renvoi vers Hyperfocus ; la vue d'ensemble de l'Annexe G, §2.0.1 et les changelogs 2.11 et suivants cessent d'y décrire le projet comme un profil web.
-- §2.7 ne garde que le format du dossier produit ; le reste renvoie à Hyperfocus.
-- §0.5 : hyperfocale-vault, l'exporter Lightroom et le CMS sont relevés contre **Hyperfocus** pour ce qui relève du travail à la source, contre Hyperfocale pour le dossier publié.
-- Une version mineure de la spec web (2.14) porte ce déménagement.
+| Conséquence | État |
+|---|---|
+| G.12 remplacé par un renvoi vers Hyperfocus ; vue d'ensemble de l'Annexe G, §2.0.1, §1.9 et §4.11 alignés | Fait en 2.14 |
+| Hyperfocale cadrée comme spec photo pour le web ; profils de l'Annexe G reclassés en extensions hors noyau (D15) | Fait en 2.14 |
+| `type: project` réservée à Hyperfocus et refusée par les lecteurs web | Fait en 2.14 (§1.3) |
+| §0.5 : vault repris par Hyperfocus, preset `project` du plugin | Fait en 2.14, sans relevé de conformité à Hyperfocus |
+| §2.7 allégé | **Reporté** : une note de renvoi seulement. Voir D19 |
+
+Les deux specs doivent être fusionnées ensemble ou dans l'ordre : la 2.14 renvoie à `spec-hyperfocus.md`, qui n'existe que sur `spec/projet`.
 
 ---
 
@@ -566,11 +571,20 @@ Ces changements touchent `spec-hyperfocale.md` : ils sont faits sur sa propre br
 | D16 | Format du journal (§4.4) | Ouverte : un bloc `### AAAA-MM-JJ` ajouté à la fin du body. À confirmer à l'usage ; alternatives : un fichier `journal.md` dans le dossier, ou un champ du frontmatter |
 | D17 | Cible portfolio (G.7 web) et confidentialité du client | Ouverte : le nom d'un client ne sort que sur demande explicite, champ par champ ; mapping non rédigé (§5.6) |
 | D18 | Preset `project` du plugin Astro face à `type: project` | Ouverte : accepter `project` dans l'énumération de `type`, ou retirer le preset, G.12 passant dans Hyperfocus (§7.4) |
+| D19 | Comment l'exporter Lightroom alimente un projet | Ouverte : il écrirait des images dans le `media/` d'un projet (puis export, §5), ou continuerait de produire une série directement. Tant que ce n'est pas tranché, §2.7 web reste en place |
 | D14 | L'annexe C (IPTC ↔ EXIF) | Ouverte : reste côté web tant que des adaptateurs extraient l'EXIF ; pourrait être partagée avec Hyperfocus (chaîne Lightroom) |
 
 ---
 
 ## Changelog
+
+### 0.12-draft — 2026-10-25
+
+**Alignement avec la 2.14 de la spec web** : §9.3 distingue ce qui est fait (G.12 remplacé par un renvoi, Hyperfocale cadrée comme spec photo, `type: project` réservé, profils en extensions, §0.5) de ce qui est reporté.
+
+**Correction** : §9.1 annonçait le déménagement de la chaîne Lightroom. Il est **reporté** : retirer §2.7 de la spec web avant de savoir comment l'exporter alimente un projet aurait ôté à l'exporter son contrat.
+
+**Ouvert** : D19 — comment l'exporter Lightroom alimente un projet.
 
 ### 0.11-draft — 2026-10-25
 
