@@ -1,9 +1,9 @@
 # Spécification — Hyperfocus
 
-> **En rédaction.** **Hyperfocus** est le format du **dossier de travail** de l'écosystème Hyperfocale : un projet suivi à la source, de la première prise de contact à la livraison. Il se sépare de la spec web (`spec-hyperfocale.md`), qui décrit un contenu fait pour être publié. Les sections 1 et 2 sont rédigées au futur contrat (DOIT / PEUT) mais rien n'est encore figé : tant que le statut est « en rédaction », les décisions sont réversibles (§D). Réflexion d'origine : [#36](https://github.com/izo/hyperfocale-spec/issues/36).
+> **En rédaction.** **Hyperfocus** est le format du **dossier de travail** de l'écosystème Hyperfocale : un projet suivi à la source, de la première prise de contact à la livraison. Il se sépare de la spec web (`spec-hyperfocale.md`), qui décrit un contenu fait pour être publié. Les sections 1, 2 et 4 sont rédigées au futur contrat (DOIT / PEUT) mais rien n'est encore figé : tant que le statut est « en rédaction », les décisions sont réversibles (§D). Réflexion d'origine : [#36](https://github.com/izo/hyperfocale-spec/issues/36).
 
-**Version** : 0.8-draft
-**Statut** : en rédaction — §1 et §2 rédigés, le reste est une esquisse
+**Version** : 0.9-draft
+**Statut** : en rédaction — §1, §2, §4 et §9 rédigés ; §3, §5, §6 et §7 restent des esquisses
 **Dernière révision** : 2026-10-25
 **Socle** : `spec-hyperfocale.md` 2.12-draft. La 2.13-draft en cours ([#37](https://github.com/izo/hyperfocale-spec/issues/37)) règle trois points dont ce document dépend : `date` portée par la collection, `media/` facultatif sans fichier local, ordre alphabétique défini.
 
@@ -217,15 +217,101 @@ Un sous-dossier dont l'`index.md` déclare `type: project` est un lot (§1.5, d�
 
 ## 4 — Outils de gestion et agents
 
-Repris de G.12 : un outil qui réécrit `index.md` préserve les champs inconnus — à la racine, dans `project:` et dans chaque entrée de `deliverables` et `tasks` — et le body à l'octet ; il DEVRAIT préserver l'ordre des clés et les commentaires YAML.
+Un **outil de gestion** lit les projets et PEUT les réécrire : l'application macOS, l'application web, un script, un agent. Cette section fixe ce qu'il garantit au fichier, à quel point il doit demander avant d'écrire, ce qu'il sait faire (les opérations), et comment il dit **quoi faire ensuite**.
 
-*Pistes* :
+### 4.1 — `index.md` fait foi
 
-- **Opérations normatives** : créer un projet, changer le statut, ajouter une tâche, la cocher, définir `next`, ajouter une entrée au journal, archiver, exporter. Chacune décrite par un `index.md` avant / après, pour que l'app macOS, l'app web et les outils d'un agent produisent le même fichier.
-- **Consentement** : trois niveaux — lire, proposer, écrire. Un agent travaille en *proposer* par défaut ; aucun outil ne change un statut, ne supprime ni n'exporte sans action explicite de l'utilisateur.
-- **Boîte de réception** : un dossier `inbox/` à la racine pour noter sans décider où ranger.
+L'`index.md` du projet est la source de vérité : un outil le lit, et le réécrit quand l'utilisateur modifie le projet. Il ne garde pas d'état ailleurs que dans le dossier.
 
----
+| Règle | Description |
+|-------|-------------|
+| Champs inconnus | Préservés partout : à la racine du frontmatter, dans `project:` et dans chaque entrée de `deliverables` et de `tasks` (passthrough). |
+| Body | Préservé à l'octet près, sauf par l'opération qui le modifie explicitement (§4.3, `add-journal-entry`). |
+| Changement minimal | Une opération ne modifie que les clés qu'elle nomme. Elle DEVRAIT préserver l'ordre des clés, les commentaires YAML et le style (guillemets, indentation) de tout le reste : l'`index.md` est aussi édité à la main. |
+| Fichier illisible | Si le frontmatter ne se lit pas (YAML invalide, bloc absent), l'outil n'écrit rien : il signale le fichier et le laisse intact. Il ne « répare » jamais un fichier. |
+| Écriture sûre | Écrire, c'est relire le fichier, vérifier qu'il n'a pas changé depuis la lecture qui a fondé la proposition (comparaison de `sha256`, comme §4.4 web), appliquer l'opération, puis remplacer le fichier d'un seul geste (jamais un fichier à moitié écrit). Si le fichier a changé, l'opération échoue sans rien modifier. |
+| Rien hors du dossier | Une opération n'écrit que dans le dossier du projet visé, dans `inbox/` (§4.5), ou — pour `export` — dans le nouveau dossier de destination (§5). |
+
+### 4.2 — Consentement
+
+Trois niveaux, du moins au plus engageant :
+
+| Niveau | Effet | Exemple |
+|--------|-------|---------|
+| **Lire** | Aucun. | Lister les projets, afficher une échéance. |
+| **Proposer** | Produit une *proposition* — une opération, ses arguments, et ce qu'elle changerait (avant / après). **Aucun fichier n'est modifié.** | « Passer *Mariage Dupont* en `livre` ? » |
+| **Écrire** | Applique une proposition que l'utilisateur vient de confirmer. | La confirmation, puis l'écriture. |
+
+| Règle | Description |
+|-------|-------------|
+| Niveau par défaut | Un agent travaille en **proposer** (décision D12). Il n'écrit qu'après une confirmation de l'utilisateur, donnée dans l'outil. |
+| Une confirmation, une opération | Confirmer une proposition n'autorise qu'elle. Aucune confirmation ne vaut pour la suivante, ni pour « tout ce qui ressemble ». |
+| Rien d'automatique | Aucun outil ne change un statut, n'écrit `project.next`, ne coche une tâche ni ne crée un projet de lui-même, sur un événement, une date ou une règle. Une échéance dépassée ne change aucun champ. |
+| Visible avant | La proposition montre **tous** les effets de l'opération, y compris les secondaires (une note supprimée de l'inbox, §4.5). |
+| Hors périmètre | Renommer, déplacer ou supprimer un projet, un lot, un dossier de travail ou un fichier d'un projet n'est pas une opération (§1.3, §1.6) : c'est l'utilisateur qui le fait, directement. Seule exception : la note que `file-note` retire de l'`inbox/` (§4.5), effet visible de la proposition. |
+| À la demande | Un outil produit ses propositions quand on les lui demande. Il n'interrompt pas l'utilisateur pour en offrir. |
+
+### 4.3 — Opérations
+
+Dix opérations, liste fermée dans cette version. Chacune a un identifiant stable, des arguments, des préconditions, et un effet exact sur les fichiers ; les opérations d'écriture portent des fixtures avant / après (§8) pour que deux outils produisent le même fichier.
+
+| Identifiant | Arguments | Effet | Précondition |
+|-------------|-----------|-------|--------------|
+| `create-project` | `parent`, `name`, `title?` | Crée le dossier `<parent>/<name>/` avec un `index.md` minimal : `type: project`, `draft: true`, et `title` seulement si donné. Pas de `media/`. | `name` valide (§1.3), pas de collision (§1.3). |
+| `set-status` | `project`, `status` | Écrit `project.status`. Crée le bloc `project:` s'il manque. | Valeur du vocabulaire (§2.3) ; une valeur inconnue est refusée **à l'écriture** (elle reste lue sans erreur). |
+| `set-next` | `project`, `text` ou `null` | Écrit `project.next`, ou supprime la clé si `text` est `null` ou vide. | — |
+| `set-date` | `project`, `field` ∈ {`start`, `end`, `due`}, `value` ou `null` | Écrit la date (`AAAA-MM-JJ`), ou supprime la clé. | Date valide. |
+| `add-task` | `project`, `title`, `due?` | Ajoute une entrée **à la fin** de `project.tasks`, `done: false`. | `title` non vide. |
+| `set-task-done` | `project`, `task`, `done` | Écrit `done` sur l'entrée désignée. | `task` désigne une entrée existante, par sa position dans le tableau lue au moment de la proposition. |
+| `add-journal-entry` | `project`, `text` | Ajoute à la fin du body un bloc daté (§4.4). | `text` non vide. |
+| `capture` | `text` | Crée une note dans `inbox/` (§4.5). | `text` non vide. |
+| `file-note` | `note`, `project` | Ajoute le texte de la note au journal du projet et supprime la note de `inbox/`. Les deux effets figurent dans la proposition. | La note existe ; le projet existe. |
+| `export` | `project`, `slug`, `destination` | Crée un nouveau dossier de série (§5). | Précondition de §5. |
+
+| Règle commune | Description |
+|---------------|-------------|
+| Tout ou rien | Une opération réussit entièrement ou ne modifie rien. |
+| Idempotence | Appliquer à nouveau une opération sans effet (`set-status` vers la valeur déjà écrite, `set-task-done` déjà dans cet état) ne change pas un octet du fichier. |
+| Échec | Une précondition non remplie produit un diagnostic et aucune écriture. |
+| Pas de suppression de tâche | Aucune opération ne supprime une tâche ni un livrable : elles se cochent, ou se modifient à la main. *(Version 1.)* |
+
+### 4.4 — Le journal
+
+`add-journal-entry` ajoute à la **fin** du body un bloc :
+
+```
+### AAAA-MM-JJ
+
+<texte>
+```
+
+Il sépare le bloc du texte qui précède par exactement une ligne vide, et ne modifie aucun octet situé avant. La date est celle du jour de l'opération, selon l'horloge de l'utilisateur. Le journal est du Markdown ordinaire : il se lit et s'édite à la main, et rien ne l'exige. *Le format du bloc est à confirmer à l'usage (décision D16).*
+
+### 4.5 — La boîte de réception
+
+`inbox/` est un dossier **réservé** à la racine de l'espace de projets : on y note sans décider où ranger.
+
+| Règle | Description |
+|-------|-------------|
+| Contenu | Des notes, un fichier Markdown chacune, sans frontmatter. Une note est un texte libre. |
+| Nom | `AAAA-MM-JJ-HHMM.md`, heure de l'utilisateur ; en cas de collision, `-2`, `-3`… |
+| Pas un projet | `inbox/` ne porte pas d'`index.md` projet et n'est jamais découvert comme un projet ni comme un rangement. |
+| Rangement | `file-note` déplace le texte d'une note dans le journal d'un projet. L'outil PEUT proposer un projet de destination ; l'utilisateur choisit, ou refuse. Une note jamais rangée reste telle quelle. |
+| Pas de limite | Une note qui reste dans l'`inbox/` n'est ni une erreur ni un retard. |
+
+### 4.6 — Dire quoi faire ensuite *(décision D12)*
+
+C'est le premier usage d'un agent : **lire** les projets et **proposer** une action par projet. Il n'écrit rien.
+
+| Règle | Description |
+|-------|-------------|
+| Niveau | Lire et proposer uniquement. Le résultat est un affichage, pas une modification. |
+| Projets retenus | Par défaut, les projets `en-cours`. L'utilisateur peut demander `prospect`, `en-pause` ou tous les autres ; `livre`, `archive` et `abandonne` ne sont retenus que s'il le demande. |
+| Une action par projet | Au plus une. Si `project.next` est renseigné, c'est cette action — l'outil ne la remplace pas. Sinon, la première tâche non faite (celle d'échéance la plus proche, puis dans l'ordre du tableau), présentée comme **dérivée des tâches**. Sinon : *aucune action renseignée*. |
+| Rien d'inventé | L'outil n'invente ni échéance, ni urgence, ni score. Un agent PEUT formuler une *suggestion* en texte libre pour un projet sans action ; elle est étiquetée comme suggestion, et n'est écrite dans `project.next` qu'après confirmation (`set-next`). |
+| Ordre | Échéance la plus proche d'abord (`project.due`, sinon la plus proche des échéances de tâches non faites), les projets sans échéance ensuite, à égalité par titre affiché (§1.4) dans l'ordre canonique de §4.1 web. Une échéance dépassée est dite telle quelle, sans autre mise en forme normée. |
+| Peu à la fois | Un outil PEUT n'afficher que les premiers projets ; il DOIT alors dire combien d'autres sont omis. |
+| Même fichier, même réponse | Pour un même état des fichiers et une même date, les actions dérivées et l'ordre sont les mêmes d'un outil à l'autre. Seule la suggestion en texte libre varie. |
 
 ## 5 — Export vers la spec web
 
@@ -255,7 +341,12 @@ Repris de G.12 et généralisé. L'export crée un **nouveau** dossier, contenu 
 
 ## 8 — Fixtures
 
-*À décider* : si le contrat d'export (§5) et les opérations (§4) deviennent normatifs, ils prennent des fixtures, dans `fixtures/hyperfocus/`, sur le modèle de `fixtures/ingestion/`.
+Les opérations d'écriture (§4.3) et la sélection « quoi faire ensuite » (§4.6) prennent des fixtures, dans `fixtures/hyperfocus/`, sur le modèle de `fixtures/ingestion/` :
+
+- `operations/<identifiant>/` — `args.json`, un dossier `before/`, un dossier `after/` ; deux outils sont conformes si le dossier obtenu est identique, octet pour octet ;
+- `next/` — un espace de projets, une date, et la liste attendue (projet, action, origine : `next`, `tasks` ou aucune).
+
+Les valeurs attendues se calculent hors dépôt, comme pour la couche 4 : aucun code d'implémentation n'est commité ici. *Les fixtures ne sont pas encore écrites.*
 
 ---
 
@@ -318,11 +409,25 @@ Ces changements touchent `spec-hyperfocale.md` : ils sont faits sur sa propre br
 | D12 | Premier usage d'un agent | **Retenue (0.5)** : lire les projets et proposer une prochaine action par projet, sans rien écrire (niveau « proposer », §4). Les opérations d'écriture viennent ensuite |
 | D13 | Où passe la ligne entre photo travaillée (Hyperfocus) et photo publiée (Hyperfocale) | **Retenue (0.6)** : à l'export (§5). Hyperfocus possède tout ce qui précède la publication ; Hyperfocale garde la série publiée avec son `iptc:` (§9) |
 | D15 | Les profils non photo d'Hyperfocale (G.1 à G.11) face à « Hyperfocale reste une spec photo pour le web » | **Retenue (0.8)** : ils restent dans la spec web, reclassés en **extensions hors noyau**. Le noyau d'Hyperfocale promet la photo pour le web ; l'Annexe G dit que le squelette peut porter d'autres contenus. Aucun preset, plugin ni site ne change. La reformulation de §0 et de l'Annexe G est un travail de la spec web (2.14) |
+| D16 | Format du journal (§4.4) | Ouverte : un bloc `### AAAA-MM-JJ` ajouté à la fin du body. À confirmer à l'usage ; alternatives : un fichier `journal.md` dans le dossier, ou un champ du frontmatter |
 | D14 | L'annexe C (IPTC ↔ EXIF) | Ouverte : reste côté web tant que des adaptateurs extraient l'EXIF ; pourrait être partagée avec Hyperfocus (chaîne Lightroom) |
 
 ---
 
 ## Changelog
+
+### 0.9-draft — 2026-10-25
+
+**Rédigé** : §4 — outils de gestion et agents : `index.md` fait foi (§4.1), consentement (§4.2), dix opérations (§4.3), journal (§4.4), boîte de réception (§4.5), « dire quoi faire ensuite » (§4.6). §8 précise la forme des fixtures.
+
+**Décisions** :
+- **Trois niveaux de consentement** — lire, proposer, écrire. Un agent travaille en *proposer* ; une confirmation n'autorise qu'une opération ; aucun outil n'écrit de lui-même sur un événement ou une date.
+- **Liste fermée de dix opérations**, chacune tout ou rien, idempotente et sans suppression de tâche. Renommer, déplacer, supprimer ne sont pas des opérations.
+- **Écriture sûre** : relecture, comparaison de `sha256`, remplacement en un geste ; un fichier illisible n'est jamais « réparé ».
+- **« Quoi faire ensuite » est déterministe** : `project.next`, sinon la tâche dérivée, sinon *aucune action renseignée* ; ordre par échéance ; aucune urgence ni score inventés. Seule la suggestion en texte libre d'un agent varie.
+- **`inbox/`** : notes Markdown sans frontmatter, jamais une erreur ni un retard.
+
+**Ouvert** : D16 — format du journal.
 
 ### 0.8-draft — 2026-10-25
 
