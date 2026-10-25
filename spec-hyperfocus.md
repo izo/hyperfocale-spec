@@ -2,10 +2,10 @@
 
 > **En rédaction.** **Hyperfocus** est le format du **dossier de travail** de l'écosystème Hyperfocale : un projet suivi à la source, de la première prise de contact à la livraison. Il se sépare de la spec web (`spec-hyperfocale.md`), qui décrit un contenu fait pour être publié. Toutes les sections sont rédigées au futur contrat (DOIT / PEUT) mais rien n'est encore figé : tant que le statut est « en rédaction », les décisions sont réversibles (§D). Réflexion d'origine : [#36](https://github.com/izo/hyperfocale-spec/issues/36).
 
-**Version** : 0.12-draft
+**Version** : 0.13-draft
 **Statut** : en rédaction — toutes les sections ont une première rédaction ; §0 et §8 restent à compléter
 **Dernière révision** : 2026-10-25
-**Socle** : `spec-hyperfocale.md` 2.14-draft (2.12 sur `main` à ce jour). La 2.13-draft en cours ([#37](https://github.com/izo/hyperfocale-spec/issues/37)) règle trois points dont ce document dépend : `date` portée par la collection, `media/` facultatif sans fichier local, ordre alphabétique défini.
+**Socle** : `spec-hyperfocale.md` 2.14-draft (2.13 sur `main` à ce jour, 2.14 en PR [#39](https://github.com/izo/hyperfocale-spec/pull/39)). La 2.13-draft en cours ([#37](https://github.com/izo/hyperfocale-spec/issues/37)) règle trois points dont ce document dépend : `date` portée par la collection, `media/` facultatif sans fichier local, ordre alphabétique défini.
 
 ---
 
@@ -546,7 +546,7 @@ Ces changements touchent `spec-hyperfocale.md` et sont portés par sa **2.14-dra
 | §0.5 : vault repris par Hyperfocus, preset `project` du plugin | Fait en 2.14, sans relevé de conformité à Hyperfocus |
 | §2.7 allégé | **Reporté** : une note de renvoi seulement. Voir D19 |
 
-Les deux specs doivent être fusionnées ensemble ou dans l'ordre : la 2.14 renvoie à `spec-hyperfocus.md`, qui n'existe que sur `spec/projet`.
+Hyperfocus aura son **propre dépôt** (D3) : la 2.14 renvoie à Hyperfocus et à ses sections sans lien tant que ce dépôt n'existe pas. Aucune fusion conjointe n'est requise.
 
 ---
 
@@ -556,7 +556,7 @@ Les deux specs doivent être fusionnées ensemble ou dans l'ordre : la 2.14 renv
 |---|---|---|
 | D1 | Discriminant | **Retenue (0.2)** : `type: project`, seul discriminant (§1.2) |
 | D2 | Socle | `spec-hyperfocale.md` porte le socle, ce document s'y réfère ; extraction d'un socle autonome plus tard |
-| D3 | Dépôt et versions | Fichier à part, version propre (`0.x-draft`), qui cite la version web dont il dépend ; développé sur la branche `spec/projet` |
+| D3 | Dépôt et versions | **Retenue (0.13)** : Hyperfocus a son **propre dépôt**, avec sa version propre (`0.x-draft`), qui cite la version d'Hyperfocale dont il dépend. La branche `spec/projet` de `hyperfocale-spec` est provisoire : elle porte le texte jusqu'à la création du dépôt, puis n'est jamais fusionnée dans `main` |
 | D4 | Profondeur des lots | Libre, l'export aplatit |
 | D5 | Nom de dossier libre | **Retenue (0.2)** : contraint seulement par §4.1 web ; slug produit à l'export (§1.3) |
 | D6 | `title` optionnel | **Retenue (0.2)** : nom du dossier par défaut, jamais écrit en retour (§1.4) |
@@ -577,6 +577,12 @@ Les deux specs doivent être fusionnées ensemble ou dans l'ordre : la 2.14 renv
 ---
 
 ## Changelog
+
+### 0.13-draft — 2026-10-25
+
+**Décision retenue** : **D3** — Hyperfocus aura son **propre dépôt**. La branche `spec/projet` de `hyperfocale-spec` est provisoire et ne sera pas fusionnée dans `main`. §9.3 ne demande plus de fusion conjointe avec la 2.14 de la spec web.
+
+**À faire à la création du dépôt** : y déplacer `spec-hyperfocus.md` (avec l'historique de la branche), remplacer les renvois « spec web » par des liens vers `hyperfocale-spec`, et ajouter ses propres `README.md` et `CLAUDE.md`. `CLAUDE.md` et `AGENTS.md` de `hyperfocale-spec` cesseront alors de mentionner `spec-hyperfocus.md`.
 
 ### 0.12-draft — 2026-10-25
 
