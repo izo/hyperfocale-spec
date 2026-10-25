@@ -178,7 +178,7 @@ Section informative — un audit de conformité des implémentations connues, mi
 | Documents joints (§1.9) | ✅ | Implémenté en **v0.7.0** : `classifyAttachment()`, `getSeriesAttachments()`, bloc `attachments:`, `files[]` en mode distant, `<SeriesAttachments>` rendu après la galerie (invariant §1.9) |
 | Manifeste d'images (§1.5.1) | ✅ | Implémenté en **v0.10.0** : priorité `images:` > `images.json` > `media/`, formes courte et longue, résolution des trois formes d'URL, clé `files`. Le manifeste est lu en `?raw` puis parsé dans un `try` — un import JSON ferait échouer le bundler au parsing, là où §1.5.1 impose un repli sur `media/` sans échec de build |
 | Page d'index de section (§1.10) | ✅ | Implémentée en **v0.9.0** : champ `type`, exclusion des listings, `date` non requise pour une section. `isSection()` ne teste que `type` — jamais l'absence de date (« discriminant explicite »). Helpers `isSection()` / `getSections()` exposés ; la route de section reste au site consommateur (§1.10 la donne en PEUT) |
-| Séries imbriquées (§1.8) | ✅ | Implémentées en **v0.12.0** : `getSubSeries()` et line-up rendu sur la page du conteneur, tri par `lineup_order` puis date décroissante. Le helper ne retient que les entrées situées exactement un segment plus bas — une série rangée plus profond (§1.2) n'est pas une sous-série |
+| Séries imbriquées (§1.8) | ⚠️ | Implémentées en **v0.12.0** : `getSubSeries()` et line-up rendu sur la page du conteneur, tri par `lineup_order` puis date décroissante. Le helper ne retient que les entrées situées exactement un segment plus bas — une série rangée plus profond (§1.2) n'est pas une sous-série ; **depuis la 2.15**, une série atteinte à travers un dossier de rangement est une sous-série de son conteneur (§1.8) : `getSubSeries()` ne la retient pas — écart ouvert |
 | Profils de contenu (Annexe G) | ✅ | Les **11 profils** de l'annexe v2.10 sont couverts depuis la **v0.14.0**, le profil `project` (G.12) depuis la **v0.20.0** ; leurs prefix restent localisés en français, ce que §2.0.1 autorise |
 | Originaux (§1.9, v2.11) | ✅ | **v0.20.0** : `isOriginal()`, exclus de la galerie, des documents joints, de `files[]` et de la couverture ; l'exclusion se fait dès le glob, sans quoi Vite émettrait le fichier au build. Le motif du glob est insensible à la casse (une classe par lettre, `[rR][aA][fF]`) : une graphie mixte comme `.Raf` est exclue aussi ([#125](https://github.com/izo/hyperfocale-astro-plugins/issues/125)) |
 | Garde : originaux (§4.11, v2.11) | ✅ | **v0.20.0** : `publishable(snapshot)`, `guard-originals-excluded` (`count`, `bytes`), `guard-oversize` sur la projection, règle 12 de §4.10. Fixtures rejouées sur `main@51cbf73` (207 fichiers) |
@@ -349,7 +349,7 @@ Les dix profils de l'annexe sont couverts depuis la v0.14.0. Depuis la 2.14, le 
 - L'implémentation des adaptateurs (chacun a sa propre spec)
 - Le design visuel (libre, seul le contrat de données est spécifié)
 - Le travail à la source — projets, originaux, sélection, chaîne de développement : c'est le périmètre d'**Hyperfocus**, qui découle de cette spec et n'en est pas un profil
-- Le workflow d'édition (chaque outil a le sien) — la couche 4 fixe seulement ce qui passe d'une source éditoriale à un snapshot publié, pas la façon d'éditer
+- Le workflow d'édition (chaque outil a le sien) — la couche 4 fixe seulement ce qui passe d'une source éditoriale à un snapshot publié, et §1.5.1 ce qu'un éditeur ne doit pas écrire dans une source distante ; ni l'une ni l'autre ne prescrit la façon d'éditer
 - L'infrastructure de production (hébergeur, CDN, stockage des médias) — choix du consommateur
 
 ---
@@ -379,7 +379,7 @@ Les dix profils de l'annexe sont couverts depuis la v0.14.0. Depuis la 2.14, le 
 └─────────────────────────────────────────────┘
 ```
 
-La couche 1 est normative. Les couches 2 et 3 sont des recommandations. La couche 4 est normative **pour les outils d'ingestion** — ce qui transforme un état de source éditoriale en snapshot publié — et ne change rien à ce qu'un lecteur doit faire : un adaptateur lit toujours un corpus matérialisé sur un filesystem.
+La couche 1 est normative. La couche 2 l'est par son **contrat d'adaptateur** (§2.0), que tout adaptateur qui se dit conforme remplit ; ses descriptions par plateforme (§2.1 à §2.7) sont des **exemples**. La couche 3 est une recommandation. La couche 4 est normative **pour les outils d'ingestion** — ce qui transforme un état de source éditoriale en snapshot publié — et ne change rien à ce qu'un lecteur doit faire : un adaptateur lit toujours un corpus matérialisé sur un filesystem.
 
 ---
 
@@ -1123,10 +1123,10 @@ Dix presets non-photo sont standardisés en **Annexe G — Profils de contenu** 
 
 #### Content Collection
 
-L'intégration enregistre la collection `series` via l'API Astro 6. L'utilisateur n'écrit pas le schéma manuellement.
+L'intégration enregistre la collection de son preset (par défaut `series`). L'utilisateur n'écrit pas le schéma à la main : le plugin l'exporte sous le nom `baseSeriesSchema`, qui se prolonge avec `.extend()`. Le bloc ci-dessous en donne une **forme simplifiée, à titre d'illustration** — le schéma réel est celui du plugin, et il couvre aussi `type`, `tags`, `embeds`, `attachments` et `images.json`.
 
 ```ts
-// Schéma Zod interne (zod 4)
+// Schéma Zod simplifié (zod 4) — illustratif
 const series = defineCollection({
   type: 'content',
   schema: ({ image }) =>
@@ -1153,7 +1153,7 @@ const series = defineCollection({
 
 ```ts
 // astro.config.mjs
-import hyperfocale from 'hyperfocale/astro';
+import hyperfocale from '@regrets/hyperfocale';
 
 export default defineConfig({
   integrations: [
@@ -1182,7 +1182,7 @@ import {
   SeriesList,
   SeriesGallery,
   SeriesLightbox,
-} from 'hyperfocale/astro/components';
+} from '@regrets/hyperfocale/components';
 ```
 
 #### Helpers
@@ -1193,7 +1193,7 @@ import {
   getSeriesBySlug,
   getSeriesImages,
   paginateImages,
-} from 'hyperfocale/astro/helpers';
+} from '@regrets/hyperfocale/helpers';
 ```
 
 ### 2.2 — Adaptateur Next.js
@@ -1636,6 +1636,7 @@ La couche UI est **optionnelle et par framework**. Elle définit un vocabulaire 
 | `SeriesMap` | Carte des séries géolocalisées | `series: Series[]` (filtrées sur celles ayant `iptc.gps`) |
 | `SeriesFilter` | Filtrage par keywords, date, lieu | `series: Series[]`, `filters: FilterConfig` |
 | `SeriesAttachments` | Liste des documents joints (téléchargements, lecteurs audio/vidéo) | `attachments: Attachment[]` |
+| `SeriesEmbeds` | Contenus embarqués (lecteurs de plateforme, ou liens) | `embeds: Embed[]` |
 
 ### 3.2 — Types de données partagés
 
@@ -1644,18 +1645,22 @@ Ces types sont la **lingua franca** entre les adaptateurs et les composants :
 ```ts
 /** Série photo — objet retourné par les helpers */
 interface Series {
-  slug: string;
+  path: string;           // chemin relatif à la racine de la collection : identité et clé de routage (§1.2, §1.6)
+  slug: string;           // dernier segment du chemin
   title: string;
-  date: Date;
+  date?: Date;            // absente seulement dans une collection `dateRequired: false` (§1.3)
   description?: string;
-  cover: Image;
+  cover?: Image;          // absente d'une série sans image, ex. embeds seuls (§1.11)
   location?: string;
   draft: boolean;
   lang?: string;
+  tags?: string[];
+  featured?: boolean;
   body: string;           // Markdown brut ou HTML rendu, selon la plateforme
   iptc: IPTCMetadata;
   images: Image[];        // toutes les images de la série
   attachments: Attachment[]; // documents joints : ni images ni originaux (§1.9)
+  embeds: Embed[];        // contenus embarqués (§1.11)
 }
 
 /** Image — mode local ou distant */
@@ -1673,6 +1678,18 @@ interface Attachment {
   title?: string;         // libellé (frontmatter attachments: ou nom de fichier)
   description?: string;
   size?: number;          // octets, si connu
+}
+
+/** Contenu embarqué — hébergé par une plateforme tierce (§1.11) */
+interface Embed {
+  url: string;            // seul champ requis : suffit à faire un lien
+  platform?: string;      // vocabulaire ouvert (vimeo, youtube, …)
+  id?: string;            // identifiant chez l'hébergeur
+  title?: string;
+  description?: string;
+  poster?: string;        // vignette ; exclue de la galerie (§1.11)
+  width?: number;
+  height?: number;
 }
 
 /** Métadonnées IPTC */
