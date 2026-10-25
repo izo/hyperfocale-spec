@@ -99,7 +99,7 @@ date: 2024-06-15
 description: "Côtes sauvages du Finistère"
 cover: "./media/01.jpg"     # fallback : première image alphabétique
 location: "Finistère, France"
-draft: false                # true = invisible en production
+draft: false                # true = absent de la production (§1.6)
 lang: "fr"                  # code ISO 639-1
 
 # ── Extension IPTC (optionnelle) ─────────────────
@@ -125,8 +125,8 @@ Ces règles s'appliquent quel que soit l'adaptateur ou la plateforme :
 | **Corps avant galerie** | Le body Markdown s'affiche avant les images |
 | **Tri des images** | Alphabétique par nom de fichier, au sens strict : ordre des octets UTF-8 du nom en NFC, casse comprise (§1.6). `10.jpg` précède `9.jpg`, `B.jpg` précède `a.jpg` — d'où le nommage `01.jpg`, `02.jpg`... |
 | **Couverture** | `cover` du frontmatter, sinon première image alphabétique |
-| **Tri des séries** | Date décroissante dans les listings |
-| **Brouillons** | `draft: true` → exclu des listings en production |
+| **Tri des séries** | Date décroissante dans les listings ; à date égale, titre croissant puis chemin ; les séries sans date après les datées (§1.6) |
+| **Brouillons** | `draft: true` → ni page, ni listing, ni flux en production (§1.6) ; ce n'est pas une protection d'accès aux fichiers |
 | **Formats images** | `.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`, `.tif`, `.tiff` — seuls formats alimentant la galerie. L'extension se compare sans tenir compte de la casse : `DSCF0001.JPG` est une image |
 | **Fichiers système** | Un nom qui commence par `.` (`.DS_Store`, `._01.jpg`), `Thumbs.db`, `desktop.ini` et `Icon\r` (§4.2) ne sont jamais des médias : ni image, ni original, ni document joint |
 | **Originaux** | RAW et sidecars (`.raf`, `.cr3`, `.nef`, `.dng`, `.xmp`… — liste fermée, §1.9) sont des originaux : ignorés par les lecteurs — ni galerie, ni documents joints, ni couverture |
@@ -408,7 +408,7 @@ Chaque série est **autonome** : toutes ses données (métadonnées + médias) v
 |---------|-----------|
 | `<content-root>` | Libre selon la plateforme. Exemples : `src/content/` (Astro), `content/` (Next.js), racine du vault (Obsidian). |
 | `<slug>` | Identifiant unique. Minuscules, chiffres, tirets uniquement. Regex : `^[a-z0-9]+(-[a-z0-9]+)*$`. Utilisé dans les URLs. |
-| `index.md` | Obligatoire. Contient le frontmatter YAML et le body Markdown. Encodage UTF-8. |
+| `index.md` | Obligatoire. Contient le frontmatter YAML et le body Markdown. Encodage UTF-8. Les plateformes MDX (Astro, Next.js) PEUVENT lui substituer `index.mdx`, de même rôle ; si les deux existent, `index.md` fait foi (c'est l'ordre de lecture de la couche 4, §4.10). Les variantes de langue `index.<lang>.md` relèvent de l'Annexe F. |
 | `media/` | Plat — pas de sous-dossiers. Porte les fichiers locaux de la série ; PEUT être absent quand il n'y en a aucun (voir *Absence de `media/`*). |
 | Images | Formats alimentant la galerie : `.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`, `.tif`, `.tiff`. Pas de récursion dans `media/`. |
 | Originaux | RAW et sidecars de développement (liste fermée, §1.9) : acceptés dans `media/`, ignorés par les lecteurs. |
@@ -466,7 +466,7 @@ Le frontmatter est en YAML, délimité par `---`. Il se divise en deux niveaux :
 | Champ | Type | Requis | Description |
 |-------|------|--------|-------------|
 | `title` | `string` | **oui** | Titre de la série |
-| `date` | `date` (ISO 8601) | **oui**, sauf collection `dateRequired: false` | Date de la série, utilisée pour le tri. Format : `YYYY-MM-DD` |
+| `date` | `date` (ISO 8601) | **oui**, sauf collection `dateRequired: false` | Date de la série, utilisée pour le tri. Format : `AAAA-MM-JJ`, éventuellement suivi d'une heure et d'un fuseau (§4.10, règle 8) ; **seule la date calendaire sert au tri**, l'heure est ignorée. |
 | `description` | `string` | non | Description courte. Utilisée dans les cards, le SEO, les previews. |
 | `cover` | `string` | non | Chemin relatif vers l'image de couverture (`./media/01.jpg`). Si absent : première image par ordre alphabétique. |
 | `location` | `string` | non | Lieu associé à la série. Texte libre. |
@@ -489,7 +489,7 @@ Le frontmatter est en YAML, délimité par `---`. Il se divise en deux niveaux :
 | Champ | Type | Requis | Description |
 |-------|------|--------|-------------|
 | `draft` | `boolean` | non | `true` = série masquée en production. Défaut : `false`. |
-| `lang` | `string` | non | Code langue ISO 639-1 (`fr`, `en`...). Pour les sites multilingues. |
+| `lang` | `string` | non | Code de langue : deux lettres ISO 639-1, éventuellement suivies d'une région (`fr`, `en`, `pt-BR`) — la forme que la couche 4 reconnaît dans `index.<lang>.md` (§4.10). Pour les sites multilingues. |
 | `featured` | `boolean` | non | `true` = série mise en avant (boost dans les listings, sections "à la une"). Défaut : `false`. *Officialisé en v2.1 à partir du pattern observé dans plusieurs implémentations.* |
 | `tags` | `string[]` | non | Tags éditoriaux libres. **Distincts** de `iptc.keywords` (qui suit le vocabulaire IPTC normalisé). Voir note ci-dessous. *Officialisé en v2.1.* |
 | `type` | `string` | non | Nature du contenu. Défaut : `series`. Seule autre valeur normative : `section` — le fichier est alors une page d'index de section et non une série (§1.10). *Introduit en v2.6.* La valeur `project` est **réservée à Hyperfocus** : elle désigne un dossier de travail qui ne se publie pas. Un lecteur de cette spec ne la lit pas comme une série : l'ingestion la refuse (`type-invalid`, §4.10) et un adaptateur DEVRAIT la refuser explicitement plutôt que d'afficher le dossier. *Réservée en v2.14.* |
@@ -704,8 +704,10 @@ Un adaptateur antérieur à v2.6 ignore le fichier et ne trouve aucune image (`m
 
 | Règle | Description |
 |-------|-------------|
-| Défaut | Date décroissante (les plus récentes en premier). |
-| Draft | Les séries `draft: true` sont exclues des listings en production. |
+| Défaut | Date décroissante (les plus récentes en premier). Seule la date calendaire compte ; l'heure éventuelle est ignorée (§1.3). |
+| À date égale | Titre croissant, puis chemin (§1.2) : deux comparaisons sur les octets UTF-8 du texte en NFC, comme l'ordre canonique de §4.1. Deux lecteurs rendent ainsi le même listing. |
+| Sans date | Dans une collection `dateRequired: false` (§1.3), les séries sans `date` viennent **après** les séries datées, triées par titre puis chemin. |
+| Draft | En production, une série `draft: true` n'a ni page de détail, ni entrée de listing, ni entrée de flux (Annexe E) ni de sitemap. En développement elle PEUT être visible. **`draft` masque une série ; il ne protège pas ses fichiers** : l'ingestion (couche 4) copie ceux d'un brouillon comme ceux de toute série. Pour restreindre l'accès, un site utilise un mécanisme à lui (`private`, §4.11). |
 
 #### URLs (pour les plateformes web)
 
@@ -768,6 +770,7 @@ Cas d'usage typiques :
 | `media/` du conteneur | **Optionnel**. Si absent, le conteneur n'a pas de galerie propre — il sert uniquement de point d'entrée vers ses sous-séries. |
 | Sous-séries | Chacune est une série complète et autonome (au sens des §1.1–1.6). Une sous-série ne peut **pas** elle-même contenir des sous-séries (pas de récursion au-delà d'un niveau). |
 | Ce qu'est un conteneur | Un dossier de série dont un **sous-dossier porte un `index.md`**. Un dossier sans `index.md` traversé pour atteindre une série est une section de rangement (§1.2), pas un conteneur — sa profondeur est libre. |
+| Rangement dans un conteneur *(v2.15)* | Un dossier de rangement PEUT se trouver **entre** un conteneur et une sous-série (`<conteneur>/lots/<sous-slug>/`). La sous-série garde le conteneur pour parent : le parent d'une série est son plus proche dossier ancêtre porteur d'un `index.md`. Son chemin, donc sa route (§1.6), compte les segments de rangement. La limite d'un niveau (`nesting-too-deep`, §4.10) ne les compte pas. |
 | `<slug-conteneur>` et `<sous-slug>` | Suivent les mêmes règles de slug que §1.2. Le slug d'une sous-série est local : il n'a pas besoin d'inclure le slug du conteneur. |
 | Tri des sous-séries | Date décroissante par défaut (idem listing standard). L'adaptateur PEUT exposer un tri alternatif via un champ `lineup_order: number` dans le frontmatter des sous-séries. |
 
@@ -941,6 +944,8 @@ Texte libre affiché **avant** la liste des contenus de la section.
 | `title` | `string` | **oui** | Nom de la section. |
 | `date` | — | **non** | Non requise. Une section n'est pas datée. Si présente, elle est ignorée (aucun tri ne s'appuie dessus). |
 | `description`, `cover`, `lang`, `draft` | | non | Même sens qu'en §1.3. |
+
+Un `index.md` placé à la racine de `<content-root>` doit lui aussi déclarer `type: section` *(v2.15)* : sans cela il est lu comme une série, le corpus entier devient son conteneur (§1.8), et tout conteneur qu'il porte déjà dépasse la limite d'un niveau (`nesting-too-deep`, §4.10).
 
 Le champ `type` est **réservé** au niveau du core. Son absence vaut `type: series` — la valeur par défaut, et le comportement de tout le contenu antérieur à v2.6.
 
@@ -1558,7 +1563,7 @@ translations:
 
 | Règle | Description |
 |-------|-------------|
-| Structure | `translations.<lang>.<champ>` — `<lang>` est un code ISO 639-1 |
+| Structure | `translations.<lang>.<champ>` — `<lang>` est un code de langue, de la même forme que `lang` (§1.3 : `en`, `pt-BR`) |
 | Champs traduisibles | `title`, `description`, `location` (les autres champs ne sont pas traduisibles) |
 | Fallback | Si la locale demandée n'est pas dans `translations`, l'adaptateur DOIT renvoyer la version dans le champ racine (canonique selon `lang`) |
 | `keywords` | Les `tags` éditoriaux ne sont **pas** dans `translations` (vocabulaire stable). Les `iptc.keywords` peuvent l'être si pertinent (sous `iptc.keywords` racine, plus rarement traduits) |
@@ -2172,6 +2177,7 @@ Vérifications :
 - [ ] `images.json` (si présent) est un JSON valide dont la clé `images` est un tableau (§1.5.1)
 - [ ] Aucune série imbriquée au-delà d'un niveau — un conteneur §1.8 n'est jamais lui-même une sous-série (la profondeur de rangement §1.2, elle, n'est pas contrainte)
 - [ ] Aucun dossier nommé `page` directement dans un dossier de série — segment réservé à la pagination (§1.6)
+- [ ] Un `index.md` à la racine du corpus déclare `type: section` (§1.10)
 - [ ] Chaque entrée `embeds:` porte une `url` (§1.11)
 - [ ] Chaque `embeds[].poster` en chemin relatif pointe vers un fichier existant de `media/`
 - [ ] Aucun `poster` d'embed n'est aussi listé dans `images:` ou `attachments:` — une image est une photo de la série ou la vignette d'un embed, pas les deux
