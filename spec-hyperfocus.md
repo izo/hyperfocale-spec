@@ -2,7 +2,7 @@
 
 > **En rédaction.** **Hyperfocus** est le format du **dossier de travail** de l'écosystème Hyperfocale : un projet suivi à la source, de la première prise de contact à la livraison. Il se sépare de la spec web (`spec-hyperfocale.md`), qui décrit un contenu fait pour être publié. Les sections 1 et 2 sont rédigées au futur contrat (DOIT / PEUT) mais rien n'est encore figé : tant que le statut est « en rédaction », les décisions sont réversibles (§D). Réflexion d'origine : [#36](https://github.com/izo/hyperfocale-spec/issues/36).
 
-**Version** : 0.6-draft
+**Version** : 0.7-draft
 **Statut** : en rédaction — §1 et §2 rédigés, le reste est une esquisse
 **Dernière révision** : 2026-10-25
 **Socle** : `spec-hyperfocale.md` 2.12-draft. La 2.13-draft en cours ([#37](https://github.com/izo/hyperfocale-spec/issues/37)) règle trois points dont ce document dépend : `date` portée par la collection, `media/` facultatif sans fichier local, ordre alphabétique défini.
@@ -27,6 +27,8 @@ Changelog
 ---
 
 ## 0 — Relation au socle
+
+**Filiation.** Hyperfocus **découle** d'Hyperfocale : il reprend son socle (dossier, `index.md`, `media/`, classement des fichiers, passthrough) et ne le redéfinit pas. Hyperfocale reste, elle, une **spec photo pour le web** : son atome est la série photo publiée. Hyperfocus n'est ni un profil d'Hyperfocale ni une spec générique de gestion de contenu — c'est l'amont de la chaîne : le travail qui aboutit à une série.
 
 La spec web impose à tout contenu des contraintes nées de la publication : slug utilisable en URL, `date` requise pour le tri, imbrication limitée à un niveau pour les routes, `draft` comme garde-fou. Le profil G.12 (v2.11) fait entrer un dossier de travail dans ces contraintes et les contourne une à une. Ce document les lève pour le dossier de travail, et garde le reste.
 
@@ -315,11 +317,18 @@ Ces changements touchent `spec-hyperfocale.md` : ils sont faits sur sa propre br
 | D11 | Qui utilise Hyperfocus | **Retenue (0.5)** : une personne seule. Un dossier par projet, sans comptes, sans partage, sans règle de conflit entre auteurs |
 | D12 | Premier usage d'un agent | **Retenue (0.5)** : lire les projets et proposer une prochaine action par projet, sans rien écrire (niveau « proposer », §4). Les opérations d'écriture viennent ensuite |
 | D13 | Où passe la ligne entre photo travaillée (Hyperfocus) et photo publiée (Hyperfocale) | **Retenue (0.6)** : à l'export (§5). Hyperfocus possède tout ce qui précède la publication ; Hyperfocale garde la série publiée avec son `iptc:` (§9) |
+| D15 | Les profils non photo d'Hyperfocale (G.1 à G.11 : `event`, `recipe`, `app`, `book`, `place`, `screen`, `portfolio`, `music`, `catalog`, `press`) face à « Hyperfocale reste une spec photo pour le web » | Ouverte : les garder tels quels, les reclasser en extensions hors noyau, ou les sortir de la spec |
 | D14 | L'annexe C (IPTC ↔ EXIF) | Ouverte : reste côté web tant que des adaptateurs extraient l'EXIF ; pourrait être partagée avec Hyperfocus (chaîne Lightroom) |
 
 ---
 
 ## Changelog
+
+### 0.7-draft — 2026-10-25
+
+**Filiation enregistrée** (§0) : Hyperfocus découle d'Hyperfocale et en reprend le socle ; Hyperfocale reste une spec photo pour le web. Précise D2 et D13 sans les changer.
+
+**Ouvert** : D15 — le sort des profils non photo d'Hyperfocale (G.1 à G.11).
 
 ### 0.6-draft — 2026-10-25
 
