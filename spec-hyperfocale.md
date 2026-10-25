@@ -2,7 +2,7 @@
 
 > **Source de vérité canonique.** Ce document définit le format Hyperfocale — un standard de **séries photo pour le web**, portable entre SSG (Astro, Next.js, Hugo, 11ty...), vaults Obsidian, et CMS headless (Strapi, Sanity, Payload...). Le travail qui précède la publication — projets, originaux, sélection — relève d'**Hyperfocus** ([`spec-hyperfocus.md`](https://github.com/izo/hyperfocus/blob/main/spec-hyperfocus.md)), qui découle de cette spec. Toute évolution du format doit être proposée d'abord ici, dans ce dépôt.
 
-**Version** : 2.14-draft
+**Version** : 2.15-draft
 **Statut** : spécification active — source de vérité canonique
 **Dernière révision** : 2026-10-25
 
@@ -99,7 +99,7 @@ date: 2024-06-15
 description: "Côtes sauvages du Finistère"
 cover: "./media/01.jpg"     # fallback : première image alphabétique
 location: "Finistère, France"
-draft: false                # true = invisible en production
+draft: false                # true = absent de la production (§1.6)
 lang: "fr"                  # code ISO 639-1
 
 # ── Extension IPTC (optionnelle) ─────────────────
@@ -125,8 +125,8 @@ Ces règles s'appliquent quel que soit l'adaptateur ou la plateforme :
 | **Corps avant galerie** | Le body Markdown s'affiche avant les images |
 | **Tri des images** | Alphabétique par nom de fichier, au sens strict : ordre des octets UTF-8 du nom en NFC, casse comprise (§1.6). `10.jpg` précède `9.jpg`, `B.jpg` précède `a.jpg` — d'où le nommage `01.jpg`, `02.jpg`... |
 | **Couverture** | `cover` du frontmatter, sinon première image alphabétique |
-| **Tri des séries** | Date décroissante dans les listings |
-| **Brouillons** | `draft: true` → exclu des listings en production |
+| **Tri des séries** | Date décroissante dans les listings ; à date égale, titre croissant puis chemin ; les séries sans date après les datées (§1.6) |
+| **Brouillons** | `draft: true` → ni page, ni listing, ni flux en production (§1.6) ; ce n'est pas une protection d'accès aux fichiers |
 | **Formats images** | `.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`, `.tif`, `.tiff` — seuls formats alimentant la galerie. L'extension se compare sans tenir compte de la casse : `DSCF0001.JPG` est une image |
 | **Fichiers système** | Un nom qui commence par `.` (`.DS_Store`, `._01.jpg`), `Thumbs.db`, `desktop.ini` et `Icon\r` (§4.2) ne sont jamais des médias : ni image, ni original, ni document joint |
 | **Originaux** | RAW et sidecars (`.raf`, `.cr3`, `.nef`, `.dng`, `.xmp`… — liste fermée, §1.9) sont des originaux : ignorés par les lecteurs — ni galerie, ni documents joints, ni couverture |
@@ -178,7 +178,7 @@ Section informative — un audit de conformité des implémentations connues, mi
 | Documents joints (§1.9) | ✅ | Implémenté en **v0.7.0** : `classifyAttachment()`, `getSeriesAttachments()`, bloc `attachments:`, `files[]` en mode distant, `<SeriesAttachments>` rendu après la galerie (invariant §1.9) |
 | Manifeste d'images (§1.5.1) | ✅ | Implémenté en **v0.10.0** : priorité `images:` > `images.json` > `media/`, formes courte et longue, résolution des trois formes d'URL, clé `files`. Le manifeste est lu en `?raw` puis parsé dans un `try` — un import JSON ferait échouer le bundler au parsing, là où §1.5.1 impose un repli sur `media/` sans échec de build |
 | Page d'index de section (§1.10) | ✅ | Implémentée en **v0.9.0** : champ `type`, exclusion des listings, `date` non requise pour une section. `isSection()` ne teste que `type` — jamais l'absence de date (« discriminant explicite »). Helpers `isSection()` / `getSections()` exposés ; la route de section reste au site consommateur (§1.10 la donne en PEUT) |
-| Séries imbriquées (§1.8) | ✅ | Implémentées en **v0.12.0** : `getSubSeries()` et line-up rendu sur la page du conteneur, tri par `lineup_order` puis date décroissante. Le helper ne retient que les entrées situées exactement un segment plus bas — une série rangée plus profond (§1.2) n'est pas une sous-série |
+| Séries imbriquées (§1.8) | ⚠️ | Implémentées en **v0.12.0** : `getSubSeries()` et line-up rendu sur la page du conteneur, tri par `lineup_order` puis date décroissante. Le helper ne retient que les entrées situées exactement un segment plus bas — une série rangée plus profond (§1.2) n'est pas une sous-série ; **depuis la 2.15**, une série atteinte à travers un dossier de rangement est une sous-série de son conteneur (§1.8) : `getSubSeries()` ne la retient pas — écart ouvert |
 | Profils de contenu (Annexe G) | ✅ | Les **11 profils** de l'annexe v2.10 sont couverts depuis la **v0.14.0**, le profil `project` (G.12) depuis la **v0.20.0** ; leurs prefix restent localisés en français, ce que §2.0.1 autorise |
 | Originaux (§1.9, v2.11) | ✅ | **v0.20.0** : `isOriginal()`, exclus de la galerie, des documents joints, de `files[]` et de la couverture ; l'exclusion se fait dès le glob, sans quoi Vite émettrait le fichier au build. Le motif du glob est insensible à la casse (une classe par lettre, `[rR][aA][fF]`) : une graphie mixte comme `.Raf` est exclue aussi ([#125](https://github.com/izo/hyperfocale-astro-plugins/issues/125)) |
 | Garde : originaux (§4.11, v2.11) | ✅ | **v0.20.0** : `publishable(snapshot)`, `guard-originals-excluded` (`count`, `bytes`), `guard-oversize` sur la projection, règle 12 de §4.10. Fixtures rejouées sur `main@51cbf73` (207 fichiers) |
@@ -186,7 +186,7 @@ Section informative — un audit de conformité des implémentations connues, mi
 | Contenus embarqués (§1.11) | ✅ | Implémentés en **v0.17.0** : champ `embeds`, `getSeriesEmbeds()` (résolution dans l'ordre du tableau, `playable` = plateforme reconnue + `id` présent), `<SeriesEmbeds>` rendu **en façade** (le poster s'affiche, l'iframe n'arrive qu'au clic ; sans JavaScript la façade reste un lien fonctionnel), liste de plateformes ouverte (valeur inconnue → repli en lien), posters exclus du scan de galerie. Vocabulaires (`EMBED_PLATFORMS`, `ATTACHMENT_KINDS`) exportés à la racine en v0.17.1 |
 | URLs (§1.6, v2.13) | ⚠️ | Routes injectées sur l'`id` du loader, c'est-à-dire sur le chemin (`${prefix}/[...slug]/`) : règle *Identité* respectée. Pagination encore à l'ancienne forme, `${prefix}/[...slug]/[page]/` : dès que la galerie d'un conteneur `festival` dépasse une page, sa page 2 et sa sous-série `2` prennent la même route `/series/festival/2/`. Relevé sur `main@f8d1a52` |
 | Passthrough racine (champs inconnus) | ✅ | `z.looseObject()` racine — les extensions site-spécifiques ne sont jamais rejetées (v0.4.0) |
-| Tri date desc | ✅ | |
+| Tri date desc | ⚠️ | `getSeriesList()` trie sur l'horodatage complet (`getTime()`), sans départage à égalité ; **depuis la 2.15**, seule la date calendaire compte et l'égalité se départage par titre puis chemin (§1.6). Les brouillons sont bien absents des listings et des routes en production (`getSeriesList()`). Relevé sur `main@f8d1a52` |
 
 **Changements depuis v0.4.0** :
 - **v0.7.0** — documents joints (§1.9) ; slot de layout du site consommateur (options `layout`, `injectRoutes`) ; `galleryLayout: 'grid' | 'column'` ; images locales ordonnées portant leur `alt`.
@@ -349,7 +349,7 @@ Les dix profils de l'annexe sont couverts depuis la v0.14.0. Depuis la 2.14, le 
 - L'implémentation des adaptateurs (chacun a sa propre spec)
 - Le design visuel (libre, seul le contrat de données est spécifié)
 - Le travail à la source — projets, originaux, sélection, chaîne de développement : c'est le périmètre d'**Hyperfocus**, qui découle de cette spec et n'en est pas un profil
-- Le workflow d'édition (chaque outil a le sien) — la couche 4 fixe seulement ce qui passe d'une source éditoriale à un snapshot publié, pas la façon d'éditer
+- Le workflow d'édition (chaque outil a le sien) — la couche 4 fixe seulement ce qui passe d'une source éditoriale à un snapshot publié, et §1.5.1 ce qu'un éditeur ne doit pas écrire dans une source distante ; ni l'une ni l'autre ne prescrit la façon d'éditer
 - L'infrastructure de production (hébergeur, CDN, stockage des médias) — choix du consommateur
 
 ---
@@ -379,7 +379,7 @@ Les dix profils de l'annexe sont couverts depuis la v0.14.0. Depuis la 2.14, le 
 └─────────────────────────────────────────────┘
 ```
 
-La couche 1 est normative. Les couches 2 et 3 sont des recommandations. La couche 4 est normative **pour les outils d'ingestion** — ce qui transforme un état de source éditoriale en snapshot publié — et ne change rien à ce qu'un lecteur doit faire : un adaptateur lit toujours un corpus matérialisé sur un filesystem.
+La couche 1 est normative. La couche 2 l'est par son **contrat d'adaptateur** (§2.0), que tout adaptateur qui se dit conforme remplit ; ses descriptions par plateforme (§2.1 à §2.7) sont des **exemples**. La couche 3 est une recommandation. La couche 4 est normative **pour les outils d'ingestion** — ce qui transforme un état de source éditoriale en snapshot publié — et ne change rien à ce qu'un lecteur doit faire : un adaptateur lit toujours un corpus matérialisé sur un filesystem.
 
 ---
 
@@ -408,7 +408,7 @@ Chaque série est **autonome** : toutes ses données (métadonnées + médias) v
 |---------|-----------|
 | `<content-root>` | Libre selon la plateforme. Exemples : `src/content/` (Astro), `content/` (Next.js), racine du vault (Obsidian). |
 | `<slug>` | Identifiant unique. Minuscules, chiffres, tirets uniquement. Regex : `^[a-z0-9]+(-[a-z0-9]+)*$`. Utilisé dans les URLs. |
-| `index.md` | Obligatoire. Contient le frontmatter YAML et le body Markdown. Encodage UTF-8. |
+| `index.md` | Obligatoire. Contient le frontmatter YAML et le body Markdown. Encodage UTF-8. Les plateformes MDX (Astro, Next.js) PEUVENT lui substituer `index.mdx`, de même rôle ; si les deux existent, `index.md` fait foi (c'est l'ordre de lecture de la couche 4, §4.10). Les variantes de langue `index.<lang>.md` relèvent de l'Annexe F. |
 | `media/` | Plat — pas de sous-dossiers. Porte les fichiers locaux de la série ; PEUT être absent quand il n'y en a aucun (voir *Absence de `media/`*). |
 | Images | Formats alimentant la galerie : `.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`, `.tif`, `.tiff`. Pas de récursion dans `media/`. |
 | Originaux | RAW et sidecars de développement (liste fermée, §1.9) : acceptés dans `media/`, ignorés par les lecteurs. |
@@ -466,7 +466,7 @@ Le frontmatter est en YAML, délimité par `---`. Il se divise en deux niveaux :
 | Champ | Type | Requis | Description |
 |-------|------|--------|-------------|
 | `title` | `string` | **oui** | Titre de la série |
-| `date` | `date` (ISO 8601) | **oui**, sauf collection `dateRequired: false` | Date de la série, utilisée pour le tri. Format : `YYYY-MM-DD` |
+| `date` | `date` (ISO 8601) | **oui**, sauf collection `dateRequired: false` | Date de la série, utilisée pour le tri. Format : `AAAA-MM-JJ`, éventuellement suivi d'une heure et d'un fuseau (§4.10, règle 8) ; **seule la date calendaire sert au tri**, l'heure est ignorée. |
 | `description` | `string` | non | Description courte. Utilisée dans les cards, le SEO, les previews. |
 | `cover` | `string` | non | Chemin relatif vers l'image de couverture (`./media/01.jpg`). Si absent : première image par ordre alphabétique. |
 | `location` | `string` | non | Lieu associé à la série. Texte libre. |
@@ -484,12 +484,12 @@ Le frontmatter est en YAML, délimité par `---`. Il se divise en deux niveaux :
 | Section | Une page d'index de section (§1.10) n'est jamais soumise à la règle, quelle que soit la collection : elle se distingue par `type: section`, pas par l'absence de `date`. |
 | `title` | Toujours requis, dans toute collection. |
 
-#### Champs de workflow
+#### Champs de workflow et de nature
 
 | Champ | Type | Requis | Description |
 |-------|------|--------|-------------|
 | `draft` | `boolean` | non | `true` = série masquée en production. Défaut : `false`. |
-| `lang` | `string` | non | Code langue ISO 639-1 (`fr`, `en`...). Pour les sites multilingues. |
+| `lang` | `string` | non | Code de langue : deux lettres ISO 639-1, éventuellement suivies d'une région (`fr`, `en`, `pt-BR`) — la forme que la couche 4 reconnaît dans `index.<lang>.md` (§4.10). Pour les sites multilingues. |
 | `featured` | `boolean` | non | `true` = série mise en avant (boost dans les listings, sections "à la une"). Défaut : `false`. *Officialisé en v2.1 à partir du pattern observé dans plusieurs implémentations.* |
 | `tags` | `string[]` | non | Tags éditoriaux libres. **Distincts** de `iptc.keywords` (qui suit le vocabulaire IPTC normalisé). Voir note ci-dessous. *Officialisé en v2.1.* |
 | `type` | `string` | non | Nature du contenu. Défaut : `series`. Seule autre valeur normative : `section` — le fichier est alors une page d'index de section et non une série (§1.10). *Introduit en v2.6.* La valeur `project` est **réservée à Hyperfocus** : elle désigne un dossier de travail qui ne se publie pas. Un lecteur de cette spec ne la lit pas comme une série : l'ingestion la refuse (`type-invalid`, §4.10) et un adaptateur DEVRAIT la refuser explicitement plutôt que d'afficher le dossier. *Réservée en v2.14.* |
@@ -704,8 +704,10 @@ Un adaptateur antérieur à v2.6 ignore le fichier et ne trouve aucune image (`m
 
 | Règle | Description |
 |-------|-------------|
-| Défaut | Date décroissante (les plus récentes en premier). |
-| Draft | Les séries `draft: true` sont exclues des listings en production. |
+| Défaut | Date décroissante (les plus récentes en premier). Seule la date calendaire compte ; l'heure éventuelle est ignorée (§1.3). |
+| À date égale | Titre croissant, puis chemin (§1.2) : deux comparaisons sur les octets UTF-8 du texte en NFC, comme l'ordre canonique de §4.1. Deux lecteurs rendent ainsi le même listing. |
+| Sans date | Dans une collection `dateRequired: false` (§1.3), les séries sans `date` viennent **après** les séries datées, triées par titre puis chemin. |
+| Draft | En production, une série `draft: true` n'a ni page de détail, ni entrée de listing, ni entrée de flux (Annexe E) ni de sitemap. En développement elle PEUT être visible. **`draft` masque une série ; il ne protège pas ses fichiers** : l'ingestion (couche 4) copie ceux d'un brouillon comme ceux de toute série. Pour restreindre l'accès, un site utilise un mécanisme à lui (`private`, §4.11). |
 
 #### URLs (pour les plateformes web)
 
@@ -768,6 +770,7 @@ Cas d'usage typiques :
 | `media/` du conteneur | **Optionnel**. Si absent, le conteneur n'a pas de galerie propre — il sert uniquement de point d'entrée vers ses sous-séries. |
 | Sous-séries | Chacune est une série complète et autonome (au sens des §1.1–1.6). Une sous-série ne peut **pas** elle-même contenir des sous-séries (pas de récursion au-delà d'un niveau). |
 | Ce qu'est un conteneur | Un dossier de série dont un **sous-dossier porte un `index.md`**. Un dossier sans `index.md` traversé pour atteindre une série est une section de rangement (§1.2), pas un conteneur — sa profondeur est libre. |
+| Rangement dans un conteneur *(v2.15)* | Un dossier de rangement PEUT se trouver **entre** un conteneur et une sous-série (`<conteneur>/lots/<sous-slug>/`). La sous-série garde le conteneur pour parent : le parent d'une série est son plus proche dossier ancêtre porteur d'un `index.md`. Son chemin, donc sa route (§1.6), compte les segments de rangement. La limite d'un niveau (`nesting-too-deep`, §4.10) ne les compte pas. |
 | `<slug-conteneur>` et `<sous-slug>` | Suivent les mêmes règles de slug que §1.2. Le slug d'une sous-série est local : il n'a pas besoin d'inclure le slug du conteneur. |
 | Tri des sous-séries | Date décroissante par défaut (idem listing standard). L'adaptateur PEUT exposer un tri alternatif via un champ `lineup_order: number` dans le frontmatter des sous-séries. |
 
@@ -941,6 +944,8 @@ Texte libre affiché **avant** la liste des contenus de la section.
 | `title` | `string` | **oui** | Nom de la section. |
 | `date` | — | **non** | Non requise. Une section n'est pas datée. Si présente, elle est ignorée (aucun tri ne s'appuie dessus). |
 | `description`, `cover`, `lang`, `draft` | | non | Même sens qu'en §1.3. |
+
+Un `index.md` placé à la racine de `<content-root>` doit lui aussi déclarer `type: section` *(v2.15)* : sans cela il est lu comme une série, le corpus entier devient son conteneur (§1.8), et tout conteneur qu'il porte déjà dépasse la limite d'un niveau (`nesting-too-deep`, §4.10).
 
 Le champ `type` est **réservé** au niveau du core. Son absence vaut `type: series` — la valeur par défaut, et le comportement de tout le contenu antérieur à v2.6.
 
@@ -1118,10 +1123,10 @@ Dix presets non-photo sont standardisés en **Annexe G — Profils de contenu** 
 
 #### Content Collection
 
-L'intégration enregistre la collection `series` via l'API Astro 6. L'utilisateur n'écrit pas le schéma manuellement.
+L'intégration enregistre la collection de son preset (par défaut `series`). L'utilisateur n'écrit pas le schéma à la main : le plugin l'exporte sous le nom `baseSeriesSchema`, qui se prolonge avec `.extend()`. Le bloc ci-dessous en donne une **forme simplifiée, à titre d'illustration** — le schéma réel est celui du plugin, et il couvre aussi `type`, `tags`, `embeds`, `attachments` et `images.json`.
 
 ```ts
-// Schéma Zod interne (zod 4)
+// Schéma Zod simplifié (zod 4) — illustratif
 const series = defineCollection({
   type: 'content',
   schema: ({ image }) =>
@@ -1148,7 +1153,7 @@ const series = defineCollection({
 
 ```ts
 // astro.config.mjs
-import hyperfocale from 'hyperfocale/astro';
+import hyperfocale from '@regrets/hyperfocale';
 
 export default defineConfig({
   integrations: [
@@ -1177,7 +1182,7 @@ import {
   SeriesList,
   SeriesGallery,
   SeriesLightbox,
-} from 'hyperfocale/astro/components';
+} from '@regrets/hyperfocale/components';
 ```
 
 #### Helpers
@@ -1188,7 +1193,7 @@ import {
   getSeriesBySlug,
   getSeriesImages,
   paginateImages,
-} from 'hyperfocale/astro/helpers';
+} from '@regrets/hyperfocale/helpers';
 ```
 
 ### 2.2 — Adaptateur Next.js
@@ -1398,7 +1403,7 @@ Le plugin opère uniquement sur les dossiers qui respectent le format Hyperfocal
 
 | Comportement | Description |
 |-------------|-------------|
-| **Détection automatique** | À l'ouverture d'un fichier `index.md` dans `<seriesRoot>/*/`, basculer en vue galerie |
+| **Détection automatique** | À l'ouverture d'un fichier `index.md` situé n'importe où sous `<seriesRoot>` (découverte récursive, §1.2), basculer en vue galerie |
 | **Fallback** | Si `media/` est vide ou manquant, afficher le body Markdown normalement sans erreur |
 | **Tri des images** | Identique à la spec core : alphabétique par nom de fichier |
 | **Couverture** | `cover` du frontmatter ou première image alphabétique |
@@ -1558,7 +1563,7 @@ translations:
 
 | Règle | Description |
 |-------|-------------|
-| Structure | `translations.<lang>.<champ>` — `<lang>` est un code ISO 639-1 |
+| Structure | `translations.<lang>.<champ>` — `<lang>` est un code de langue, de la même forme que `lang` (§1.3 : `en`, `pt-BR`) |
 | Champs traduisibles | `title`, `description`, `location` (les autres champs ne sont pas traduisibles) |
 | Fallback | Si la locale demandée n'est pas dans `translations`, l'adaptateur DOIT renvoyer la version dans le champ racine (canonique selon `lang`) |
 | `keywords` | Les `tags` éditoriaux ne sont **pas** dans `translations` (vocabulaire stable). Les `iptc.keywords` peuvent l'être si pertinent (sous `iptc.keywords` racine, plus rarement traduits) |
@@ -1631,6 +1636,7 @@ La couche UI est **optionnelle et par framework**. Elle définit un vocabulaire 
 | `SeriesMap` | Carte des séries géolocalisées | `series: Series[]` (filtrées sur celles ayant `iptc.gps`) |
 | `SeriesFilter` | Filtrage par keywords, date, lieu | `series: Series[]`, `filters: FilterConfig` |
 | `SeriesAttachments` | Liste des documents joints (téléchargements, lecteurs audio/vidéo) | `attachments: Attachment[]` |
+| `SeriesEmbeds` | Contenus embarqués (lecteurs de plateforme, ou liens) | `embeds: Embed[]` |
 
 ### 3.2 — Types de données partagés
 
@@ -1639,18 +1645,22 @@ Ces types sont la **lingua franca** entre les adaptateurs et les composants :
 ```ts
 /** Série photo — objet retourné par les helpers */
 interface Series {
-  slug: string;
+  path: string;           // chemin relatif à la racine de la collection : identité et clé de routage (§1.2, §1.6)
+  slug: string;           // dernier segment du chemin
   title: string;
-  date: Date;
+  date?: Date;            // absente seulement dans une collection `dateRequired: false` (§1.3)
   description?: string;
-  cover: Image;
+  cover?: Image;          // absente d'une série sans image, ex. embeds seuls (§1.11)
   location?: string;
   draft: boolean;
   lang?: string;
+  tags?: string[];
+  featured?: boolean;
   body: string;           // Markdown brut ou HTML rendu, selon la plateforme
   iptc: IPTCMetadata;
   images: Image[];        // toutes les images de la série
   attachments: Attachment[]; // documents joints : ni images ni originaux (§1.9)
+  embeds: Embed[];        // contenus embarqués (§1.11)
 }
 
 /** Image — mode local ou distant */
@@ -1668,6 +1678,18 @@ interface Attachment {
   title?: string;         // libellé (frontmatter attachments: ou nom de fichier)
   description?: string;
   size?: number;          // octets, si connu
+}
+
+/** Contenu embarqué — hébergé par une plateforme tierce (§1.11) */
+interface Embed {
+  url: string;            // seul champ requis : suffit à faire un lien
+  platform?: string;      // vocabulaire ouvert (vimeo, youtube, …)
+  id?: string;            // identifiant chez l'hébergeur
+  title?: string;
+  description?: string;
+  poster?: string;        // vignette ; exclue de la galerie (§1.11)
+  width?: number;
+  height?: number;
 }
 
 /** Métadonnées IPTC */
@@ -2073,7 +2095,7 @@ guardChangeSet(changeSet, base, target, { read, policy }) → diagnostics
 | `guard-oversize` | error | entrée de `publishable(target)` dont la taille dépasse `maxFileBytes[kind]` | l'entrée |
 | `guard-originals-excluded` | info | `target` porte au moins une entrée originale, retirée du snapshot publié. Le diagnostic porte `count`, le nombre d'entrées originales, et `bytes`, la somme de leurs `size` (entiers) | `""` |
 
-- **Série** : dossier porteur d'un fichier index (§4.10). **Série supprimée** : dossier porteur dans `base`, qui ne l'est plus dans `target`, et dont aucun fichier index n'est la source (`from`) d'un `moved`. **Série déplacée** : dossier distinct parmi les `from` des `moved` qui désignent un fichier index. **Médias supprimés** : entrées `media` de `deleted`, rapportées au nombre d'entrées `media` de `base`. Une série déplacée n'est jamais comptée comme supprimée.
+- **Série** : dossier porteur d'un fichier index (§4.10). Les pages d'index de section (`type: section`, §1.10) en sont, **par prudence** *(précisé en v2.15)* : une section supprimée ou déplacée compte comme une série supprimée ou déplacée, ce qui rend les seuils `maxDeletedSeries` et `maxMovedSeries` plus stricts, jamais plus lâches. La garde ne lit pas le `type` d'un dossier pour compter. **Série supprimée** : dossier porteur dans `base`, qui ne l'est plus dans `target`, et dont aucun fichier index n'est la source (`from`) d'un `moved`. **Série déplacée** : dossier distinct parmi les `from` des `moved` qui désignent un fichier index. **Médias supprimés** : entrées `media` de `deleted`, rapportées au nombre d'entrées `media` de `base`. Une série déplacée n'est jamais comptée comme supprimée.
 - **Série privée** : au moins un de ses fichiers index, à l'état `materialized`, déclare `private: true` — un **booléen** YAML (schéma core : `true`, `True`, `TRUE`). La chaîne `"true"` ne rend pas une série privée. Le frontmatter se lit selon les règles 4 à 7 de §4.10. Un fichier index est **illisible** s'il n'est pas à l'état `materialized` (`placeholder`, `conflict`), si ses octets divergent de son hash, ou si son frontmatter ne se lit pas (UTF-8 invalide, bloc absent, YAML illisible ou qui n'est pas un mapping). La garde est **fail-closed côté `base`** : un fichier index illisible y rend la série privée par prudence. Côté `target`, un fichier illisible ne déclare rien : une série privée dans `base` dont l'homologue est illisible est donc exposée. La garde lit tous les fichiers index de chaque série de `base`, puis ceux de la série homologue dans `target` quand la série de `base` est privée.
 - **Exposition** : une série privée dans `base` est présente dans `target` au même chemin si le dossier y porte encore un fichier index, sinon à la destination (dossier du `to`) du premier de ses fichiers index déplacés, dans l'ordre canonique. Si elle n'y est plus privée, `guard-private-exposed` porte sur ce dossier de `target`. La **suppression** d'une série privée n'est pas une exposition.
 - `private` n'est pas un champ du format : c'est une extension de site (§0.5), la seule marque de confidentialité que connaissent les consommateurs actuels. La garde s'applique aux corpus qui l'emploient ; un corpus qui ne l'emploie pas ne la déclenche jamais.
@@ -2161,7 +2183,7 @@ Vérifications :
 - [ ] Dans une collection où `date` est requise, un `index.md` sans `date` déclare explicitement `type: section` (une série sans date y reste une erreur)
 - [ ] `date` est au format ISO 8601
 - [ ] `slug` respecte le pattern `^[a-z0-9]+(-[a-z0-9]+)*$`
-- [ ] `cover` pointe vers un fichier existant dans `media/`
+- [ ] Un `cover` relatif désigne un fichier existant : une image de `media/`, ou — pour un conteneur (§1.8) ou une section (§1.10) — une image d'un contenu qu'il regroupe ; une URL ou un chemin absolu au site n'est pas vérifié
 - [ ] `media/` ne contient pas de sous-dossiers
 - [ ] Chaque fichier de `media/` est classé (image, original ou document joint, §1.9)
 - [ ] `cover` pointe vers une image (jamais un document joint ni un original)
@@ -2172,6 +2194,7 @@ Vérifications :
 - [ ] `images.json` (si présent) est un JSON valide dont la clé `images` est un tableau (§1.5.1)
 - [ ] Aucune série imbriquée au-delà d'un niveau — un conteneur §1.8 n'est jamais lui-même une sous-série (la profondeur de rangement §1.2, elle, n'est pas contrainte)
 - [ ] Aucun dossier nommé `page` directement dans un dossier de série — segment réservé à la pagination (§1.6)
+- [ ] Un `index.md` à la racine du corpus déclare `type: section` (§1.10)
 - [ ] Chaque entrée `embeds:` porte une `url` (§1.11)
 - [ ] Chaque `embeds[].poster` en chemin relatif pointe vers un fichier existant de `media/`
 - [ ] Aucun `poster` d'embed n'est aussi listé dans `images:` ou `attachments:` — une image est une photo de la série ou la vignette d'un embed, pas les deux
@@ -2182,7 +2205,7 @@ Les outils d'ingestion (couche 4) expriment la plupart de ces vérifications dan
 
 Pour migrer un projet utilisant la spec v1 (Astro plugin) :
 
-1. **Frontmatter** : déplacer `camera` sous `iptc.camera`, `tags` sous `iptc.keywords`
+1. **Frontmatter** : déplacer `camera` sous `iptc.camera` ; les anciens `tags` qui étaient des mots-clés IPTC passent sous `iptc.keywords`, ceux qui étaient éditoriaux restent dans `tags`, champ du core depuis la v2.1 (§1.3)
 2. **Structure** : aucun changement (déjà compatible)
 3. **Imports** : `hyperfocale/components` → `hyperfocale/astro/components`
 4. **Config** : ajouter le préfixe du package (`hyperfocale/astro`)
@@ -2230,7 +2253,7 @@ Les adaptateurs web DEVRAIENT exposer un flux de syndication :
 
 ### F — Internationalisation
 
-Pour les sites multilingues, trois stratégies sont supportées. Chaque projet choisit **une** stratégie et s'y tient — pas de mélange dans un même projet.
+Pour les sites multilingues, quatre stratégies sont supportées. Chaque projet choisit **une** stratégie et s'y tient — pas de mélange dans un même projet.
 
 **Stratégie 1 — Préfixe de langue dans le chemin** :
 ```
@@ -2285,7 +2308,7 @@ La section 0 décrit un **squelette universel** : un dossier autonome = `index.m
 
 Un **profil de contenu** est une déclinaison du squelette pour un domaine donné. Il n'invente rien au niveau structurel — il se contente de :
 
-1. **Réutiliser le core tel quel** (`title`, `date`, `description`, `cover`, `location`, `draft`, `lang`, `tags`, `featured`).
+1. **Réutiliser le core tel quel** (`title`, `date`, `description`, `cover`, `location`, `draft`, `lang`, `tags`, `featured`, `type`).
 2. **Ajouter un bloc d'extension namespacé** propre au domaine (exactement comme `iptc:` l'est pour la photo) : `event:`, `recipe:`, `app:`.
 3. **Optionnellement, rendre `date` optionnelle** pour la collection du profil, par `dateRequired: false` dans son preset (§2.0.1, §1.3).
 
@@ -2301,6 +2324,9 @@ Ces règles garantissent qu'un profil reste un contenu Hyperfocale valide au sen
 | **Invariants §0 respectés** | Body avant galerie, tri alphabétique de `media/`, `cover`/fallback, `draft`, passthrough des champs inconnus s'appliquent identiquement. |
 | **Rétro-compatibilité** | Un adaptateur qui ne connaît pas un profil DOIT lire le contenu comme un contenu Hyperfocale standard (core + media + body) et ignorer le bloc d'extension sans erreur (passthrough §1.3). Aucun profil ne casse un lecteur existant. |
 | **Alignement externe** | Chaque profil DEVRAIT s'aligner sur un vocabulaire externe reconnu (schema.org), comme la photo s'aligne sur IPTC, pour l'interop et le balisage SEO. |
+| **Ordre de tri propre** *(v2.15)* | Un profil PEUT définir un ordre canonique alternatif au tri par date, à documenter dans son preset (`screen.order`, G.6 ; les pistes de `music.tracks`, G.8). C'est une dérogation à §1.6, pas aux invariants de §0. |
+| **Fichiers désignés** *(v2.15)* | Un champ d'extension qui désigne un fichier de `media/` (`catalog.datasheet`, `press.clipping`) s'écrit comme un nom de fichier ou comme `./media/<nom>` ; un adaptateur résout les deux. La couche 4 ne valide pas ces champs. |
+| **Vocabulaires fermés** *(v2.15)* | Un profil nouveau écrit ses valeurs fermées en slugs ASCII (minuscules, sans accent, `_` ou `-`). Les vocabulaires déjà publiés — dont les valeurs accentuées de `recipe` — sont conservés : un lecteur les accepte tels quels. |
 | **Sens de `media/`** | `media/` garde son rôle : un dossier plat de médias liés au contenu (affiches, photos du plat, captures d'écran, originaux d'un dossier de travail...). |
 
 #### Vue d'ensemble
@@ -2560,7 +2586,7 @@ featured: true
 tags: [lightroom, photo, export]
 
 app:
-  platform: [macos, windows]
+  platform: [macos]
   version: "0.1.0"
   status: beta
   category: "Photo"
@@ -2569,7 +2595,7 @@ app:
   store:
     web: "https://github.com/izo/hyperfocale-exporter-app/releases"
   repository: "https://github.com/izo/hyperfocale-exporter-app"
-  tech: [SwiftUI, Tauri, Rust]
+  tech: [SwiftUI]
   developer: "Mathieu Drouet"
   license: MIT
 ---
@@ -2787,9 +2813,11 @@ hyperfocale({ preset: 'place' })  // collection 'places', prefix /places, dateRe
 | `theme` | `string` | Thème visuel actif sur l'écran |
 | `duration` | `duration` (ISO 8601) | Durée d'affichage des écrans temporisés (`PT2.5S`) |
 | `skippable` | `boolean` | L'utilisateur peut-il sauter cet écran ? Défaut `false` |
-| `next` | `string[]` | Slugs des écrans suivants possibles (graphe de navigation) |
-| `prev` | `string` | Slug de l'écran précédent |
+| `next` | `string[]` | Chemins des écrans suivants possibles (graphe de navigation) |
+| `prev` | `string` | Chemin de l'écran précédent |
 | `llm_context` | `string` | Chemin vers un contexte LLM lu par un assistant conversationnel quand l'écran est actif (base de connaissance contextuelle) |
+
+> **`next` et `prev` sont des indications de navigation, pas des jointures.** Ils désignent un écran par son chemin (§1.2) ; un chemin qui ne désigne rien est ignoré, et aucune lecture du contenu n'en dépend. Le principe de §0 (« pas de relations entre séries ») reste vrai.
 
 > **`screen` est une séquence, pas une collection.** Contrairement aux profils G.1–G.5 (tri par date desc), l'ordre canonique d'un contenu `screen` est `screen.order` ascendant. Le champ `next`/`prev` permet d'exprimer un graphe de navigation non-linéaire (branches, easter-eggs) au-delà de l'ordre plat.
 
@@ -3156,7 +3184,7 @@ Pour proposer un profil supplémentaire (livre, lieu, produit e-commerce...), un
 
 1. **L'atome** et le cas d'usage.
 2. **Le mapping du core** (sens de `title`/`date`/`cover`/`media`, `dateRequired` ou non).
-3. **Le bloc d'extension namespacé** (clé unique, table de champs, tous optionnels).
+3. **Le bloc d'extension namespacé** (clé unique, table de champs, tous optionnels — sauf les champs que le profil déclare requis explicitement, comme `screen.order` et `screen.kind`).
 4. **Le vocabulaire externe** d'alignement (schema.org ou équivalent).
 5. **Le preset d'adaptateur** (collection, prefix) — dans le respect des contraintes §2.0.1.
 6. La démonstration que les **invariants §0** restent satisfaits.
@@ -3192,6 +3220,40 @@ Un dossier G.12 existant reste lisible par Hyperfocus : c'est un projet auquel i
 ---
 
 ## Changelog
+
+### 2.15-draft — 2026-10-25
+
+Suite de la revue de cohérence de la 2.12 ([#37](https://github.com/izo/hyperfocale-spec/issues/37)) : les points restants. **Aucune fixture ne change** et la couche 4 garde son comportement ; plusieurs règles de la couche 1 se précisent.
+
+#### Listing, brouillons, identité (§0, §1.3, §1.6, §1.8, §1.10)
+
+- **Tri** : seule la date calendaire compte (l'heure éventuelle est ignorée) ; à date égale, titre croissant puis chemin, sur les octets UTF-8 en NFC ; les séries sans date viennent après les datées (points 9).
+- **`draft`** : en production, ni page, ni listing, ni flux, ni sitemap ; **ce n'est pas une protection d'accès aux fichiers** — l'ingestion copie ceux d'un brouillon (10).
+- **Un rangement peut s'intercaler entre un conteneur et une sous-série** ; le parent d'une série est son plus proche ancêtre porteur d'un `index.md` ; `nesting-too-deep` ne compte pas les rangements (11).
+- **Un `index.md` à la racine du corpus déclare `type: section`** (12). **`index.mdx`** est admis, `index.md` fait foi (13).
+- **Codes de langue** : deux lettres, région possible (`pt-BR`), pour `lang` comme pour `translations` (15).
+
+#### Annexes et profils (Annexes A, B, F, G ; §2.5)
+
+- Annexe A : `cover` vérifié selon le cas (image de `media/`, ou d'un contenu regroupé) ; Annexe B : les anciens `tags` ne migrent pas tous sous `iptc.keywords` ; Annexe F : « quatre » stratégies (16 à 18).
+- **Règles communes de G** : ordre de tri propre à un profil, fichiers désignés par un nom ou `./media/<nom>`, vocabulaires fermés en slugs ASCII pour les profils nouveaux ; G.11 : un profil peut déclarer des champs requis ; `type` rangé dans le core (4, 19, 20, 21).
+- **G.6** : `next` et `prev` désignent un écran par son chemin et ne sont pas des jointures (4).
+- §2.5 : le plugin Obsidian découvre les séries récursivement (24).
+
+#### Architecture, périmètre, types (Architecture, Philosophie, §3, §2.1)
+
+- La couche 2 est normative par son **contrat d'adaptateur** ; ses descriptions par plateforme sont des exemples ; la couche 3 est une recommandation (3).
+- Périmètre : §1.5.1 est cité comme borne de l'éditeur (5).
+- **Types partagés** : `Series.path`, `date` et `cover` optionnels, `tags`, `featured`, `embeds` ; interface `Embed` et composant `SeriesEmbeds` (14).
+- §2.1 : noms de paquet réels (`@regrets/hyperfocale`), schéma présenté comme illustratif ; exemple G.3 sans Tauri (23).
+
+#### Garde de publication (§4.11)
+
+- Les sections comptent comme des séries dans les seuils, **par prudence** : le choix est maintenant écrit, le comportement ne change pas (22).
+
+**Décisions normatives**, toutes **prises sur recommandation et réversibles** : l'égalité de date départagée par titre puis chemin ; l'absence de page d'un brouillon ; la sous-série à travers un rangement ; `index.md` qui fait foi sur `index.mdx` ; les codes de langue avec région.
+
+**Écart consigné** : le plugin Astro ne retient pas, dans `getSubSeries()`, une série atteinte à travers un rangement (§0.5).
 
 ### 2.14-draft — 2026-10-25
 
