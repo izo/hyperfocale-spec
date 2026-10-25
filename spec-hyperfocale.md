@@ -1,6 +1,6 @@
 # Spécification — Format de contenu Hyperfocale
 
-> **Source de vérité canonique.** Ce document définit le format Hyperfocale — un standard de **séries photo pour le web**, portable entre SSG (Astro, Next.js, Hugo, 11ty...), vaults Obsidian, et CMS headless (Strapi, Sanity, Payload...). Le travail qui précède la publication — projets, originaux, sélection — relève d'**Hyperfocus** (`spec-hyperfocus.md`), qui découle de cette spec. Toute évolution du format doit être proposée d'abord ici, dans ce dépôt.
+> **Source de vérité canonique.** Ce document définit le format Hyperfocale — un standard de **séries photo pour le web**, portable entre SSG (Astro, Next.js, Hugo, 11ty...), vaults Obsidian, et CMS headless (Strapi, Sanity, Payload...). Le travail qui précède la publication — projets, originaux, sélection — relève d'**Hyperfocus** ([`spec-hyperfocus.md`](https://github.com/izo/hyperfocus/blob/main/spec-hyperfocus.md)), qui découle de cette spec. Toute évolution du format doit être proposée d'abord ici, dans ce dépôt.
 
 **Version** : 2.14-draft
 **Statut** : spécification active — source de vérité canonique
@@ -300,7 +300,7 @@ Les dix profils de l'annexe sont couverts depuis la v0.14.0. Depuis la 2.14, le 
 - **Producteur G.12** : un projet est un dossier `<slug>/index.md` + `media/` portant les originaux ; `draft: true` toujours écrit, aucun `type`, bloc `project:` et `iptc:`. Le fichier fait foi, les champs inconnus et le body sont préservés.
 - **Export vers une série** (« Exporter en série web… ») : nouveau dossier `<slug>/`, `media/` d'images rendues seulement, sans bloc `project:` — la voie de publication que la v2.11 prescrit.
 - **Écart** : vérifié contre les règles de §0 et G.12, pas contre les fixtures de `fixtures/ingestion/`, absentes du dépôt.
-- **Hyperfocus (2.14)** : G.12 est repris par Hyperfocus (`spec-hyperfocus.md`, en rédaction). Le vault produit encore un dossier **sans** `type: project` ; sa conformité à Hyperfocus n'est pas relevée.
+- **Hyperfocus (2.14)** : G.12 est repris par Hyperfocus ([`spec-hyperfocus.md`](https://github.com/izo/hyperfocus/blob/main/spec-hyperfocus.md), en rédaction). Le vault produit encore un dossier **sans** `type: project` ; sa conformité à Hyperfocus n'est pas relevée.
 
 ### Site `hyperfocale.app`
 
@@ -848,7 +848,7 @@ La classification se fait par extension de fichier — partie du nom qui suit so
 
 #### Originaux *(introduit v2.11)*
 
-Un dossier de travail — un projet photo géré à la source dès la prise de vue (Hyperfocus, `spec-hyperfocus.md`) — porte dans `media/` les fichiers sortis du boîtier et ceux des logiciels de développement : les RAW, et les fichiers annexes (*sidecars*) qui décrivent leurs réglages. Ce sont des **originaux**. Ils ne sont pas faits pour être montrés : un RAW ne s'affiche pas dans un navigateur, un `.xmp` n'est lisible que par un logiciel, et ni l'un ni l'autre n'a vocation à sortir du dossier.
+Un dossier de travail — un projet photo géré à la source dès la prise de vue (Hyperfocus, [`spec-hyperfocus.md`](https://github.com/izo/hyperfocus/blob/main/spec-hyperfocus.md)) — porte dans `media/` les fichiers sortis du boîtier et ceux des logiciels de développement : les RAW, et les fichiers annexes (*sidecars*) qui décrivent leurs réglages. Ce sont des **originaux**. Ils ne sont pas faits pour être montrés : un RAW ne s'affiche pas dans un navigateur, un `.xmp` n'est lisible que par un logiciel, et ni l'un ni l'autre n'a vocation à sortir du dossier.
 
 | Catégorie | Extensions (liste fermée, insensible à la casse) |
 |-----------|--------------------------------------------------|
@@ -3169,7 +3169,7 @@ Un profil ne DOIT jamais : renommer un champ core, modifier le slug regex, suppr
 
 ### G.12 — Profil Projet : passé dans Hyperfocus *(introduit v2.11, retiré en v2.14)*
 
-Le profil Projet décrivait un dossier de travail — un projet photo suivi à la source, avec ses originaux, son client et ses échéances. Ce n'est pas un contenu publié : il relève d'**Hyperfocus** (`spec-hyperfocus.md`), qui découle de cette spec.
+Le profil Projet décrivait un dossier de travail — un projet photo suivi à la source, avec ses originaux, son client et ses échéances. Ce n'est pas un contenu publié : il relève d'**Hyperfocus** ([`spec-hyperfocus.md`](https://github.com/izo/hyperfocus/blob/main/spec-hyperfocus.md)), qui découle de cette spec.
 
 | Ce que décrivait G.12 | Où le trouver |
 |---|---|
@@ -3198,7 +3198,7 @@ Un dossier G.12 existant reste lisible par Hyperfocus : c'est un projet auquel i
 #### Hyperfocale, spec photo pour le web ; le travail à la source passe dans Hyperfocus
 
 **Modifications** :
-- En-tête, §0 (*Ce que n'est PAS le format*) et Philosophie : Hyperfocale est une spec de **séries photo pour le web**. Le travail qui précède la publication relève d'**Hyperfocus** (`spec-hyperfocus.md`), qui découle de cette spec.
+- En-tête, §0 (*Ce que n'est PAS le format*) et Philosophie : Hyperfocale est une spec de **séries photo pour le web**. Le travail qui précède la publication relève d'**Hyperfocus** ([`spec-hyperfocus.md`](https://github.com/izo/hyperfocus/blob/main/spec-hyperfocus.md)), qui découle de cette spec.
 - **G.12 — Profil Projet est retiré** de l'annexe et remplacé par un renvoi vers Hyperfocus (tableau de correspondance). §1.9, §2.0.1, §4.11, G.11 et la vue d'ensemble de l'Annexe G alignés ; §2.0.1 compte désormais **dix** presets non photo.
 - **Annexe G** : les profils sont des **extensions hors noyau** — normatifs pour qui les implémente, jamais requis pour la conformité au noyau (§2.0).
 - **§1.3** : la valeur `type: project` est **réservée à Hyperfocus**. L'ingestion la refuse déjà (`type-invalid`) ; un adaptateur DEVRAIT la refuser explicitement plutôt que d'afficher le dossier.
@@ -3213,7 +3213,7 @@ Un dossier G.12 existant reste lisible par Hyperfocus : c'est un projet auquel i
 
 **Aucune fixture ne change.** `invalid-type-invalid` (valeur `galerie`) n'est pas concernée ; le corpus `originals` reste le témoin de la garde.
 
-**Dépendances** : la 2.13 ([#38](https://github.com/izo/hyperfocale-spec/pull/38)) est fusionnée. Cette version renvoie à **Hyperfocus**, une spec distincte qui aura son **propre dépôt** : les renvois nomment Hyperfocus et ses sections (`Hyperfocus §5`), sans lien tant que ce dépôt n'existe pas. Aucune fusion simultanée n'est requise.
+**Dépendances** : la 2.13 ([#38](https://github.com/izo/hyperfocale-spec/pull/38)) est fusionnée. Cette version renvoie à **Hyperfocus**, une spec distincte qui a son **propre dépôt**, [izo/hyperfocus](https://github.com/izo/hyperfocus) : les renvois nomment Hyperfocus et ses sections (`Hyperfocus §5`) et pointent vers lui. Aucune fusion simultanée n'est requise.
 
 **Justification** : cadrage du 2026-10-25 ([#36](https://github.com/izo/hyperfocale-spec/issues/36)) — Hyperfocus reprend la gestion de projet et le côté photo en amont ; Hyperfocale reste la spec photo pour le web.
 
