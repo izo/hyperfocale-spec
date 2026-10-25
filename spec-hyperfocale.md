@@ -3213,7 +3213,7 @@ Un dossier G.12 existant reste lisible par Hyperfocus : c'est un projet auquel i
 
 **Aucune fixture ne change.** `invalid-type-invalid` (valeur `galerie`) n'est pas concernée ; le corpus `originals` reste le témoin de la garde.
 
-**Dépendances** : cette version suppose la 2.13 ([#38](https://github.com/izo/hyperfocale-spec/pull/38)) et renvoie à `spec-hyperfocus.md`, qui vit sur la branche `spec/projet` : les deux doivent être fusionnées ensemble ou dans cet ordre.
+**Dépendances** : la 2.13 ([#38](https://github.com/izo/hyperfocale-spec/pull/38)) est fusionnée. Cette version renvoie à **Hyperfocus**, une spec distincte qui aura son **propre dépôt** : les renvois nomment Hyperfocus et ses sections (`Hyperfocus §5`), sans lien tant que ce dépôt n'existe pas. Aucune fusion simultanée n'est requise.
 
 **Justification** : cadrage du 2026-10-25 ([#36](https://github.com/izo/hyperfocale-spec/issues/36)) — Hyperfocus reprend la gestion de projet et le côté photo en amont ; Hyperfocale reste la spec photo pour le web.
 
