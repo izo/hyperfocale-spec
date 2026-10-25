@@ -73,4 +73,4 @@ Le profil Projet décrit un **dossier de travail** géré dès la prise de vue :
 
 ## Statut
 
-`v2.15-draft` — spécification active, source de vérité canonique. Voir le **Changelog** en fin de `spec-hyperfocale.md` pour l'historique des révisions.
+`v2.16-draft` — spécification active, source de vérité canonique. Voir le **Changelog** en fin de `spec-hyperfocale.md` pour l'historique des révisions.
