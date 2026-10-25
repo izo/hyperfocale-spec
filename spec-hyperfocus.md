@@ -1,9 +1,9 @@
 # Spécification — Hyperfocus
 
-> **En rédaction.** **Hyperfocus** est le format du **dossier de travail** de l'écosystème Hyperfocale : un projet suivi à la source, de la première prise de contact à la livraison. Il se sépare de la spec web (`spec-hyperfocale.md`), qui décrit un contenu fait pour être publié. Les sections 1, 2, 4 et 5 sont rédigées au futur contrat (DOIT / PEUT) mais rien n'est encore figé : tant que le statut est « en rédaction », les décisions sont réversibles (§D). Réflexion d'origine : [#36](https://github.com/izo/hyperfocale-spec/issues/36).
+> **En rédaction.** **Hyperfocus** est le format du **dossier de travail** de l'écosystème Hyperfocale : un projet suivi à la source, de la première prise de contact à la livraison. Il se sépare de la spec web (`spec-hyperfocale.md`), qui décrit un contenu fait pour être publié. Toutes les sections sont rédigées au futur contrat (DOIT / PEUT) mais rien n'est encore figé : tant que le statut est « en rédaction », les décisions sont réversibles (§D). Réflexion d'origine : [#36](https://github.com/izo/hyperfocale-spec/issues/36).
 
-**Version** : 0.10-draft
-**Statut** : en rédaction — §1, §2, §4, §5 et §9 rédigés ; §3, §6 et §7 restent des esquisses
+**Version** : 0.11-draft
+**Statut** : en rédaction — toutes les sections ont une première rédaction ; §0 et §8 restent à compléter
 **Dernière révision** : 2026-10-25
 **Socle** : `spec-hyperfocale.md` 2.12-draft. La 2.13-draft en cours ([#37](https://github.com/izo/hyperfocale-spec/issues/37)) règle trois points dont ce document dépend : `date` portée par la collection, `media/` facultatif sans fichier local, ordre alphabétique défini.
 
@@ -76,7 +76,7 @@ Projets/                        ← rangement, profondeur libre
 | Jamais deviné | Un outil NE DOIT PAS reconnaître un projet à la présence d'un bloc `project:`, à l'absence de `date` ou à la forme du dossier : seul `type` compte, comme pour une section de la spec web (§1.10 web). |
 | Un fichier, un rôle | `type` n'admet qu'une valeur par fichier : un `index.md` de projet n'est ni une série ni une section. |
 | Dossier voisin | Un `index.md` sans `type: project`, rencontré dans un projet, n'est pas un projet — par exemple l'export HTML d'un site rangé dans un dossier de travail. |
-| Lecteur de la spec web | Une ingestion web refuse la valeur (`type-invalid`, §4.10 web) et bloque donc la publication d'un dossier projet confié par erreur à un pipeline web. Un adaptateur web qui ne connaît pas la valeur la traite comme un champ inconnu (passthrough) et lit le dossier comme une série ; c'est pourquoi un outil qui crée un projet écrit aussi `draft: true`, aussi longtemps que cette compatibilité compte (§7). |
+| Lecteur de la spec web | Une ingestion web refuse la valeur (`type-invalid`, §4.10 web) et bloque donc la publication d'un dossier projet confié par erreur à un pipeline web. Le plugin Astro de référence la refuse aussi : son schéma énumère `type` (`series` ou `section`), et le build échoue sur ce dossier (relevé sur `main@f8d1a52`, `src/schema.ts`). Cet échec bruyant est le comportement voulu. Un adaptateur qui ne valide pas `type` lirait en revanche le dossier comme une série ; c'est pourquoi un outil qui crée un projet écrit aussi `draft: true` (§7). |
 
 ### 1.3 — Nom du dossier *(décision D5)*
 
@@ -211,7 +211,20 @@ Dépendances entre tâches ou projets (relations) ; avancement stocké (donnée 
 
 ## 3 — Lots et sous-lots
 
-Un sous-dossier dont l'`index.md` déclare `type: project` est un lot (§1.5, décision D7) ; un `index.md` sans cette déclaration n'en fait pas un lot. *Pistes* : un lot porte son propre bloc `project:` ; il n'hérite de rien de son parent ; le statut d'un projet ne se calcule jamais à partir de ses lots ; la profondeur est libre (décision D4).
+Un **lot** est un projet situé dans un projet : un sous-dossier dont l'`index.md` déclare `type: project` (§1.5, décision D7). Une grosse commande se découpe ainsi en morceaux qu'on suit séparément — les maquettes, l'intégration, la livraison.
+
+| Règle | Description |
+|-------|-------------|
+| Un lot est un projet | Il suit les mêmes règles que tout projet : nom libre (§1.3), titre affiché (§1.4), frontmatter (§2), `media/` à lui, dossiers de travail à lui. |
+| Rien n'est hérité | Un lot a son propre bloc `project:`. Il ne reprend du projet parent ni statut, ni client, ni échéance, ni tâche. |
+| Rien n'est calculé | Le statut d'un projet ne se déduit jamais de ses lots, ni l'inverse. Un outil PEUT afficher une vue agrégée (« 2 lots sur 3 livrés ») ; elle n'est écrite nulle part. |
+| Profondeur libre | Un lot peut contenir des lots, sans limite (décision D4). Les rangements sont admis entre deux niveaux (§1.5). La limite d'un niveau de la spec web (§1.8 web) vient de ses routes et ne s'applique pas ici. |
+| Identité | Le chemin du lot relatif à la racine de l'espace de projets (§1.3). |
+| Déplacer | Déplacer un lot hors de son projet est un geste de l'utilisateur (§4.2). |
+| Quoi faire ensuite | Un lot est un élément à part entière de §4.6 : il est retenu s'il est `en-cours` **lui-même**. Un lot sans statut n'est pas retenu par défaut ; un outil PEUT proposer d'en renseigner un. Le projet parent est cité avec le lot, pour le situer. |
+| Export | Un lot s'exporte seul (§5.4). |
+
+**Un projet copié dans un projet devient un lot.** Le critère est mécanique (§1.5) : une copie archivée d'un projet, rangée dans un dossier de travail, porte toujours `type: project` et est donc découverte comme lot — et le dossier qui la contient cesse d'être opaque (§1.6). Ce n'est pas un défaut : une copie de projet est un projet. Pour ranger une copie sans la faire découvrir, il faut en retirer le `type: project`.
 
 ---
 
@@ -253,7 +266,7 @@ Trois niveaux, du moins au plus engageant :
 
 ### 4.3 — Opérations
 
-Dix opérations, liste fermée dans cette version. Chacune a un identifiant stable, des arguments, des préconditions, et un effet exact sur les fichiers ; les opérations d'écriture portent des fixtures avant / après (§8) pour que deux outils produisent le même fichier.
+Onze opérations, liste fermée dans cette version. Chacune a un identifiant stable, des arguments, des préconditions, et un effet exact sur les fichiers ; les opérations d'écriture portent des fixtures avant / après (§8) pour que deux outils produisent le même fichier.
 
 | Identifiant | Arguments | Effet | Précondition |
 |-------------|-----------|-------|--------------|
@@ -266,6 +279,7 @@ Dix opérations, liste fermée dans cette version. Chacune a un identifiant stab
 | `add-journal-entry` | `project`, `text` | Ajoute à la fin du body un bloc daté (§4.4). | `text` non vide. |
 | `capture` | `text` | Crée une note dans `inbox/` (§4.5). | `text` non vide. |
 | `file-note` | `note`, `project` | Ajoute le texte de la note au journal du projet et supprime la note de `inbox/`. Les deux effets figurent dans la proposition. | La note existe ; le projet existe. |
+| `adopt-project` | `project` | Insère `type: project` comme première clé du frontmatter. Rien d'autre ne change (§7.3). | L'`index.md` est lisible et ne porte aucun `type`. |
 | `export` | `project`, `destination`, `images` (liste ordonnée), `naming`, `slug?`, `title?`, `date?`, `draft?`, `body?` | Crée un nouveau dossier de série (§5). | `destination` hors du projet ; `<slug>` absent de `destination` ; `date` connue ; `images` non vide et tous présents. |
 
 | Règle commune | Description |
@@ -387,14 +401,95 @@ Un projet livré peut aussi alimenter une entrée de portfolio (G.7 web), par ex
 
 ## 6 — Interopérabilité
 
-- Projet ↔ `schema.org/CreativeWork` (`project.status` → `creativeWorkStatus`), comme G.12.
-- *Piste* : tâches ↔ iCalendar VTODO — `title` → `SUMMARY`, `due` → `DUE`, `done` → `STATUS:COMPLETED`, `priority` → `PRIORITY` — pour un export `.ics`.
+Hyperfocus échange avec d'autres formats **dans un seul sens** : il produit, il ne relit pas. Rien de ce qu'un calendrier ou un annuaire écrit ne revient modifier un projet.
+
+### 6.1 — schema.org
+
+Entre outils, un projet s'aligne sur `schema.org/CreativeWork`, comme le faisait G.12. Aucun balisage public n'est émis : un projet n'est pas publié (§5).
+
+| Hyperfocus | schema.org | Note |
+|------------|------------|------|
+| Titre affiché (§1.4) | `name` | |
+| `description` | `description` | |
+| `date` | `dateCreated` | Approximation : c'est la date de début ou de prise de vue. |
+| `project.status` | `creativeWorkStatus` | Le slug tel quel. |
+| `location` | `locationCreated` | |
+
+`project.client`, `project.contact` et les échéances n'ont pas de correspondance : ce sont des données privées (§2.2) et elles ne sortent pas.
+
+### 6.2 — iCalendar (VTODO)
+
+Les tâches et l'échéance d'un projet se produisent en **iCalendar** (RFC 5545), pour apparaître dans Rappels, Things ou un calendrier.
+
+| Hyperfocus | VTODO |
+|------------|-------|
+| `tasks[].title` | `SUMMARY` |
+| `tasks[].due` | `DUE;VALUE=DATE` |
+| `tasks[].done` | `STATUS:COMPLETED` si `true`, `STATUS:NEEDS-ACTION` sinon |
+| `project.due` | un VTODO à part, `SUMMARY` : titre affiché + « — échéance » |
+| Titre affiché du projet | `CATEGORIES` (PEUT), pour regrouper par projet |
+
+```
+BEGIN:VTODO
+UID:<sha256>@hyperfocus
+SUMMARY:Envoyer la sélection
+DUE;VALUE=DATE:20260620
+STATUS:NEEDS-ACTION
+END:VTODO
+```
+
+| Règle | Description |
+|-------|-------------|
+| `UID` | `hex(SHA-256(utf8(<chemin du projet> + "\n" + <clé>)))` suivi de `@hyperfocus`. Le chemin est celui de §1.3, en NFC. La clé est la position de la tâche dans `tasks` (décimal, à partir de 0), ou `due` pour l'échéance du projet. Tant que les tâches ne sont pas réordonnées à la main, un `.ics` régénéré garde les mêmes `UID`. |
+| Un sens | Rien n'est relu du calendrier. Une tâche cochée dans Rappels ne change pas `done` : on la coche dans le projet (§4.3). |
+| Consentement | Produire un `.ics` est une lecture (§4.2). L'écrire dans un fichier ou l'envoyer à un service est un geste de l'utilisateur : les titres de tâches et de projets sont des données privées qui quittent le dossier. |
+| Non rédigé | Les dates des livrables (`deliverables[].date`) n'ont pas de correspondance dans cette version. |
 
 ---
 
 ## 7 — Compatibilité avec les dossiers G.12
 
-*À rédiger* : un dossier G.12 existant (sans `type`, `draft: true`) reste lisible ; migration vers `type: project` ; G.12 devient dans la spec web un renvoi vers ce document.
+Le profil Projet de la spec web (G.12, v2.11) a précédé Hyperfocus. Un dossier G.12 reste lisible ; il devient un projet Hyperfocus par **une seule ligne**.
+
+### 7.1 — Ce qui ne change pas
+
+Le bloc `project:` et ses champs (`status`, `stage`, `client`, `contact`, `start`, `end`, `due`, `deliverables`, `tasks`), les quatre statuts (`prospect`, `en-cours`, `livre`, `archive`), `draft: true` écrit à la création, la publication par export, la préservation des champs inconnus et du body. Un nom de dossier G.12 est un slug, donc un nom valide (§1.3). Les champs propres à la spec web qu'un dossier G.12 porte encore (`attachments`, `iptc`) sont préservés comme tout champ inconnu ; l'export ne reprend que `iptc` (§5.2).
+
+### 7.2 — Ce qui change
+
+| | G.12 | Hyperfocus |
+|---|---|---|
+| Discriminant | aucun `type` (un `type` y est interdit hors `series` et `section`) | `type: project`, requis (§1.2) |
+| `date` | requise | facultative (§2.1) |
+| `title` | requis | facultatif (§1.4) |
+| Nom du dossier | slug | libre (§1.3) |
+| Statuts | quatre | six : `en-pause` et `abandonne` s'ajoutent (§2.3) |
+| Profondeur | un niveau (§1.8 web) | libre (§3) |
+
+Hyperfocus est un **sur-ensemble** : tout ce qu'un dossier G.12 déclare reste vrai, à l'exception du discriminant.
+
+### 7.3 — Migration
+
+| Règle | Description |
+|-------|-------------|
+| Une ligne | Migrer, c'est ajouter `type: project` au frontmatter. Rien d'autre ne change. |
+| Pas de déduction | Un dossier qui porte un bloc `project:` sans `type` n'est **pas** un projet Hyperfocus (§1.2). Un outil PEUT le signaler comme *candidat* ; il ne l'adopte jamais de lui-même (§4.2). |
+| Opération | `adopt-project` (§4.3) ajoute la ligne, sur confirmation. |
+| Outils antérieurs | Un outil qui ne connaît que G.12 lit un projet migré sans le comprendre : il voit un champ `type` inconnu. Voir §7.4 pour le plugin Astro. |
+
+### 7.4 — Lecteurs web
+
+| Lecteur | Devant `type: project` |
+|---------|------------------------|
+| Ingestion web (§4.10 web) | `type-invalid`, erreur : la publication est bloquée. |
+| Plugin Astro `@regrets/hyperfocale` 0.20.0 | Le schéma refuse la valeur : le build échoue sur ce dossier (`src/schema.ts`, `main@f8d1a52`). |
+| Adaptateur qui ne valide pas `type` | Lit le dossier comme une série en brouillon (`draft: true`). |
+
+Conséquence pour le preset `project` du plugin (collection `work`, prefix `/suivi`, G.12) : il ne lit plus un dossier migré. Deux issues, à trancher avec le plugin (décision D18) : accepter `project` dans l'énumération de `type`, ou retirer le preset, puisque G.12 passe dans Hyperfocus (§9). Tant que la question est ouverte, **un dossier migré ne se place pas dans le contenu d'un site Astro**.
+
+### 7.5 — Dans la spec web
+
+G.12 devient, dans `spec-hyperfocale.md`, un renvoi vers ce document (§9.3) : sa vue d'ensemble, §2.0.1 et le changelog cessent de décrire le projet comme un profil web.
 
 ---
 
@@ -470,11 +565,25 @@ Ces changements touchent `spec-hyperfocale.md` : ils sont faits sur sa propre br
 | D15 | Les profils non photo d'Hyperfocale (G.1 à G.11) face à « Hyperfocale reste une spec photo pour le web » | **Retenue (0.8)** : ils restent dans la spec web, reclassés en **extensions hors noyau**. Le noyau d'Hyperfocale promet la photo pour le web ; l'Annexe G dit que le squelette peut porter d'autres contenus. Aucun preset, plugin ni site ne change. La reformulation de §0 et de l'Annexe G est un travail de la spec web (2.14) |
 | D16 | Format du journal (§4.4) | Ouverte : un bloc `### AAAA-MM-JJ` ajouté à la fin du body. À confirmer à l'usage ; alternatives : un fichier `journal.md` dans le dossier, ou un champ du frontmatter |
 | D17 | Cible portfolio (G.7 web) et confidentialité du client | Ouverte : le nom d'un client ne sort que sur demande explicite, champ par champ ; mapping non rédigé (§5.6) |
+| D18 | Preset `project` du plugin Astro face à `type: project` | Ouverte : accepter `project` dans l'énumération de `type`, ou retirer le preset, G.12 passant dans Hyperfocus (§7.4) |
 | D14 | L'annexe C (IPTC ↔ EXIF) | Ouverte : reste côté web tant que des adaptateurs extraient l'EXIF ; pourrait être partagée avec Hyperfocus (chaîne Lightroom) |
 
 ---
 
 ## Changelog
+
+### 0.11-draft — 2026-10-25
+
+**Rédigé** : §3 (lots), §6 (schema.org, iCalendar VTODO) et §7 (compatibilité G.12). Toutes les sections ont désormais une première rédaction ; §0 et §8 restent à compléter.
+
+**Correction** : §1.2 affirmait qu'un adaptateur web qui ne connaît pas `type: project` le traite comme un champ inconnu. C'est faux pour le plugin Astro de référence : son schéma énumère `type` (`series` | `section`), et le build **échoue** sur un dossier `type: project`. §1.2 le dit désormais, avec la référence du code.
+
+**Décisions** :
+- **Un lot est un projet** : rien d'hérité, rien de calculé, profondeur libre ; un lot est retenu par « quoi faire ensuite » s'il est `en-cours` lui-même. Une copie de projet rangée dans un projet est découverte comme lot.
+- **Interop à sens unique** : schema.org (sans client ni contact) et iCalendar VTODO (tâches et échéance), `UID` déterministe tiré du chemin et de la position. Rien n'est relu d'un calendrier.
+- **Hyperfocus est un sur-ensemble de G.12** : migrer, c'est ajouter `type: project` ; onzième opération, `adopt-project`, sur confirmation. Un dossier G.12 n'est jamais adopté de lui-même.
+
+**Ouvert** : D18 — le preset `project` du plugin Astro face à `type: project`.
 
 ### 0.10-draft — 2026-10-25
 
