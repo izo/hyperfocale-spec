@@ -2,7 +2,7 @@
 
 > **Source de vérité canonique.** Ce document définit le format Hyperfocale — un standard de **séries photo pour le web**, portable entre SSG (Astro, Next.js, Hugo, 11ty...), vaults Obsidian, et CMS headless (Strapi, Sanity, Payload...). Le travail qui précède la publication — projets, originaux, sélection — relève d'**Hyperfocus** ([`spec-hyperfocus.md`](https://github.com/izo/hyperfocus/blob/main/spec-hyperfocus.md)), qui découle de cette spec. Toute évolution du format doit être proposée d'abord ici, dans ce dépôt.
 
-**Version** : 2.14-draft
+**Version** : 2.15-draft
 **Statut** : spécification active — source de vérité canonique
 **Dernière révision** : 2026-10-25
 
@@ -2095,7 +2095,7 @@ guardChangeSet(changeSet, base, target, { read, policy }) → diagnostics
 | `guard-oversize` | error | entrée de `publishable(target)` dont la taille dépasse `maxFileBytes[kind]` | l'entrée |
 | `guard-originals-excluded` | info | `target` porte au moins une entrée originale, retirée du snapshot publié. Le diagnostic porte `count`, le nombre d'entrées originales, et `bytes`, la somme de leurs `size` (entiers) | `""` |
 
-- **Série** : dossier porteur d'un fichier index (§4.10). **Série supprimée** : dossier porteur dans `base`, qui ne l'est plus dans `target`, et dont aucun fichier index n'est la source (`from`) d'un `moved`. **Série déplacée** : dossier distinct parmi les `from` des `moved` qui désignent un fichier index. **Médias supprimés** : entrées `media` de `deleted`, rapportées au nombre d'entrées `media` de `base`. Une série déplacée n'est jamais comptée comme supprimée.
+- **Série** : dossier porteur d'un fichier index (§4.10). Les pages d'index de section (`type: section`, §1.10) en sont, **par prudence** *(précisé en v2.15)* : une section supprimée ou déplacée compte comme une série supprimée ou déplacée, ce qui rend les seuils `maxDeletedSeries` et `maxMovedSeries` plus stricts, jamais plus lâches. La garde ne lit pas le `type` d'un dossier pour compter. **Série supprimée** : dossier porteur dans `base`, qui ne l'est plus dans `target`, et dont aucun fichier index n'est la source (`from`) d'un `moved`. **Série déplacée** : dossier distinct parmi les `from` des `moved` qui désignent un fichier index. **Médias supprimés** : entrées `media` de `deleted`, rapportées au nombre d'entrées `media` de `base`. Une série déplacée n'est jamais comptée comme supprimée.
 - **Série privée** : au moins un de ses fichiers index, à l'état `materialized`, déclare `private: true` — un **booléen** YAML (schéma core : `true`, `True`, `TRUE`). La chaîne `"true"` ne rend pas une série privée. Le frontmatter se lit selon les règles 4 à 7 de §4.10. Un fichier index est **illisible** s'il n'est pas à l'état `materialized` (`placeholder`, `conflict`), si ses octets divergent de son hash, ou si son frontmatter ne se lit pas (UTF-8 invalide, bloc absent, YAML illisible ou qui n'est pas un mapping). La garde est **fail-closed côté `base`** : un fichier index illisible y rend la série privée par prudence. Côté `target`, un fichier illisible ne déclare rien : une série privée dans `base` dont l'homologue est illisible est donc exposée. La garde lit tous les fichiers index de chaque série de `base`, puis ceux de la série homologue dans `target` quand la série de `base` est privée.
 - **Exposition** : une série privée dans `base` est présente dans `target` au même chemin si le dossier y porte encore un fichier index, sinon à la destination (dossier du `to`) du premier de ses fichiers index déplacés, dans l'ordre canonique. Si elle n'y est plus privée, `guard-private-exposed` porte sur ce dossier de `target`. La **suppression** d'une série privée n'est pas une exposition.
 - `private` n'est pas un champ du format : c'est une extension de site (§0.5), la seule marque de confidentialité que connaissent les consommateurs actuels. La garde s'applique aux corpus qui l'emploient ; un corpus qui ne l'emploie pas ne la déclenche jamais.
@@ -3220,6 +3220,40 @@ Un dossier G.12 existant reste lisible par Hyperfocus : c'est un projet auquel i
 ---
 
 ## Changelog
+
+### 2.15-draft — 2026-10-25
+
+Suite de la revue de cohérence de la 2.12 ([#37](https://github.com/izo/hyperfocale-spec/issues/37)) : les points restants. **Aucune fixture ne change** et la couche 4 garde son comportement ; plusieurs règles de la couche 1 se précisent.
+
+#### Listing, brouillons, identité (§0, §1.3, §1.6, §1.8, §1.10)
+
+- **Tri** : seule la date calendaire compte (l'heure éventuelle est ignorée) ; à date égale, titre croissant puis chemin, sur les octets UTF-8 en NFC ; les séries sans date viennent après les datées (points 9).
+- **`draft`** : en production, ni page, ni listing, ni flux, ni sitemap ; **ce n'est pas une protection d'accès aux fichiers** — l'ingestion copie ceux d'un brouillon (10).
+- **Un rangement peut s'intercaler entre un conteneur et une sous-série** ; le parent d'une série est son plus proche ancêtre porteur d'un `index.md` ; `nesting-too-deep` ne compte pas les rangements (11).
+- **Un `index.md` à la racine du corpus déclare `type: section`** (12). **`index.mdx`** est admis, `index.md` fait foi (13).
+- **Codes de langue** : deux lettres, région possible (`pt-BR`), pour `lang` comme pour `translations` (15).
+
+#### Annexes et profils (Annexes A, B, F, G ; §2.5)
+
+- Annexe A : `cover` vérifié selon le cas (image de `media/`, ou d'un contenu regroupé) ; Annexe B : les anciens `tags` ne migrent pas tous sous `iptc.keywords` ; Annexe F : « quatre » stratégies (16 à 18).
+- **Règles communes de G** : ordre de tri propre à un profil, fichiers désignés par un nom ou `./media/<nom>`, vocabulaires fermés en slugs ASCII pour les profils nouveaux ; G.11 : un profil peut déclarer des champs requis ; `type` rangé dans le core (4, 19, 20, 21).
+- **G.6** : `next` et `prev` désignent un écran par son chemin et ne sont pas des jointures (4).
+- §2.5 : le plugin Obsidian découvre les séries récursivement (24).
+
+#### Architecture, périmètre, types (Architecture, Philosophie, §3, §2.1)
+
+- La couche 2 est normative par son **contrat d'adaptateur** ; ses descriptions par plateforme sont des exemples ; la couche 3 est une recommandation (3).
+- Périmètre : §1.5.1 est cité comme borne de l'éditeur (5).
+- **Types partagés** : `Series.path`, `date` et `cover` optionnels, `tags`, `featured`, `embeds` ; interface `Embed` et composant `SeriesEmbeds` (14).
+- §2.1 : noms de paquet réels (`@regrets/hyperfocale`), schéma présenté comme illustratif ; exemple G.3 sans Tauri (23).
+
+#### Garde de publication (§4.11)
+
+- Les sections comptent comme des séries dans les seuils, **par prudence** : le choix est maintenant écrit, le comportement ne change pas (22).
+
+**Décisions normatives**, toutes **prises sur recommandation et réversibles** : l'égalité de date départagée par titre puis chemin ; l'absence de page d'un brouillon ; la sous-série à travers un rangement ; `index.md` qui fait foi sur `index.mdx` ; les codes de langue avec région.
+
+**Écart consigné** : le plugin Astro ne retient pas, dans `getSubSeries()`, une série atteinte à travers un rangement (§0.5).
 
 ### 2.14-draft — 2026-10-25
 
