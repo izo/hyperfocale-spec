@@ -161,7 +161,7 @@ Section informative — un audit de conformité des implémentations connues, mi
 
 ### Plugin Astro `@regrets/hyperfocale` (v0.20.0, publiée sur npm le 2026-10-21)
 
-**Conformité** : ✅ Conforme sur le contrat d'adaptateur (§2.0), obligations v2.6 comprises, aligné sur les profils de l'Annexe G depuis la v0.12.0, et **§1.11 (contenus embarqués) implémentée depuis la v0.17.0** — plus aucune obligation ouverte. **La couche 4 (ingestion) est implémentée depuis la v0.19.0** : les 109 fixtures cross-language de la spec (`main@18f48de`) passent toutes. **Les deux obligations rouvertes par la v2.11 sont refermées en v0.20.0** (fusionnée le 2026-10-20, publiée sur npm le 2026-10-21) : les originaux (§1.9) et leur exclusion par la garde de publication (§4.11). Un site resté sur la 0.19.0 ne doit pas recevoir de dossier de travail (G.12).
+**Conformité** : ✅ Conforme sur le contrat d'adaptateur (§2.0), obligations v2.6 comprises, aligné sur les profils de l'Annexe G depuis la v0.12.0, et **§1.11 (contenus embarqués) implémentée depuis la v0.17.0** — plus aucune obligation ouverte. **La couche 4 (ingestion) est implémentée depuis la v0.19.0** : les 109 fixtures cross-language de la spec (`main@18f48de`) passent toutes. **Les deux obligations rouvertes par la v2.11 sont refermées en v0.20.0** (fusionnée le 2026-10-20, publiée sur npm le 2026-10-21) : les originaux (§1.9) et leur exclusion par la garde de publication (§4.11). Un site resté sur la 0.19.0 ne doit pas recevoir de dossier de travail (G.12). La 2.13 ouvre un écart hors du contrat §2.0 : la forme de la route de pagination (§1.6).
 
 > Le paquet s'appelait `@izo/hyperfocale` jusqu'au 2026-08-04. Le scope `@izo` ne correspondait à aucun compte npm et aucune version n'avait jamais été publiée sous ce nom : le renommage n'a rien cassé.
 
@@ -183,6 +183,7 @@ Section informative — un audit de conformité des implémentations connues, mi
 | Garde : originaux (§4.11, v2.11) | ✅ | **v0.20.0** : `publishable(snapshot)`, `guard-originals-excluded` (`count`, `bytes`), `guard-oversize` sur la projection, règle 12 de §4.10. Fixtures rejouées sur `main@51cbf73` (207 fichiers) |
 | Ingestion (couche 4) | ✅ | Implémentée en **v0.19.0**, en quatre sous-chemins **additifs** : `/ingest` (contrat, agnostique du runtime), `/ingest/fs`, `/ingest/dropbox`, `/ingest/webdav`, plus les commandes `validate`, `snapshot` et `diff` du CLI. Les 109 fixtures de `fixtures/ingestion/` (`main@18f48de`) sont copiées à une ref épinglée et rejouées en totalité. L'entrée racine n'atteint aucun code d'ingestion : rien ne change pour un site qui ne l'importe pas |
 | Contenus embarqués (§1.11) | ✅ | Implémentés en **v0.17.0** : champ `embeds`, `getSeriesEmbeds()` (résolution dans l'ordre du tableau, `playable` = plateforme reconnue + `id` présent), `<SeriesEmbeds>` rendu **en façade** (le poster s'affiche, l'iframe n'arrive qu'au clic ; sans JavaScript la façade reste un lien fonctionnel), liste de plateformes ouverte (valeur inconnue → repli en lien), posters exclus du scan de galerie. Vocabulaires (`EMBED_PLATFORMS`, `ATTACHMENT_KINDS`) exportés à la racine en v0.17.1 |
+| URLs (§1.6, v2.13) | ⚠️ | Routes injectées sur l'`id` du loader, c'est-à-dire sur le chemin (`${prefix}/[...slug]/`) : règle *Identité* respectée. Pagination encore à l'ancienne forme, `${prefix}/[...slug]/[page]/` : dès que la galerie d'un conteneur `festival` dépasse une page, sa page 2 et sa sous-série `2` prennent la même route `/series/festival/2/`. Relevé sur `main@f8d1a52` |
 | Passthrough racine (champs inconnus) | ✅ | `z.looseObject()` racine — les extensions site-spécifiques ne sont jamais rejetées (v0.4.0) |
 | Tri date desc | ✅ | |
 
@@ -708,10 +709,17 @@ Un adaptateur antérieur à v2.6 ignore le fichier et ne trouve aucune image (`m
 | Route | Description |
 |-------|-------------|
 | `/<prefix>/` | Liste de toutes les séries |
-| `/<prefix>/<slug>/` | Page d'une série (body + galerie) |
-| `/<prefix>/<slug>/<page>/` | Pages suivantes (à partir de la page 2) |
+| `/<prefix>/<chemin>/` | Page d'une série (body + galerie) |
+| `/<prefix>/<chemin>/page/<n>/` | Pages suivantes de la galerie, `<n>` ≥ 2 |
 
-Le `<prefix>` est configurable par l'adaptateur (défaut recommandé : `series`).
+Le `<prefix>` est configurable par l'adaptateur (défaut recommandé : `series`). `<chemin>` est le chemin du dossier de la série relatif à la racine de la collection, segments de rangement compris (§1.2) ; il peut donc compter plusieurs segments. Pour la forme canonique `<content-root>/series/<slug>/`, il se réduit au slug.
+
+| Règle | Description |
+|-------|-------------|
+| Identité *(v2.13)* | Une route se construit sur le chemin, jamais sur le slug seul, qui PEUT ne pas être unique (§1.2) : `concerts/bretagne-2024/` et `festivals/bretagne-2024/` ont deux routes distinctes. |
+| Pagination *(v2.13)* | La page 1 est la route de la série elle-même ; `/page/1/` n'est pas une route (un adaptateur PEUT la rediriger). Le segment `page` sépare la pagination des sous-séries (§1.8), dont le slug peut être un nombre : `/<conteneur>/2/` est une sous-série, `/<conteneur>/page/2/` la page 2 de la galerie du conteneur. |
+| Segment réservé *(v2.13)* | Un dossier nommé `page` situé directement dans un dossier de série est réservé : une série rangée sous `<série>/page/2/` aurait la route de la page 2 de `<série>`. Le lint DEVRAIT le signaler (Annexe A). |
+| Ancienne forme | Jusqu'à la v2.12, la pagination s'écrivait `/<prefix>/<slug>/<page>/`. Un adaptateur qui l'a servie DEVRAIT rediriger une telle URL vers `/<prefix>/<chemin>/page/<n>/` quand aucune série n'occupe ce chemin. |
 
 ### 1.7 — Ajout d'une série
 
@@ -775,10 +783,10 @@ Cette résolution traverse les sous-dossiers — c'est une dérogation explicite
 
 | Route | Description |
 |-------|-------------|
-| `/<prefix>/<slug-conteneur>/` | Page du conteneur : body + galerie propre éventuelle + liste des sous-séries (line-up). |
-| `/<prefix>/<slug-conteneur>/<sous-slug>/` | Page d'une sous-série : comportement standard (body + galerie). |
+| `/<prefix>/<chemin-conteneur>/` | Page du conteneur : body + galerie propre éventuelle + liste des sous-séries (line-up). |
+| `/<prefix>/<chemin-conteneur>/<sous-slug>/` | Page d'une sous-série : comportement standard (body + galerie). |
 
-L'adaptateur DOIT générer ces deux niveaux d'URL automatiquement à partir de la structure filesystem.
+L'adaptateur DOIT générer ces deux niveaux d'URL automatiquement à partir de la structure filesystem. `<chemin-conteneur>` suit la règle *Identité* de §1.6 ; la pagination de l'une ou l'autre page passe par le segment `page` (§1.6), si bien qu'une sous-série nommée `2` ne se confond jamais avec la page 2 du conteneur.
 
 #### Listing global
 
@@ -1155,8 +1163,8 @@ export default defineConfig({
 | Route | Page |
 |-------|------|
 | `/<prefix>/` | Liste des séries |
-| `/<prefix>/[slug]/` | Détail série + galerie |
-| `/<prefix>/[slug]/[page]/` | Pagination galerie |
+| `/<prefix>/[...chemin]/` | Détail série + galerie — `chemin` est un paramètre rest, qui peut compter plusieurs segments (§1.6) |
+| `/<prefix>/[...chemin]/page/[n]/` | Pagination galerie, `n` ≥ 2 |
 
 #### Composants exposés
 
@@ -1206,11 +1214,11 @@ Structure de pages recommandée :
 app/
 ├── series/
 │   ├── page.tsx              ← liste des séries
-│   └── [slug]/
-│       ├── page.tsx          ← détail série
-│       └── [page]/
-│           └── page.tsx      ← pagination
+│   └── [...chemin]/
+│       └── page.tsx          ← détail série ; un chemin terminé par page/<n> est la page <n> de sa galerie
 ```
+
+Un segment catch-all est forcément le dernier : la pagination se reconnaît donc dans la page elle-même, à ses deux derniers segments (`page`, `<n>`), selon §1.6.
 
 #### Composants React
 
@@ -2158,6 +2166,7 @@ Vérifications :
 - [ ] Pas de mélange mode local / mode distant / manifeste dans la même série
 - [ ] `images.json` (si présent) est un JSON valide dont la clé `images` est un tableau (§1.5.1)
 - [ ] Aucune série imbriquée au-delà d'un niveau — un conteneur §1.8 n'est jamais lui-même une sous-série (la profondeur de rangement §1.2, elle, n'est pas contrainte)
+- [ ] Aucun dossier nommé `page` directement dans un dossier de série — segment réservé à la pagination (§1.6)
 - [ ] Chaque entrée `embeds:` porte une `url` (§1.11)
 - [ ] Chaque `embeds[].poster` en chemin relatif pointe vers un fichier existant de `media/`
 - [ ] Aucun `poster` d'embed n'est aussi listé dans `images:` ou `attachments:` — une image est une photo de la série ou la vignette d'un embed, pas les deux
@@ -3356,6 +3365,22 @@ Corrections de cohérence issues de la relecture intégrale de la 2.12-draft ([#
 - **Aucune fixture ne change** : la couche 4 ne trie pas la galerie et classait déjà par extension en minuscules ; l'ordre canonique y est déjà exercé (identifiants §4.6 dans `snapshot-id/`, collisions dans `paths/collision.json`).
 
 **Justification** : la 2.12 triait « alphabétiquement » sans dire comment, et décrivait le scan par un glob `media/*.{jpg,…}` qui, pris à la lettre, manque `DSCF0002.JPG` — la couverture de l'exemple G.12. Le plugin Astro avait corrigé la casse de lui-même en v0.20.0 ; la spec, non. Deux lecteurs conformes pouvaient ainsi ordonner la même galerie différemment et choisir une couverture différente.
+
+#### Routes construites sur le chemin, pagination sous `page/` (§1.6, §1.8, §2.1, §2.2, Annexe A)
+
+**Modifications** :
+- §1.6 — *URLs* : `/<prefix>/<chemin>/` pour une série, `/<prefix>/<chemin>/page/<n>/` (`<n>` ≥ 2) pour la pagination, et quatre règles : *Identité*, *Pagination*, *Segment réservé*, *Ancienne forme*.
+- §1.8 (routes du conteneur), §2.1 (routes injectées), §2.2 (arborescence Next.js) et Annexe A (dossier `page` réservé) alignés.
+- §0.5 — plugin Astro : routes déjà construites sur le chemin ; pagination à l'ancienne forme, écart ouvert.
+
+**Décisions normatives** :
+- **Une route se construit sur le chemin, jamais sur le slug seul.** §1.2 l'affirmait depuis la v2.6 (« le chemin relatif est la clé de routage ») ; §1.6 routait encore par `<slug>`. Pour la forme canonique `series/<slug>/`, rien ne change.
+- **La pagination passe sous un segment `page`.** L'ancienne forme `/<slug>/<page>/` se confondait avec une sous-série dont le slug est un nombre — `2` est un slug valide. Écarté : interdire les slugs numériques, qui casse des contenus existants pour un problème de routage.
+- **`page` est réservé directement dans un dossier de série**, seul cas où une série rangée pourrait encore prendre une route de pagination. Le lint le signale ; aucun diagnostic de couche 4 n'est ajouté.
+- **L'ancienne forme se redirige** quand aucune série n'occupe le chemin, pour ne pas casser les liens publiés.
+- **Aucune fixture ne change** : la couche 4 ne construit pas de route.
+
+**Justification** : §1.6 routait par slug alors que §1.2 dit le slug non unique, et sa route de pagination entrait en collision avec les sous-séries de §1.8. Le cas est réel dans le plugin Astro (`main@f8d1a52`) : dès que la galerie d'un conteneur `festival` dépasse une page, sa page 2 et sa sous-série `2` produisent toutes deux `/series/festival/2/`.
 
 ### 2.12-draft — 2026-10-24
 
