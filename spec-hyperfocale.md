@@ -123,11 +123,12 @@ Ces règles s'appliquent quel que soit l'adaptateur ou la plateforme :
 | Règle | Description |
 |-------|-------------|
 | **Corps avant galerie** | Le body Markdown s'affiche avant les images |
-| **Tri des images** | Alphabétique par nom de fichier (d'où `01.jpg`, `02.jpg`...) |
+| **Tri des images** | Alphabétique par nom de fichier, au sens strict : ordre des octets UTF-8 du nom en NFC, casse comprise (§1.6). `10.jpg` précède `9.jpg`, `B.jpg` précède `a.jpg` — d'où le nommage `01.jpg`, `02.jpg`... |
 | **Couverture** | `cover` du frontmatter, sinon première image alphabétique |
 | **Tri des séries** | Date décroissante dans les listings |
 | **Brouillons** | `draft: true` → exclu des listings en production |
-| **Formats images** | `.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`, `.tif`, `.tiff` — seuls formats alimentant la galerie |
+| **Formats images** | `.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`, `.tif`, `.tiff` — seuls formats alimentant la galerie. L'extension se compare sans tenir compte de la casse : `DSCF0001.JPG` est une image |
+| **Fichiers système** | Un nom qui commence par `.` (`.DS_Store`, `._01.jpg`), `Thumbs.db`, `desktop.ini` et `Icon\r` (§4.2) ne sont jamais des médias : ni image, ni original, ni document joint |
 | **Originaux** | RAW et sidecars (`.raf`, `.cr3`, `.nef`, `.dng`, `.xmp`… — liste fermée, §1.9) sont des originaux : ignorés par les lecteurs — ni galerie, ni documents joints, ni couverture |
 | **Documents joints** | Tout autre fichier de `media/`, ni image ni original, est un document joint (§1.9), listé après la galerie |
 | **Pas de récursion** | `media/` est plat, pas de sous-dossiers |
@@ -145,7 +146,7 @@ Toute implémentation (adaptateur, script, outil) qui lit du contenu Hyperfocale
 
 1. Parser le frontmatter YAML de `index.md`
 2. Exiger `title`, et `date` sauf dans une collection déclarée `dateRequired: false` (§1.3) ; ignorer les champs inconnus
-3. Scanner `media/` — absent, il vaut un `media/` vide — et trier les fichiers alphabétiquement — les images alimentent la galerie, les originaux sont ignorés, les autres fichiers sont des documents joints (§1.9)
+3. Scanner `media/` — absent, il vaut un `media/` vide — en ignorant les fichiers système (§4.2), et trier les fichiers alphabétiquement au sens de §1.6 — les images alimentent la galerie, les originaux sont ignorés, les autres fichiers sont des documents joints (§1.9)
 4. Utiliser `cover` ou la première image comme couverture (ni les documents joints ni les originaux ne sont jamais candidats)
 5. Exclure les entrées `draft: true` des listings publics
 6. Rendre le body Markdown
@@ -682,8 +683,8 @@ Un adaptateur antérieur à v2.6 ignore le fichier et ne trouve aucune image (`m
 
 | Règle | Description |
 |-------|-------------|
-| Scan | Mode local : glob `media/*.{jpg,jpeg,png,webp,avif,tif,tiff}`. Pas de récursion. |
-| Tri | Alphabétique par nom de fichier. D'où le nommage recommandé `01.jpg`, `02.jpg`. |
+| Scan | Mode local : les fichiers situés directement dans `media/` dont l'extension — partie du nom qui suit son dernier point, comparée en minuscules (§4.1) — est `jpg`, `jpeg`, `png`, `webp`, `avif`, `tif` ou `tiff`. Pas de récursion. Les fichiers système (§4.2 : nom commençant par `.`, `Thumbs.db`, `desktop.ini`, `Icon\r`) sont ignorés. Un glob littéral `media/*.{jpg,…}` ne suffit pas : il est sensible à la casse sur la plupart des systèmes de fichiers et manque `DSCF0001.JPG`. |
+| Tri | Alphabétique par nom de fichier, défini comme l'ordre canonique de §4.1 : comparaison des octets UTF-8 du nom normalisé en NFC, casse préservée — ni collation locale, ni tri « naturel » des nombres. `10.jpg` précède `9.jpg`, `B.jpg` précède `a.jpg`, `DSCF0002.JPG` précède `dscf0001.jpg`. D'où le nommage recommandé `01.jpg`, `02.jpg`, à padding constant. |
 | Couverture | `cover` du frontmatter. Fallback : première image par ordre alphabétique. |
 | Alt text | Mode local : l'adaptateur PEUT extraire depuis EXIF/IPTC embarqué ou utiliser le nom de fichier. Mode distant : champ `alt` de chaque image. |
 
@@ -810,7 +811,7 @@ Une série n'est pas limitée aux images : `media/` accepte **tous les types de 
 
 #### Classes de médias
 
-La classification se fait par extension de fichier, en minuscules. Un adaptateur PEUT affiner (détection MIME) mais DOIT rester prévisible.
+La classification se fait par extension de fichier — partie du nom qui suit son dernier point (§4.1) —, comparée en minuscules : `01.JPG` est une `image`, `Notes.PDF` un `document`. Un adaptateur PEUT affiner (détection MIME) mais DOIT rester prévisible. Les fichiers système (§4.2) ne sont classés dans aucune classe : un lecteur les ignore.
 
 | Classe | Extensions | Rendu recommandé |
 |--------|-----------|------------------|
@@ -828,10 +829,10 @@ La classification se fait par extension de fichier, en minuscules. Un adaptateur
 | Règle | Description |
 |-------|-------------|
 | Galerie | Seule la classe `image` alimente la galerie et la lightbox. Les invariants §0 / §1.6 sont inchangés. |
-| Pièces jointes | Les autres classes sont exposées en **liste de documents joints**, affichée **après** la galerie. Tri alphabétique par nom de fichier. |
+| Pièces jointes | Les autres classes sont exposées en **liste de documents joints**, affichée **après** la galerie. Tri alphabétique par nom de fichier, au sens de §1.6. |
 | Couverture | `cover` DOIT référencer une image. Les documents joints ne sont jamais candidats au fallback de couverture. |
 | Lecteurs | Un adaptateur PEUT rendre `video` / `audio` en lecteurs intégrés ; à défaut, il les liste en pièces jointes. |
-| Robustesse | Un lecteur DOIT ignorer sans erreur tout fichier de type inconnu dans `media/`. |
+| Robustesse | Un lecteur NE DOIT jamais échouer sur un fichier de type inconnu dans `media/` : il le classe `file` et le liste en document joint. |
 | `index.md` | N'est jamais un document joint (c'est le fichier de métadonnées de la série). |
 
 #### Originaux *(introduit v2.11)*
@@ -1050,7 +1051,7 @@ Tout adaptateur Hyperfocale **DOIT** :
 | Exiger les champs requis | `title` toujours ; `date` sauf dans une collection déclarée `dateRequired: false` ; jamais pour une page d'index de section (§1.3, §1.10) |
 | Ignorer les champs inconnus | Ne jamais échouer sur un champ frontmatter non reconnu |
 | Transmettre les extensions | Rendre accessible `iptc.*` et tout champ supplémentaire aux templates/composants |
-| Scanner `media/` | Mode local : glob les images, trier alphabétiquement |
+| Scanner `media/` | Mode local : lister les images de `media/` — extension comparée en minuscules, fichiers système (§4.2) ignorés — et les trier dans l'ordre alphabétique de §1.6 |
 | Exposer les documents joints | Lister les documents joints de `media/` — ni images ni originaux — (tri alphabétique) et les rendre accessibles aux templates (§1.9) — *conformité v2.5* |
 | Ignorer les originaux | Ne jamais placer un original (§1.9 — RAW, sidecars) dans la galerie, la lightbox, les documents joints ni le fallback de couverture — *conformité v2.11* |
 | Supporter le mode distant | Si `images` est présent, l'utiliser à la place de `media/` ; si `files` est présent, l'utiliser pour les pièces jointes |
@@ -3340,6 +3341,21 @@ Corrections de cohérence issues de la relecture intégrale de la 2.12-draft ([#
 - **Aucune fixture ne change** : la couche 4 n'a jamais exigé `media/` — `manifest/series/concert-2019` n'en a pas et se valide sans diagnostic.
 
 **Justification** : la 2.12 déclarait `media/` obligatoire (§0, §1.2) tout en décrivant des séries qui n'en ont pas : manifeste (§1.5.1 — 309 séries sur 332 de `mathieu-drouet.com` au 2026-07-26), conteneur sans galerie (§1.8), série d'embeds (§1.11). L'obligation était en outre intenable : ni Git ni un snapshot ne conservent un dossier vide, si bien que le `media/` vide d'un brouillon disparaissait au premier commit ou à la première ingestion.
+
+#### Ordre alphabétique, casse des extensions et fichiers système (§0, §1.6, §1.9, §2.0)
+
+**Modifications** :
+- §1.6 — *Tri* : l'ordre « alphabétique » des fichiers de `media/` est l'ordre canonique de §4.1 (octets UTF-8 du nom en NFC, casse préservée). *Scan* : le glob littéral est remplacé par une règle — extension comparée en minuscules, fichiers système ignorés.
+- §0 (règles invariantes, point 3 du contrat minimum), §1.9 (classification, tri des documents joints) et §2.0 (obligation *Scanner `media/`*) renvoient à cette définition. Nouvelle règle invariante *Fichiers système*.
+- §1.9 — *Robustesse* : un fichier de type inconnu est classé `file` et listé en document joint, comme le dit le tableau des classes — et non « ignoré ».
+
+**Décisions normatives** :
+- **« Alphabétique » veut dire octets UTF-8, pas collation.** `10.jpg` précède `9.jpg`, `B.jpg` précède `a.jpg`. Le tri « naturel » des nombres et la collation locale sont écartés : ni l'un ni l'autre ne donne le même résultat en TypeScript et en Swift, et la couverture par défaut en dépend. L'ordre est celui que la couche 4 fixe déjà pour les chemins (§4.1) ; le nommage à padding constant (`01.jpg`) reste la façon d'imposer un ordre lisible.
+- **L'extension se compare en minuscules partout**, scan de galerie compris : `DSCF0001.JPG` est une image. Un glob littéral sensible à la casse n'est pas conforme.
+- **Les fichiers que la couche 4 exclut (§4.2) ne sont jamais des médias.** Sans cette règle, un `.DS_Store` ou un `._01.jpg` d'un volume macOS tombait dans « tout le reste » et devenait un document joint proposé au téléchargement.
+- **Aucune fixture ne change** : la couche 4 ne trie pas la galerie et classait déjà par extension en minuscules ; l'ordre canonique y est déjà exercé (identifiants §4.6 dans `snapshot-id/`, collisions dans `paths/collision.json`).
+
+**Justification** : la 2.12 triait « alphabétiquement » sans dire comment, et décrivait le scan par un glob `media/*.{jpg,…}` qui, pris à la lettre, manque `DSCF0002.JPG` — la couverture de l'exemple G.12. Le plugin Astro avait corrigé la casse de lui-même en v0.20.0 ; la spec, non. Deux lecteurs conformes pouvaient ainsi ordonner la même galerie différemment et choisir une couverture différente.
 
 ### 2.12-draft — 2026-10-24
 
