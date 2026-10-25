@@ -4,7 +4,7 @@
 
 **Version** : 2.14-draft
 **Statut** : spécification active — source de vérité canonique
-**Dernière révision** : 2026-10-24
+**Dernière révision** : 2026-10-25
 
 ### Implémentations de référence
 
