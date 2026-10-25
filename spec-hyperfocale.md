@@ -224,11 +224,11 @@ Le plugin expose un preset par profil de l'annexe, sous le nom de l'annexe : `se
 | `book` | `/livres` | `book` → `/books` | ✅ v0.14.0 ; prefix localisé |
 | `place` | `/lieux` | `place` → `/places` | ✅ v0.14.0 ; prefix localisé |
 | `screen` | `/ecrans` | `screen` → `/screens` | ✅ v0.14.0 ; prefix localisé |
-| `project` | `/suivi` | `project` → `/projects` | ✅ v0.20.0 ; prefix localisé ; collection `work`, `projects` étant prise par `portfolio` depuis la v0.8.0 ; **depuis la 2.14**, un dossier migré vers Hyperfocus (`type: project`) est refusé par le schéma du plugin (`type` énuméré, `main@f8d1a52`) : décision D18 d'Hyperfocus (§7.4) |
+| `project` | `/suivi` | `project` → `/projects` | ✅ v0.20.0 ; prefix localisé ; collection `work`, `projects` étant prise par `portfolio` depuis la v0.8.0 ; **depuis la 2.14**, un dossier migré vers Hyperfocus (`type: project`) est refusé par le schéma du plugin (`type` énuméré, `main@f8d1a52`) : le plugin ne prend pas Hyperfocus en charge, ce refus est voulu (D18 d'Hyperfocus, §7.4) ; le maintien du preset, sans profil correspondant depuis la 2.14, est à trancher côté plugin |
 
 Les prefix divergents ne sont pas des non-conformités — la colonne de l'Annexe G est un **prefix recommandé**, et un preset PEUT fixer le sien (§2.0.1) ; le plugin les a simplement localisés en français. Le squelette, le slug regex et les champs core sont préservés, conformément aux interdits de §2.0.1.
 
-Les dix profils de l'annexe sont couverts depuis la v0.14.0. Depuis la 2.14, le preset `project` (v0.20.0) n'a plus de profil correspondant dans l'annexe : G.12 est passé dans Hyperfocus, et le preset refuse un dossier migré (`type: project`) — décision D18 d'Hyperfocus (§7.4). Le nom de collection d'un preset n'est pas normé par l'annexe : `work` pour `project` n'est pas un écart.
+Les dix profils de l'annexe sont couverts depuis la v0.14.0. Depuis la 2.14, le preset `project` (v0.20.0) n'a plus de profil correspondant dans l'annexe : G.12 est passé dans Hyperfocus, et le preset refuse un dossier migré (`type: project`). Le plugin ne prend pas Hyperfocus en charge : ce refus est voulu, et le maintien du preset est à trancher côté plugin (D18 d'Hyperfocus, §7.4). Le nom de collection d'un preset n'est pas normé par l'annexe : `work` pour `project` n'est pas un écart.
 
 **Extensions au-delà du contrat** :
 - `featured: boolean` (boost ranking) — pattern utile, officialisé en §1.3 v2.1
