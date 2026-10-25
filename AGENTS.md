@@ -6,7 +6,7 @@ Dépôt de **spécification uniquement** — pas de code, pas de build, pas de d
 >
 > `spec-hyperfocale.md` est **la source de vérité unique** du format Hyperfocale. Toutes les implémentations (plugin Astro, site mathieu-drouet.com, exporter Lightroom, projet Recipes) suivent cette spec — elles ne la précèdent pas. Toute évolution du format passe par une modification ici, en premier.
 >
-> Version courante : **2.13-draft** (révisée le 2026-10-24). Le header de `spec-hyperfocale.md` fait foi. Voir le Changelog en fin de fichier.
+> Version courante : **2.14-draft** (révisée le 2026-10-24). Le header de `spec-hyperfocale.md` fait foi. Voir le Changelog en fin de fichier.
 
 ## Contenu
 
@@ -23,7 +23,7 @@ Une spec de format de contenu photo universel (séries photo en Markdown + front
 - Plugin Astro : https://github.com/izo/hyperfocale-astro-plugins
 - Exporter Lightroom : https://github.com/izo/hyperfocale-exporter-app
 - CMS Swift : https://github.com/izo/hyperfocale-cms
-- hyperfocale-vault (G.12) : https://github.com/izo/hyperfocale-vault
+- hyperfocale-vault (dossier de travail, repris par Hyperfocus) : https://github.com/izo/hyperfocale-vault
 - Sites : https://github.com/izo/mdr-monorepo (`mathieu-drouet.com`), https://github.com/izo/laurenceguenoun, https://github.com/izo/hyperfocale.app
 
 L'état de chacun est en §0.5 — à relever à chaque release du plugin **et** à chaque évolution d'une implémentation.

@@ -42,7 +42,7 @@ Le reste (métadonnées IPTC, GPS, couverture, mots-clés...) est optionnel et s
 | `@regrets/hyperfocale` (v0.20.0) | https://github.com/izo/hyperfocale-astro-plugins | Plugin Astro 7 — schéma Zod, collections, presets, composants ; outils d'ingestion de la couche 4 (snapshot, diff, validation, garde, providers filesystem, Dropbox, WebDAV) |
 | Exporter Lightroom | https://github.com/izo/hyperfocale-exporter-app | Export LR → format Hyperfocale avec métadonnées IPTC |
 | Hyperfocale CMS | https://github.com/izo/hyperfocale-cms | Éditeur Swift (CLI, macOS, iOS) — ouvrir, éditer et publier une série sans écrire de YAML |
-| hyperfocale-vault | https://github.com/izo/hyperfocale-vault | Gestion de projets photo macOS — producteur du profil Projet (G.12) |
+| hyperfocale-vault | https://github.com/izo/hyperfocale-vault | Gestion de projets photo macOS — producteur du dossier de travail (G.12, repris par Hyperfocus) |
 | `mathieu-drouet.com` | https://github.com/izo/mdr-monorepo | Archive photo grandeur nature, premier pipeline d'ingestion (couche 4) |
 | `laurenceguenoun.com` | https://github.com/izo/laurenceguenoun | Portfolio, plugin en couche data seule |
 | `hyperfocale.app` | https://github.com/izo/hyperfocale.app | Site de l'écosystème, lui-même une archive Hyperfocale |
@@ -73,4 +73,4 @@ Le profil Projet décrit un **dossier de travail** géré dès la prise de vue :
 
 ## Statut
 
-`v2.13-draft` — spécification active, source de vérité canonique. Voir le **Changelog** en fin de `spec-hyperfocale.md` pour l'historique des révisions.
+`v2.14-draft` — spécification active, source de vérité canonique. Voir le **Changelog** en fin de `spec-hyperfocale.md` pour l'historique des révisions.
