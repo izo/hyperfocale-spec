@@ -1,9 +1,9 @@
 # Spécification — Hyperfocus
 
-> **En rédaction.** **Hyperfocus** est le format du **dossier de travail** de l'écosystème Hyperfocale : un projet suivi à la source, de la première prise de contact à la livraison. Il se sépare de la spec web (`spec-hyperfocale.md`), qui décrit un contenu fait pour être publié. Les sections 1, 2 et 4 sont rédigées au futur contrat (DOIT / PEUT) mais rien n'est encore figé : tant que le statut est « en rédaction », les décisions sont réversibles (§D). Réflexion d'origine : [#36](https://github.com/izo/hyperfocale-spec/issues/36).
+> **En rédaction.** **Hyperfocus** est le format du **dossier de travail** de l'écosystème Hyperfocale : un projet suivi à la source, de la première prise de contact à la livraison. Il se sépare de la spec web (`spec-hyperfocale.md`), qui décrit un contenu fait pour être publié. Les sections 1, 2, 4 et 5 sont rédigées au futur contrat (DOIT / PEUT) mais rien n'est encore figé : tant que le statut est « en rédaction », les décisions sont réversibles (§D). Réflexion d'origine : [#36](https://github.com/izo/hyperfocale-spec/issues/36).
 
-**Version** : 0.9-draft
-**Statut** : en rédaction — §1, §2, §4 et §9 rédigés ; §3, §5, §6 et §7 restent des esquisses
+**Version** : 0.10-draft
+**Statut** : en rédaction — §1, §2, §4, §5 et §9 rédigés ; §3, §6 et §7 restent des esquisses
 **Dernière révision** : 2026-10-25
 **Socle** : `spec-hyperfocale.md` 2.12-draft. La 2.13-draft en cours ([#37](https://github.com/izo/hyperfocale-spec/issues/37)) règle trois points dont ce document dépend : `date` portée par la collection, `media/` facultatif sans fichier local, ordre alphabétique défini.
 
@@ -16,7 +16,7 @@
 2. Frontmatter
 3. Lots et sous-lots
 4. Outils de gestion et agents
-5. Export vers la spec web
+5. Export vers Hyperfocale
 6. Interopérabilité
 7. Compatibilité avec les dossiers G.12
 8. Fixtures
@@ -266,7 +266,7 @@ Dix opérations, liste fermée dans cette version. Chacune a un identifiant stab
 | `add-journal-entry` | `project`, `text` | Ajoute à la fin du body un bloc daté (§4.4). | `text` non vide. |
 | `capture` | `text` | Crée une note dans `inbox/` (§4.5). | `text` non vide. |
 | `file-note` | `note`, `project` | Ajoute le texte de la note au journal du projet et supprime la note de `inbox/`. Les deux effets figurent dans la proposition. | La note existe ; le projet existe. |
-| `export` | `project`, `slug`, `destination` | Crée un nouveau dossier de série (§5). | Précondition de §5. |
+| `export` | `project`, `destination`, `images` (liste ordonnée), `naming`, `slug?`, `title?`, `date?`, `draft?`, `body?` | Crée un nouveau dossier de série (§5). | `destination` hors du projet ; `<slug>` absent de `destination` ; `date` connue ; `images` non vide et tous présents. |
 
 | Règle commune | Description |
 |---------------|-------------|
@@ -313,18 +313,77 @@ C'est le premier usage d'un agent : **lire** les projets et **proposer** une act
 | Peu à la fois | Un outil PEUT n'afficher que les premiers projets ; il DOIT alors dire combien d'autres sont omis. |
 | Même fichier, même réponse | Pour un même état des fichiers et une même date, les actions dérivées et l'ordre sont les mêmes d'un outil à l'autre. Seule la suggestion en texte libre varie. |
 
-## 5 — Export vers la spec web
+## 5 — Export vers Hyperfocale
 
-Repris de G.12 et généralisé. L'export crée un **nouveau** dossier, contenu valide de la spec web :
+L'export est la **seule jonction** entre Hyperfocus et Hyperfocale (§9) : il crée, depuis un projet, un **nouveau** dossier de série que la spec web sait lire. Le projet ne se publie jamais tel quel (§1.7).
 
-- slug tiré du nom du dossier projet ou choisi ;
-- `media/` d'images seulement — ni originaux, ni documents de travail, ni dossiers de travail ;
-- frontmatter repris au choix (`title`, `date`, `description`, `cover`, `location`, `lang`, `tags`, `iptc:`), **sans le bloc `project:`** ;
-- profondeur aplatie : un lot s'exporte comme une série à part entière.
+### 5.1 — Principes
 
-*Piste* : cible série **ou** portfolio (G.7 web) — `project.client` → `portfolio.client`, statut livré → `portfolio.status: delivered`.
+| Règle | Description |
+|-------|-------------|
+| Une copie | L'export crée un nouveau dossier. Il ne modifie ni ne supprime rien dans le projet, qui reste la source. |
+| Jamais d'écrasement | Si `<destination>/<slug>/` existe, l'export échoue : il ne fusionne pas et ne remplace pas. Mettre à jour une série déjà publiée est un geste de l'utilisateur. |
+| Hors du projet | `destination` ne peut pas être située dans le dossier du projet. |
+| Liste blanche | L'export n'écrit que ce que cette section nomme (§5.2). Tout le reste du projet — body, champs inconnus, `project:`, documents, dossiers de travail — **reste derrière**. |
+| Pas une publication | L'export ne contacte aucun serveur et ne publie rien : la série atterrit dans un dossier, que la spec web (couche 4) ou le site publie ensuite. |
+| Pas de rendu | L'export copie des images déjà prêtes. Redimensionner, changer de format ou recompresser est le travail d'un autre outil (la chaîne photo, §9.1). |
 
----
+### 5.2 — Ce que l'export écrit
+
+Le résultat est un dossier de série de la spec web : `<slug>/index.md` et `<slug>/media/`.
+
+**Slug.** Fourni par l'utilisateur, ou **proposé** à partir du titre affiché (§1.4) : décomposition NFD, marques diacritiques retirées, minuscules, toute suite de caractères hors `a-z0-9` remplacée par un seul `-`, `-` de début et de fin retirés. `Mariage Dupont` donne `mariage-dupont` ; `Été 2026 — Arles` donne `ete-2026-arles`. Les caractères sans décomposition ASCII (`ß`, `œ`, `ø`, les écritures non latines) sont retirés : un slug vide est refusé, et l'utilisateur corrige la proposition, qu'il voit toujours avant d'écrire (§4.2). Le slug respecte la regex de la spec web (§1.2 web).
+
+**`media/`.** Des **images seulement**, au sens de la spec web (§1.9 web), choisies par l'utilisateur parmi celles du `media/` du projet :
+
+| Règle | Description |
+|-------|-------------|
+| Sélection | Une liste ordonnée de noms de fichiers du `media/` du projet. Aucun original, aucun document, aucun fichier d'un dossier de travail. |
+| Octets | Copiés à l'identique. L'export ne modifie pas une image, métadonnées incluses. |
+| Nommage `sequential` | Les fichiers sont renommés `01.jpg`, `02.jpg`… dans l'ordre de la sélection, avec l'extension d'origine en minuscules ; padding de 2 chiffres sous 100 images, 3 à partir de 100. L'ordre de la sélection devient l'ordre de la galerie. |
+| Nommage `original` | Les noms sont conservés. L'ordre de la galerie est l'ordre alphabétique de la spec web (§1.6 web) : si l'ordre de la sélection en diffère, la proposition le dit. |
+| Collision | Après renommage éventuel, deux fichiers dont les noms sont égaux après NFC puis minuscule simple (§4.1 web) font échouer l'export : `A.jpg` et `a.jpg` ne coexistent pas sur Dropbox ni sur APFS. |
+| Vie privée | Les métadonnées d'une image (position GPS, numéro de série) voyagent avec elle. Un outil DEVRAIT avertir quand une image sélectionnée porte une position, sans la retirer de lui-même. |
+
+**`index.md`.** Écrit à neuf, avec ces clés et uniquement elles :
+
+| Clé | Valeur |
+|-----|--------|
+| `title` | Titre affiché du projet (§1.4), ou celui que donne l'utilisateur. |
+| `date` | Fournie par l'utilisateur ; proposée depuis `date` du projet, sinon `project.start`. Requise par la spec web : sans date, l'export échoue. |
+| `draft` | **`true` par défaut** : la série se relit avant publication. `false` seulement sur demande explicite. |
+| `description`, `location`, `lang`, `tags` | Recopiées du projet si présentes et si l'utilisateur ne les écarte pas. |
+| `cover` | `./media/<nom>` si l'image de couverture du projet fait partie de la sélection (son nom après renommage). Sinon absente : la spec web prend la première image. |
+| `iptc` | Recopié du projet s'il existe. Hyperfocus ne produit pas de métadonnées de prise de vue de lui-même. |
+
+Le **body** de la série est vide, sauf texte donné par l'utilisateur pour cette série. Le body du projet — notes de tournage, informations de client — n'est jamais recopié.
+
+**Jamais écrit** : le bloc `project:`, `type` (la série est une série, §1.3 web), `attachments`, `images`, `embeds`, et tout champ que la liste ci-dessus ne nomme pas.
+
+### 5.3 — Postconditions
+
+Avant d'annoncer qu'un export a réussi, l'outil vérifie que le dossier produit est un contenu valide de la spec web :
+
+1. le slug respecte la regex ;
+2. `index.md` porte `title` et une `date` valide ;
+3. `media/` ne contient que des images, sans sous-dossier ;
+4. `cover`, s'il existe, désigne une image de `media/` ;
+5. aucune clé `project`, aucun `type` ;
+6. l'ingestion web (§4.10 web), si l'outil la connaît, ne produit aucun diagnostic de sévérité `error` sur le dossier.
+
+Une postcondition manquée annule l'export : le dossier partiel est retiré, rien n'est laissé à moitié.
+
+### 5.4 — Lots
+
+Un lot est un projet (§3) : il s'exporte seul, comme une série à part entière. L'export d'un projet n'inclut pas ses lots. Rassembler des séries exportées en conteneur (§1.8 web) est un geste de l'utilisateur.
+
+### 5.5 — Trace du lien
+
+Hyperfocus ne standardise pas le lien entre un projet et ses exports. Un outil PEUT en garder la trace dans un champ libre du projet, que le passthrough préserve ; aucun lecteur ne DOIT s'en servir.
+
+### 5.6 — Portfolio *(piste)*
+
+Un projet livré peut aussi alimenter une entrée de portfolio (G.7 web), par exemple `project.client` → `portfolio.client`. Cette cible n'est pas rédigée : le nom d'un client est une donnée privée, et ne sortirait que sur demande explicite, champ par champ (décision D17).
 
 ## 6 — Interopérabilité
 
@@ -410,11 +469,26 @@ Ces changements touchent `spec-hyperfocale.md` : ils sont faits sur sa propre br
 | D13 | Où passe la ligne entre photo travaillée (Hyperfocus) et photo publiée (Hyperfocale) | **Retenue (0.6)** : à l'export (§5). Hyperfocus possède tout ce qui précède la publication ; Hyperfocale garde la série publiée avec son `iptc:` (§9) |
 | D15 | Les profils non photo d'Hyperfocale (G.1 à G.11) face à « Hyperfocale reste une spec photo pour le web » | **Retenue (0.8)** : ils restent dans la spec web, reclassés en **extensions hors noyau**. Le noyau d'Hyperfocale promet la photo pour le web ; l'Annexe G dit que le squelette peut porter d'autres contenus. Aucun preset, plugin ni site ne change. La reformulation de §0 et de l'Annexe G est un travail de la spec web (2.14) |
 | D16 | Format du journal (§4.4) | Ouverte : un bloc `### AAAA-MM-JJ` ajouté à la fin du body. À confirmer à l'usage ; alternatives : un fichier `journal.md` dans le dossier, ou un champ du frontmatter |
+| D17 | Cible portfolio (G.7 web) et confidentialité du client | Ouverte : le nom d'un client ne sort que sur demande explicite, champ par champ ; mapping non rédigé (§5.6) |
 | D14 | L'annexe C (IPTC ↔ EXIF) | Ouverte : reste côté web tant que des adaptateurs extraient l'EXIF ; pourrait être partagée avec Hyperfocus (chaîne Lightroom) |
 
 ---
 
 ## Changelog
+
+### 0.10-draft — 2026-10-25
+
+**Rédigé** : §5 — export vers Hyperfocale : principes (§5.1), ce que l'export écrit (§5.2 : slug proposé, `media/` d'images, `index.md` à neuf), postconditions (§5.3), lots (§5.4), trace du lien (§5.5), piste portfolio (§5.6). L'opération `export` de §4.3 reçoit ses arguments.
+
+**Décisions** :
+- **Liste blanche** : l'export n'écrit que les clés nommées. Le body, les champs inconnus, `project:`, les documents et les dossiers de travail ne sortent jamais — le body d'un projet porte des notes de tournage et des informations de client.
+- **`draft: true` par défaut** : la série se relit avant publication.
+- **Aucun écrasement** et aucune fusion : un slug existant fait échouer l'export.
+- **Les images ne sont pas retouchées** (octets identiques, métadonnées comprises) ; un outil avertit d'une position GPS sans la retirer.
+- **Nommage `sequential` / `original`** repris du dual naming de l'exporter (§2.7 web), qui passe dans Hyperfocus (D10) : `sequential` conserve l'ordre de la sélection.
+- **Postconditions vérifiées** avant de déclarer le succès ; en cas d'échec, rien ne reste à moitié écrit.
+
+**Ouvert** : D17 — cible portfolio et confidentialité du client.
 
 ### 0.9-draft — 2026-10-25
 
