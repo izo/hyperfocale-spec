@@ -243,28 +243,28 @@ Les dix profils de l'annexe sont couverts depuis la v0.14.0. Depuis la 2.14, le 
 
 ### Site `mathieu-drouet.com` (dépôt `izo/mdr-monorepo`)
 
-**Conformité** : ⚠️ Couche 4 conforme v2.11 ; couche data (lecture) en écart sur §1.5.1, §1.6, §1.8, §1.9 et §2.0. Relevé le 2026-10-24 sur `main`, **non revérifié depuis** : les collections `series` et `series_fr` passent désormais par `seriesLoader` du plugin ≥ 0.21 (#319 du dépôt, d'après son `CLAUDE.md`), donc plusieurs des lignes ci-dessous (loader sans passthrough, `parseData`) sont peut-être refermées — à relever contre le code. Le site garde son propre loader et son propre résolveur d'images : les helpers de lecture du plugin passent par `import.meta.glob` et ne lisent pas un corpus servi depuis `public/content` + R2 ([hyperfocale-astro-plugins#130](https://github.com/izo/hyperfocale-astro-plugins/issues/130)).
+**Conformité** : ⚠️ Couche 4 conforme v2.11 ; couche data **largement refermée depuis le passage au plugin** (`seriesLoader` ≥ 0.21, `resolveSeriesMedia`, plugin ^0.24.0 au 2026-10-25) : il reste le tri (§1.6, 2.15) et le `.tif` assumé. Relevé le 2026-10-25 sur `mdr-monorepo@3fd9008`, par lecture du code ([mdr-monorepo#331](https://github.com/izo/mdr-monorepo/issues/331)) ; rien exécuté. Anciens écarts : [mdr#307](https://github.com/izo/mdr-monorepo/issues/307), [#308](https://github.com/izo/mdr-monorepo/issues/308).
 
 > Le site vivait dans `izo/mathieu-drouet.com` jusqu'au 2026-08-22. Ce dépôt est archivé ; contenu et site sont dans `izo/mdr-monorepo`, organisé autour du contenu (`content/`) et consommé par le site Astro, les apps iOS/tvOS et Android, et un serveur MCP. Migration v2.1 terminée le 2026-05-19 (`docs/migration-spec-v2.1.md`).
 
 | Obligation | Statut | Note |
 |------------|--------|------|
 | Slug regex | ✅ | |
-| `title` + `date` requis | ⚠️ | `baseSeriesSchema({ dateRequired: true })` du plugin déclaré, mais jamais appliqué aux archives : le loader écrit le store sans `parseData` ([mdr#307](https://github.com/izo/mdr-monorepo/issues/307)) |
-| Passthrough (champs inconnus) | ❌ | Le loader des archives ne transmet qu'une liste blanche de 13 champs : `artist`, `genres`, `updated`, `images`, `lang`, `embeds`… sont perdus avant le schéma ([mdr#307](https://github.com/izo/mdr-monorepo/issues/307)) |
+| `title` + `date` requis | ✅ | `baseSeriesSchema({ dateRequired: true })` appliqué par `seriesLoader` (`parseData`) ; `series_id` et `description`, que le corpus n'a pas toujours, sont posés par `prepare` (replis signalés au build) |
+| Passthrough (champs inconnus) | ✅ | Le loader maison et sa liste blanche de 13 champs sont remplacés par `seriesLoader` ; le schéma du socle est `looseObject` à la racine, et `serializeSeries` sélectionne explicitement les champs publiés |
 | Dossier `media/` | ✅ | Médias hors dépôt (disque local + bucket R2 privé), servis par le Worker |
-| Manifeste d'images (§1.5.1) | ⚠️ | `images.json` lu d'abord — il reflète le contenu de R2, seule vérité en production — mais l'ordre du tableau est retrié (couverture d'abord, puis alphabétique), la forme longue et la clé `files` sont ignorées ([mdr#308](https://github.com/izo/mdr-monorepo/issues/308)) |
-| Couverture par défaut (§1.6) | ⚠️ | Sans `cover`, une image tirée par hachage de l'identifiant, pas la première ([mdr#308](https://github.com/izo/mdr-monorepo/issues/308)) |
-| Pas de récursion (§1.8) | ⚠️ | Le scan de repli (contenu sans manifeste) parcourt tout le dossier de la série, sous-séries comprises ([mdr#308](https://github.com/izo/mdr-monorepo/issues/308)) |
-| Formats images (`.tif`, `.tiff`) | ❌ | Classés images par l'ingestion (envoyés à R2), filtrés par le site : jamais affichés ([mdr#308](https://github.com/izo/mdr-monorepo/issues/308)) |
-| Documents joints (§1.9), mode distant (§1.5) | ❌ | Non pris en charge : un document de `media/` part dans R2 et reste invisible, le proxy ne sert que des images ([mdr#308](https://github.com/izo/mdr-monorepo/issues/308)) |
+| Manifeste d'images (§1.5.1) | ✅ | Séries : `resolveSeriesMedia` du plugin (`images:` > `images.json` > `media/`, ordre du tableau, formes courte et longue). Reste hors spec et assumé : `listMedia` (boutique, portfolio) range encore la couverture en tête puis trie par `localeCompare` |
+| Couverture par défaut (§1.6) | ✅ | Première entrée rendue par le résolveur du plugin (séries) |
+| Pas de récursion (§1.8) | ✅ | Le repli sur `media/` passe par `resolveSeriesMedia` (`withFileTypes`, fichiers seulement) |
+| Formats images (`.tif`, `.tiff`) | ⚠️ | Écart **assumé** : le TIFF reste une image pour l'ingestion (R2) mais est écarté des galeries (`isGalleryImagePath`) ; la garde l'annonce par `x-mdr-tiff-not-displayed` (warning) pour que le contributeur exporte en JPEG |
+| Documents joints (§1.9), mode distant (§1.5) | ⚠️ | `SeriesAttachments` du plugin 0.24 ne sert qu'au ZIP de la série (`download: true`, badge « ↓ ZIP ») ; le rendu des autres documents de `media/` n'a pas été relevé, et le mode distant (`files[]`) n'est pas exercé |
 | Page d'index de section (§1.10) | ✅ | 16 `index.md` en `type: section` |
 | `draft` respecté | ✅ | |
 | Bloc `iptc.*` | ✅ | 548 `index*.md` le portent ; le site en retire les métadonnées des séries privées (ADR-012) |
 | Contenus embarqués (§1.11) | — | Non exercés : aucune série ne porte `embeds:` |
 | Ingestion (couche 4) | ✅ | Runner local (agent launchd) sur `@regrets/hyperfocale/ingest`, `/ingest/dropbox` (source en vigueur : l'API Dropbox) et `/ingest/fs` (plugin `^0.20.0`) : snapshot, diff, validation, garde. Dropbox fait foi (`MDR Content/`), aucune primitive générique dans le site. Garde site-spécifique `x-mdr-private-exposed` (§4.10, code `x-*`) |
 | Originaux (§1.9, v2.11) | ✅ | Non exercés — le corpus n'en contient pas —, mais protégés depuis le 2026-10-20 ([mdr-monorepo#246](https://github.com/izo/mdr-monorepo/pull/246)) : diff, garde et snapshot publié passent par `publishable()` du plugin 0.20.0 |
-| Tri date desc | ✅ | |
+| Tri date desc | ⚠️ | `sortSeriesByDate` (`src/lib/utils.ts`) trie sur `getTime()` **sans départage** : la 2.15 demande la date calendaire seule, puis titre croissant, puis chemin (§1.6). Le plugin 0.25.0 expose `compareSeriesOrder` (`src/order.ts`, non exporté publiquement) ; à aligner côté site |
 
 **Extensions strictement site-spécifiques (hors spec)** :
 - `private` + `password_hash` — séries protégées par mot de passe (connues de la garde §4.11 comme extension de site)
