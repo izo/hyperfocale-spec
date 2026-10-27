@@ -16,7 +16,7 @@
 | Hyperfocale CMS | https://github.com/izo/hyperfocale-cms | Éditeur Swift (CLI, macOS, iOS) : lecture tolérante, écriture stricte | ⚠️ Vise v2.12 hors couche 4 ; écriture pour une source distante et dossier Dropbox / iCloud en place, canal GitHub retiré (24 oct.) — **retrait ni compilé ni testé**, jamais essayé sur un vrai `MDR Content/` ni sur appareil ([cms#77](https://github.com/izo/hyperfocale-cms/issues/77), [#78](https://github.com/izo/hyperfocale-cms/issues/78)) |
 | Exporter Lightroom | https://github.com/izo/hyperfocale-exporter-app | Source de contenu : LR → format Hyperfocale | ⚠️ Conforme v2.1 — correctifs RAW (§1.9) et date (§2.7) fusionnés le 2026-10-20 ([exporter-app#98](https://github.com/izo/hyperfocale-exporter-app/pull/98)), slug pur fusionné le 2026-10-25 ([#102](https://github.com/izo/hyperfocale-exporter-app/pull/102)), tous **non compilés** ; date sans saisie manuelle ([#101](https://github.com/izo/hyperfocale-exporter-app/issues/101)) |
 | hyperfocale-vault | https://github.com/izo/hyperfocale-vault | Gestion de projets photo macOS : producteur du dossier de travail (G.12, repris par Hyperfocus) et export vers une série | ✅ Vise v2.11 (ADR-034) — vérifié contre §0 et G.12, pas contre les fixtures ; **non conforme à Hyperfocus** (pas de `type: project`, quatre statuts sur sept, ni `next`, ni journal, ni `inbox/`) |
-| Site `hyperfocale.app` | https://github.com/izo/hyperfocale.app | Site de l'écosystème, lui-même une archive Hyperfocale (Astro) | ✅ Plugin `@regrets/hyperfocale` 0.19.0 ; présente les quatre couches et les douze profils |
+| Site `hyperfocale.app` | https://github.com/izo/hyperfocale.app | Site de l'écosystème, lui-même une archive Hyperfocale (Astro) | ✅ Refait le 2026-10-27 sur le plugin 0.25.0 (FR/EN) : présente Hyperfocale, Hyperfocus, le plugin et ses composants ; fiches lues par `seriesLoader` |
 
 Le détail de conformité par implémentation est en **§0.5 — État des implémentations**.
 
@@ -310,7 +310,9 @@ Les dix profils de l'annexe sont couverts depuis la v0.14.0. Depuis la 2.14, le 
 
 ### Site `hyperfocale.app`
 
-**Conformité** : ✅ Site de l'écosystème, lui-même une archive Hyperfocale (une série par projet dans `src/content/series/`), lue par le plugin `@regrets/hyperfocale` **0.19.0** depuis npm (2026-10-20 ; il dépendait de `@izo/hyperfocale` résolu depuis GitHub). Fiches et pages alignées sur la 2.11 : quatre couches, douze profils.
+**Conformité** : ✅ Site de l'écosystème, lui-même une archive Hyperfocale, refait de zéro le 2026-10-27 ([hyperfocale.app#14](https://github.com/izo/hyperfocale.app/pull/14)) sur le plugin `@regrets/hyperfocale` **0.25.0** : Astro 7.4, Tailwind v4, bilingue FR/EN. Les quatorze fiches projets sont des contenus du profil Application (G.3) rangés dans `src/content/projects/<slug>/`, `index.md` (FR) et `index.en.md` (EN), lus par `seriesLoader` avec repli de locale (Annexe F, stratégies 2 et 3). Deux séries photo de démonstration (`src/content/demo/`, `seriesSchema`) font tourner `SeriesList`, `SeriesMasonry` et `SeriesGallery` sur la page du plugin. Pages alignées sur la 2.16 : onze profils, G.12 renvoyé à Hyperfocus, qui a sa page.
+
+Deux écarts du plugin y ont été relevés et corrigés en amont (0.25.1, [plugin#148](https://github.com/izo/hyperfocale-astro-plugins/issues/148), [#149](https://github.com/izo/hyperfocale-astro-plugins/issues/149)) : le barrel `/components` n'exportait aucun composant, et `virtual:hyperfocale/collection` n'avait pas de déclaration de type. Le site garde ses contournements jusqu'à la publication de la 0.25.1 sur npm. Déploiement : Cloudflare Workers, assets statiques ([hyperfocale.app#16](https://github.com/izo/hyperfocale.app/pull/16)).
 
 > Le dépôt `izo/hyperforcale-site` (graphie sic, contenu vitrine sans code) a été repris dans `hyperfocale.app` le 2026-10-20 et est à archiver.
 
