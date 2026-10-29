@@ -164,7 +164,7 @@ Pour la même raison, aucun corpus ne contient deux noms égaux après repli de 
 |---|---|
 | `guard-mass-deletion` | `guard/mass-deletion-series.json` (séries), `guard/mass-deletion-media.json` (ratio de médias) |
 | `guard-mass-move` | `guard/mass-move.json` |
-| `guard-private-exposed` | `guard/private-exposed.json`, `guard/private-fail-closed.json` (fail-closed côté `base` : octets divergents, `placeholder`, frontmatter illisible) |
+| `guard-private-exposed` | `guard/private-exposed.json`, `guard/private-fail-closed.json` (fail-closed côté `base` : octets divergents, `placeholder`, frontmatter illisible), `guard/private-type-changed.json` (`private` devenu chaîne, `yes`, entier ou clé `Private` dans `target`) |
 | `guard-snapshot-incomplete`, `guard-snapshot-empty`, `guard-oversize` | `guard/always-active.json` |
 | `guard-originals-excluded` | `guard/originals.json` (`count` et `bytes` comparés ; `.RAF` au-delà de `maxFileBytes.media` sans `guard-oversize`, puisqu'ils ne sont pas publiés) |
 
