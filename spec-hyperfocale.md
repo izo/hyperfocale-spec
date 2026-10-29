@@ -1089,6 +1089,15 @@ Cette section réunit les règles de la couche 1. Celles de la couche 4 sont en 
 | À l'ingestion | `url-scheme-forbidden` (§4.10, règle 15) pour les champs du core. Les champs des profils ne sont pas validés par la couche 4 (Annexe G) : le contrôle du rendu les couvre. |
 | Identifiants d'embed | Un adaptateur ne construit l'URL de lecture d'un embed que si `platform` appartient au vocabulaire reconnu (§1.11) et si `id` vérifie `^[A-Za-z0-9_-]{1,128}$` ; sinon il se rabat sur le lien (`url`, déjà contrôlée). L'`id` ne se concatène jamais à une URL sans ce contrôle. |
 
+#### Références de fichiers
+
+| Règle | Description |
+|-------|-------------|
+| Sous la racine | Toute référence relative qui désigne un fichier — `cover`, `attachments[].file`, `embeds[].poster`, entrées relatives de `images:` et de `images.json`, champs de profil qui désignent un fichier (Annexe G) — DOIT, une fois résolue, rester sous `<content-root>`. La borne vaut pour **tout** lecteur, adaptateur ou exporter, au moment de lire, copier, résoudre une image ou construire un glob : pas seulement pour l'outil qui valide. Une référence qui en sort n'est ni lue ni copiée. |
+| Forme sûre | Une référence relative est **non sûre** si elle contient `\`, un caractère de contrôle (U+0000–U+001F, U+007F), ou une séquence `%2e`, `%2f` ou `%5c` (casse ignorée) ; ou si, résolue depuis le dossier de l'`index.md` (segments vides et `.` ignorés, `..` remonte d'un niveau), elle sort de `<content-root>`. `..\..\x` n'a ni `/` initial ni schéma : un lecteur Windows l'interpréterait comme une remontée, d'où le refus. Le chemin se compare tel qu'écrit, jamais après décodage. |
+| À l'écriture | Un outil qui écrit (CMS, exporter) NE DOIT PAS produire de référence non sûre. |
+| À l'ingestion | `reference-unsafe` (§4.10, règle 17). |
+
 #### Documents joints
 
 `media/` accepte « tout type de fichier » (§1.2, §1.9) : `.html`, `.xhtml`, `.svg`, `.js` y sont des documents joints de classe `file`. Servi depuis l'origine du site, un tel fichier s'exécute avec ses cookies et son stockage (XSS stockée, hameçonnage de confiance).
@@ -1837,6 +1846,14 @@ Les choix d'infrastructure — dépôt Git pour les textes, stockage objet pour 
 
 Un provider DOIT préserver les chemins relatifs, les octets des fichiers, les renommages et les suppressions. La sémantique d'un corpus distant est celle d'un filesystem (§1.2) : les règles de la couche 1 s'y appliquent sans exception.
 
+#### Exigences des providers *(introduit v2.17)*
+
+Le contenu d'une source partagée n'est pas fiable (§1.12) : un provider est la première porte par laquelle il entre.
+
+| Règle | Description |
+|---|---|
+| Liens symboliques | Un provider filesystem NE DOIT PAS suivre les liens symboliques — fichiers, dossiers, alias, jonctions. Il n'ouvre pas la cible, ne descend pas dans un dossier lien et n'ajoute aucune entrée au snapshot pour lui ; il le signale par `entry-symlink` (warning, §4.10) sur le chemin du lien. Un lien qui pointe hors du corpus ajouterait au snapshot — classé `media`, haché, envoyé en stockage objet — un fichier que personne n'a décidé de publier ; une boucle de liens rendrait le parcours infini. Dropbox ne synchronise pas les liens, mais un checkout Git, iCloud ou un volume monté en posent. Un fichier que le lien désigne dans le corpus est listé à son propre chemin : le lien n'ajoute rien. |
+
 ### 4.1 — Chemins
 
 Un chemin d'entrée désigne un fichier relativement à la racine du corpus.
@@ -2108,6 +2125,8 @@ Transitions — la liste est **exhaustive** : toute autre transition est interdi
 | `images-json-invalid` | warning | JSON illisible, racine qui n'est pas un objet, clé `images` absente ou non tableau (§1.5.1) | le `images.json` |
 | `attachment-not-found` | warning | entrée `attachments[]` dont le `file` est absent de `media/` ou désigne un original (§1.9) | le fichier |
 | `embed-url-missing` | error | entrée `embeds[]` sans `url` (§1.11) | le fichier |
+| `reference-unsafe` | error | référence relative non sûre : `\`, caractère de contrôle, `%2e` `%2f` `%5c`, ou résolution hors de la racine du corpus (§1.12) | le fichier où la valeur est écrite |
+| `entry-symlink` | warning | lien symbolique rencontré à l'énumération par un provider filesystem : ignoré, jamais suivi (§4.0). Produit par le provider, non par la validation d'un snapshot | le chemin du lien |
 | `attachment-active-content` | warning | entrée `media` dont l'extension désigne un contenu actif : `.html`, `.htm`, `.xhtml`, `.svg`, `.svgz`, `.xml`, `.xsl`, `.xslt`, `.js`, `.mjs` (§1.12) | l'entrée |
 | `private-type-invalid` | error | `private` présent (non `null`) et non booléen : `"true"`, `yes`, `1`… (§1.12) | le fichier |
 | `private-key-suspect` | warning | clé qui ne diffère de `private` que par la casse, des espaces, `_` ou `-` (§1.12) | le fichier |
@@ -2134,7 +2153,7 @@ La sévérité est celle d'un **outil d'ingestion**, qui décide d'une publicati
 6. **YAML.** Le bloc s'interprète selon le **schéma YAML 1.2 *core*** : une date non guillemetée y reste une chaîne, validée par la règle 8. Une clé dupliquée rend le YAML illisible. Un bloc vide, ou dont la racine n'est pas un mapping : `frontmatter-invalid`. Après `frontmatter-missing` ou `frontmatter-invalid`, aucun diagnostic de champ n'est produit pour ce fichier.
 7. **Champs.** Une clé de valeur `null` vaut absente (`type`, `date`, `cover`, `images`, `private`). `title` doit être une chaîne d'au moins un caractère. `type`, s'il est présent, vaut `series` ou `section` ; toute autre valeur produit `type-invalid`, et le fichier est traité en série. `private`, s'il est présent, vaut un booléen YAML (`true`, `True`, `TRUE`, `false`, `False`, `FALSE`) ; toute autre valeur — chaîne, entier, liste — produit `private-type-invalid`, **y compris dans une page de section** et dans un `index.<lang>.md`. Une clé distincte de `private` dont la forme normalisée (casse ignorée, espaces, `_` et `-` retirés) est `private` produit `private-key-suspect`.
 8. **Date.** Une date valide est une chaîne `AAAA-MM-JJ`, éventuellement suivie de `THH:MM`, de `:SS`, d'une fraction `.S…` et d'un fuseau `Z` ou `±HH:MM`, qui forme une date calendaire réelle (heures 00–23, minutes et secondes 00–59). `2024-02-30` produit `date-invalid`. Pour une section, `date` n'est pas vérifiée (§1.10).
-9. **Références relatives.** Une référence est relative si elle n'est pas vide, ne commence pas par `/` et ne porte pas de schéma (`https:`, `data:`…). Elle se résout depuis le dossier du fichier index : les segments vides et `.` sont ignorés, `..` remonte d'un niveau ; une résolution qui sort de la racine du corpus n'aboutit pas.
+9. **Références relatives.** Une référence est relative si elle n'est pas vide, ne commence pas par `/` et ne porte pas de schéma (`https:`, `data:`…). Elle se résout depuis le dossier du fichier index : les segments vides et `.` sont ignorés, `..` remonte d'un niveau ; une résolution qui sort de la racine du corpus n'aboutit pas, et la référence est non sûre (règle 17).
 10. **Couverture.** Seul un `cover` relatif est vérifié. `cover-not-image` dépend de la seule extension, que le fichier existe ou non. `cover-not-found` est produit si le chemin résolu n'est pas une entrée du snapshot **et** qu'aucune entrée du manifeste `images.json` de la série (chaîne, ou `url` d'un objet) ne lui correspond : une entrée relative correspond si elle se résout au même chemin ; une entrée absolue, si elle se termine par `/` suivi du chemin résolu (`/content/<chemin résolu>`, `https://cdn.example.com/<chemin résolu>`).
 11. **Manifeste.** `images-conflict` : le frontmatter porte `images` et le dossier contient un `images.json`. `images-json-invalid` s'évalue pour tout `images.json` des racines.
 12. **Documents joints et embeds.** Chaque entrée de `attachments` dont `file` manque, n'est pas relatif, ou ne se résout pas vers une entrée existante située directement dans `<dossier>/media/`, ou se résout vers un original (extension de la liste fermée de §1.9), produit `attachment-not-found`. Chaque entrée de `embeds` qui n'est pas un objet portant une `url` chaîne non vide produit `embed-url-missing`.
@@ -2142,6 +2161,7 @@ La sévérité est celle d'un **outil d'ingestion**, qui décide d'une publicati
 14. **Structure.** `slug-invalid` porte sur le dernier segment de chaque dossier porteur, sauf le dossier qui est lui-même la racine de validation : il n'a pas de slug, et un `index.md` à la racine du corpus est licite. `nesting-too-deep` : une série qui compte au moins deux dossiers porteurs de type série parmi ses ancêtres situés dans sa racine (le dossier racine compris) — un diagnostic par série fautive. `media-nested` : pour chaque entrée d'une racine, le dossier situé juste sous le segment `media` ancêtre le moins profond, parent immédiat exclu. `media-orphan` : tout dossier nommé `media` dont le parent ne porte aucun fichier index. Pour ces deux règles, seuls comptent les segments situés sous la racine.
 15. **Schémas d'URL.** `url-scheme-forbidden` : une valeur chaîne de `cover`, de `images[].url`, `files[].url`, `embeds[].url` ou `embeds[].poster` du frontmatter, ou d'une entrée de `images.json` (chaîne, ou `url` d'un objet de `images` ou de `files`), qui n'a pas une forme admise de §1.12. Une valeur absente, `null`, vide ou qui n'est pas une chaîne n'est pas concernée (une `url` d'embed absente relève d'`embed-url-missing`). Le contrôle porte sur la valeur telle qu'écrite et vaut aussi pour un `cover` que la règle 10 ne vérifie pas (non relatif) ; une valeur refusée ne subit aucun autre contrôle (pas de `cover-not-image` ni de `cover-not-found`). Un fichier à l'état `placeholder`, `conflict` ou aux octets divergents n'est pas lu (règles 3 et 4) : aucun diagnostic de champ.
 16. **Contenu actif.** `attachment-active-content` : toute entrée de `kind` `media` d'une racine dont l'extension (§4.1) est dans la liste fermée de §1.12 (*Documents joints*). Le diagnostic ne dépend que du chemin : il vaut quel que soit l'état de l'entrée, et le fichier n'est pas lu. Un original (§1.9) n'est jamais concerné, les extensions étant disjointes.
+17. **Références sûres.** `reference-unsafe` : une référence **relative** (règle 9) non sûre au sens de §1.12 — elle contient `\`, un caractère de contrôle ou `%2e`, `%2f`, `%5c` (casse ignorée), ou sa résolution sort de la racine du corpus (et non de la racine de validation). Sont contrôlées les valeurs de `cover`, `attachments[].file`, `embeds[].poster`, `images[].url` et `files[].url` du frontmatter, et les entrées relatives de `images.json`. Le diagnostic porte sur le fichier où la valeur est écrite ; une référence non sûre ne subit aucun autre contrôle (ni `cover-not-found`, ni `cover-not-image`, ni `attachment-not-found`). Une valeur qui porte un schéma, ou qui commence par `/`, n'est pas relative : elle relève de la règle 15.
 
 ### 4.11 — Garde de publication
 
@@ -2265,6 +2285,7 @@ Vérifications :
 - [ ] Aucun dossier nommé `page` directement dans un dossier de série — segment réservé à la pagination (§1.6)
 - [ ] Un `index.md` à la racine du corpus déclare `type: section` (§1.10)
 - [ ] Chaque entrée `embeds:` porte une `url` (§1.11)
+- [ ] Aucune référence relative (`cover`, `attachments[].file`, `embeds[].poster`, entrées de `images:` et de `images.json`) ne contient `\`, `%2e`, `%2f` ou `%5c`, ni ne sort de la racine du corpus (§1.12)
 - [ ] Chaque champ d'URL (`cover`, `images[].url`, `files[].url`, `embeds[].url`, `embeds[].poster`) a une forme admise : chemin relatif, chemin absolu au site ou `http:`/`https:` — jamais `javascript:`, `data:` ni `file:` (§1.12) ; `embeds[].url` est en `http:`/`https:`
 - [ ] Chaque `embeds[].poster` en chemin relatif pointe vers un fichier existant de `media/`
 - [ ] Aucun `poster` d'embed n'est aussi listé dans `images:` ou `attachments:` — une image est une photo de la série ou la vignette d'un embed, pas les deux
@@ -3340,6 +3361,17 @@ La confidentialité ne reposait que sur la frappe exacte d'un booléen dans un f
 **Décisions normatives** : *service isolé exigé* plutôt qu'un diagnostic seul, car l'exposition est une propriété du service, pas du fichier ; *deux voies* (origine distincte ou trio d'en-têtes) plutôt qu'une, pour ne pas imposer un second domaine à un petit site ; *warning* et non erreur à l'ingestion, parce qu'un `.svg` joint peut être légitime tant que le service est isolé ; `.xml` est dans la liste (XHTML, XSLT) ; les PDF, vidéos et audios peuvent rester en ligne.
 
 **Fixtures** : corpus `invalid-attachment-active-content` (`.svg`, `.HTML`, `.JS` ; un PDF sain).
+
+#### Liens symboliques et références hors racine (§1.12, §4.0, §4.10, Annexe A) — SPEC-S-05 et SPEC-S-06, [#53](https://github.com/izo/hyperfocale-spec/issues/53)
+
+- **Liens symboliques (S-05)** : la spec n'en disait rien. §4.0 (*Exigences des providers*, nouveau) : un provider filesystem NE DOIT PAS suivre un lien symbolique, il l'ignore et le signale par `entry-symlink` (warning, produit par le provider à l'énumération). Un lien vers l'extérieur ajoutait au snapshot, classé `media` et envoyé en stockage objet, un fichier que personne n'avait décidé de publier ; une boucle rendait le parcours infini.
+- **Références hors racine (S-06)** : la borne de la règle 9 ne valait que pour l'outil qui valide. §1.12 (*Références de fichiers*) la généralise : toute référence relative résolue reste sous `<content-root>`, pour tout lecteur, adaptateur ou exporter, à la lecture comme à la copie ; `\`, caractères de contrôle et `%2e` `%2f` `%5c` sont refusés, la comparaison se fait sans décodage. §4.10 : nouveau diagnostic `reference-unsafe` (error, règle 17), qui remplace `cover-not-found` / `attachment-not-found` pour une telle référence ; `embeds[].poster` et les entrées relatives de `images:` et `images.json` sont désormais contrôlés.
+
+**Décisions normatives** : *ignorer et signaler* un lien plutôt que le suivre dans le corpus ou échouer l'ingestion (un lien vers un fichier du corpus n'apporte rien : le fichier est déjà listé) ; *erreur* pour `reference-unsafe` (une tentative de sortie de la racine n'est pas un fichier manquant) ; un seul diagnostic par valeur fautive, pour qu'une référence non sûre ne soit pas aussi « introuvable ».
+
+**Écart de comportement** : la règle 9 disait seulement qu'une résolution hors racine « n'aboutit pas » ; la lecture naturelle de la règle 9 donnait `cover-not-found` ou `attachment-not-found`. Aucune fixture antérieure n'exerçait ce cas.
+
+**Fixtures** : corpus `invalid-reference-unsafe` ; `providers/symlink.json` (cas créé par le test : un dépôt ne conserve pas les liens de façon portable), nouveau dossier `fixtures/ingestion/providers/`.
 
 ### 2.16-draft — 2026-10-25
 

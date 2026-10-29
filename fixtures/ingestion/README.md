@@ -17,6 +17,7 @@ fixtures/ingestion/
 ├── guard/<cas>.json           diagnostics attendus de la garde de publication
 ├── snapshot-id/<cas>.json     identifiant attendu d'une liste d'entrées
 ├── paths/<cas>.json           normalisation, validité, exclusion, classification, collisions
+├── providers/<cas>.json       comportement d'un provider filesystem à l'énumération (liens symboliques)
 └── hashes/vectors.json        vecteurs de hash sha256 et dropbox
 ```
 
@@ -119,6 +120,15 @@ Pour chaque chaîne de `input`, dans le même ordre :
 
 `collisions` : parmi les chemins de `expected` valides et non exclus, triés dans l'ordre canonique, chaque chemin qui suit le premier de son groupe de collision (égalité après NFC puis minuscule simple, §4.1), sans doublon, dans l'ordre canonique. C'est l'ensemble des chemins qui recevraient `entry-path-collision`.
 
+### `providers/<cas>.json`
+
+```json
+{ "description": "…", "outside": [ { "path", "content" } ], "files": [ { "path", "content" } ],
+  "symlinks": [ { "path", "target" } ], "expected": { "entries": ["…"], "diagnostics": [ { "code", "severity", "path" } ] } }
+```
+
+Un provider filesystem se teste sur un arbre que **le test crée** : un dépôt Git, une archive ou un checkout Windows ne conservent pas les liens symboliques de façon portable, et la fixture mentirait, comme pour les collisions de casse (voir plus bas). Le test crée, dans un dossier temporaire `T`, le corpus dans `T/corpus/` (`files`, chemins relatifs, contenu UTF-8), les fichiers de `outside` dans `T/outside/`, puis chaque lien de `symlinks` au chemin `path` (relatif au corpus) avec la cible `target` **écrite telle quelle** (relative au dossier du lien). Il énumère `T/corpus/` avec son provider. `expected.entries` est la liste, triée dans l'ordre canonique, des chemins qui entrent au snapshot ; `expected.diagnostics` les diagnostics du provider, comparés comme ceux de `validation/` (`code` + `severity` + `path`, triés). Une plateforme qui ne peut pas créer de lien symbolique saute le cas et le dit.
+
 ### `hashes/vectors.json`
 
 **`hashes/vectors.json` fait foi** pour les vecteurs `sha256` et `dropbox` (§4.4) ; ce README n'en recopie aucune valeur. `input.utf8` désigne les octets UTF-8 d'une chaîne ; `input.repeat` désigne `count` fois l'octet `byte`. Les vecteurs couvrent le fichier vide, `abc`, un bloc Dropbox plein (4 194 304 octets nuls), un bloc plein plus un octet, **5 000 000 octets nuls** et deux blocs pleins. **Aucun fichier de plus de 4 Mio n'est versionné** : les vecteurs multi-blocs se génèrent.
@@ -155,7 +165,8 @@ Pour la même raison, aucun corpus ne contient deux noms égaux après repli de 
 | `entry-not-materialized` | `validation/entry-not-materialized.json` |
 | `entry-conflict` | `validation/entry-conflict.json` |
 | `entry-hash-mismatch` | `validation/entry-hash-mismatch.json` |
-| `slug-invalid` … `url-scheme-forbidden` | `validation/invalid-<code>.json` (corpus `invalid-<code>`), plus `validation/roots-default.json` |
+| `slug-invalid` … `url-scheme-forbidden` | `validation/invalid-<code>.json` (corpus `invalid-<code>`), plus `validation/roots-default.json` — sauf `entry-symlink` |
+| `entry-symlink` | `providers/symlink.json` (diagnostic du provider à l'énumération, non de la validation d'un snapshot) |
 | `cover-not-image`, `attachment-not-found` vers un original | `validation/originals-references.json` (snapshot inline) ; `validation/originals.json` vérifie qu'un dossier de travail sain n'en produit aucun |
 | `hash-incomparable` | `diff/incomparable.json` |
 | `move-ambiguous` | `diff/ambiguous.json` |
