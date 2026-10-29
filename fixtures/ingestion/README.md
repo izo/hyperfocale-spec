@@ -155,7 +155,7 @@ Pour la même raison, aucun corpus ne contient deux noms égaux après repli de 
 | `entry-not-materialized` | `validation/entry-not-materialized.json` |
 | `entry-conflict` | `validation/entry-conflict.json` |
 | `entry-hash-mismatch` | `validation/entry-hash-mismatch.json` |
-| `slug-invalid` … `embed-url-missing` | `validation/invalid-<code>.json` (corpus `invalid-<code>`), plus `validation/roots-default.json` |
+| `slug-invalid` … `url-scheme-forbidden` | `validation/invalid-<code>.json` (corpus `invalid-<code>`), plus `validation/roots-default.json` |
 | `cover-not-image`, `attachment-not-found` vers un original | `validation/originals-references.json` (snapshot inline) ; `validation/originals.json` vérifie qu'un dossier de travail sain n'en produit aucun |
 | `hash-incomparable` | `diff/incomparable.json` |
 | `move-ambiguous` | `diff/ambiguous.json` |

@@ -2,9 +2,9 @@
 
 > **Source de vérité canonique.** Ce document définit le format Hyperfocale — un standard de **séries photo pour le web**, portable entre SSG (Astro, Next.js, Hugo, 11ty...), vaults Obsidian, et CMS headless (Strapi, Sanity, Payload...). Le travail qui précède la publication — projets, originaux, sélection — relève d'**Hyperfocus** ([`spec-hyperfocus.md`](https://github.com/izo/hyperfocus/blob/main/spec-hyperfocus.md)), qui découle de cette spec. Toute évolution du format doit être proposée d'abord ici, dans ce dépôt.
 
-**Version** : 2.16-draft
+**Version** : 2.17-draft
 **Statut** : spécification active — source de vérité canonique
-**Dernière révision** : 2026-10-25
+**Dernière révision** : 2026-10-30
 
 ### Implémentations de référence
 
@@ -133,6 +133,7 @@ Ces règles s'appliquent quel que soit l'adaptateur ou la plateforme :
 | **Documents joints** | Tout autre fichier de `media/`, ni image ni original, est un document joint (§1.9), listé après la galerie |
 | **Pas de récursion** | `media/` est plat, pas de sous-dossiers |
 | **Passthrough** | Les champs inconnus du frontmatter ne provoquent pas d'erreur |
+| **URLs de contenu** | Un champ d'URL n'admet que `http:`, `https:`, un chemin absolu au site ou un chemin relatif : `javascript:`, `data:`, `file:` et tout autre schéma sont refusés (§1.12) |
 
 ### Ce que n'est PAS le format
 
@@ -153,6 +154,7 @@ Toute implémentation (adaptateur, script, outil) qui lit du contenu Hyperfocale
 6. Rendre le body Markdown
 7. Ne jamais échouer sur un fichier de type inconnu dans `media/`
 8. Ne pas traiter comme une série un `index.md` déclarant `type: section` — c'est un rangement, pas un contenu (§1.10)
+9. Ne rendre en lien ou en ressource (`href`, `src`) qu'une URL de forme admise : le contenu d'un corpus partagé n'est pas fiable (§1.12)
 
 ---
 
@@ -1060,6 +1062,23 @@ Un `.mp4` posé sur son propre CDN reste un document joint : on en sert l'octet 
 
 L'exclusion des posters du scan de galerie ne s'applique qu'aux séries portant un `embeds:` — donc à aucun contenu antérieur. Un adaptateur qui ignore §1.11 et rencontre une série d'embeds affichera les posters comme des photos : dégradation visible mais non destructrice, et raison pour laquelle la prise en charge de §1.11 est requise pour la conformité v2.8 (§2.0).
 
+### 1.12 — Modèle de confiance *(introduit v2.17)*
+
+Le contenu d'un corpus partagé n'est pas fiable. Toute personne qui peut déposer un fichier dans le dossier source — contributeur, client, outil de synchronisation, dépôt Git — écrit à la fois des métadonnées (frontmatter), du texte (body), des noms de fichiers et des fichiers de `media/`. Un lecteur, un adaptateur, un outil d'ingestion ou un exporter DOIT traiter tout cela comme des **données** : jamais comme du code à exécuter, ni comme une adresse à suivre sans contrôle. Le format ne définit aucun rôle d'administrateur : ces garde-fous valent pour toute source partagée, et un projet qui édite seul son dossier les applique aussi, par prudence.
+
+Cette section réunit les règles de la couche 1. Celles de la couche 4 sont en §4.0 (providers), §4.10 (diagnostics) et §4.11 (garde).
+
+#### Schémas d'URL
+
+| Règle | Description |
+|-------|-------------|
+| Champs concernés | `cover` ; `images[].url`, `files[].url`, `embeds[].url` et `embeds[].poster`, dans le frontmatter comme dans le manifeste `images.json` (§1.5.1) ; les champs d'URL des profils de l'Annexe G (`url`, `repository`, `archive_url`, `streaming.*`…) ; les liens et images du body Markdown. |
+| Formes admises | (1) un chemin relatif à `index.md` (`./media/01.jpg`) ; (2) un chemin absolu au site (`/content/…`), avec un seul `/` initial ; (3) une URL de schéma `http:` ou `https:`, schéma comparé sans tenir compte de la casse. Pour `embeds[].url`, seule la forme (3) est admise : un embed désigne un hébergeur. |
+| Refusé | Tout autre schéma — `javascript:`, `data:`, `file:`, `blob:`, `vbscript:`, `ftp:`… —, une URL à schéma implicite (`//hôte/…`), un chemin absolu qui contient `\`, une valeur qui contient un caractère de contrôle (U+0000–U+001F, U+007F) ou commence par une espace : les navigateurs ignorent ces caractères avant de lire le schéma (`java<tab>script:` est un `javascript:`). `mailto:` n'est admis que dans un champ qui désigne un contact et se rend en lien ; aucun champ du format n'en désigne un, et jamais une ressource (`src`). |
+| Au rendu | Un lecteur DOIT refuser une valeur refusée avant de produire un `href` ou un `src` : il omet le lien ou la ressource, sans échec de build, et DEVRAIT le signaler. La valeur se lit telle qu'écrite : elle n'est jamais décodée ni normalisée avant le contrôle. |
+| À l'ingestion | `url-scheme-forbidden` (§4.10, règle 15) pour les champs du core. Les champs des profils ne sont pas validés par la couche 4 (Annexe G) : le contrôle du rendu les couvre. |
+| Identifiants d'embed | Un adaptateur ne construit l'URL de lecture d'un embed que si `platform` appartient au vocabulaire reconnu (§1.11) et si `id` vérifie `^[A-Za-z0-9_-]{1,128}$` ; sinon il se rabat sur le lien (`url`, déjà contrôlée). L'`id` ne se concatène jamais à une URL sans ce contrôle. |
+
 ---
 
 ## Couche 2 — Adaptateurs plateforme
@@ -1149,7 +1168,9 @@ const series = defineCollection({
       lang: z.string().optional(),
       iptc: z.looseObject({}).optional(),
       images: z.array(z.object({
-        url: z.url(),
+        // http(s), chemin absolu au site ou relatif à index.md (§1.5.1, §1.12) :
+        // z.url() seul accepterait javascript:, data: et file:
+        url: z.string().refine(isAllowedUrl),
         alt: z.string().optional(),
         width: z.number().optional(),
         height: z.number().optional(),
@@ -2056,6 +2077,7 @@ Transitions — la liste est **exhaustive** : toute autre transition est interdi
 | `images-json-invalid` | warning | JSON illisible, racine qui n'est pas un objet, clé `images` absente ou non tableau (§1.5.1) | le `images.json` |
 | `attachment-not-found` | warning | entrée `attachments[]` dont le `file` est absent de `media/` ou désigne un original (§1.9) | le fichier |
 | `embed-url-missing` | error | entrée `embeds[]` sans `url` (§1.11) | le fichier |
+| `url-scheme-forbidden` | error | valeur d'un champ d'URL du core hors des formes admises : schéma autre que `http:`/`https:`, `//hôte`, caractère de contrôle (§1.12) | le fichier où la valeur est écrite |
 | `hash-incomparable` | warning | diff : `kind` et `size` égaux, aucun algorithme commun (§4.7) | l'entrée (le `to` d'un déplacement) |
 | `move-ambiguous` | info | diff : appariement non unique (§4.7) | l'entrée |
 
@@ -2083,6 +2105,7 @@ La sévérité est celle d'un **outil d'ingestion**, qui décide d'une publicati
 12. **Documents joints et embeds.** Chaque entrée de `attachments` dont `file` manque, n'est pas relatif, ou ne se résout pas vers une entrée existante située directement dans `<dossier>/media/`, ou se résout vers un original (extension de la liste fermée de §1.9), produit `attachment-not-found`. Chaque entrée de `embeds` qui n'est pas un objet portant une `url` chaîne non vide produit `embed-url-missing`.
 13. **Type d'un dossier porteur.** Il se lit dans `index.md`, sinon dans `index.mdx`, sinon dans le premier `index.<lang>.md` de l'ordre canonique. Un fichier illisible, aux octets divergents (§4.4), `placeholder` ou `conflict` vaut `series` : la nature de section ne se devine jamais (§1.10).
 14. **Structure.** `slug-invalid` porte sur le dernier segment de chaque dossier porteur, sauf le dossier qui est lui-même la racine de validation : il n'a pas de slug, et un `index.md` à la racine du corpus est licite. `nesting-too-deep` : une série qui compte au moins deux dossiers porteurs de type série parmi ses ancêtres situés dans sa racine (le dossier racine compris) — un diagnostic par série fautive. `media-nested` : pour chaque entrée d'une racine, le dossier situé juste sous le segment `media` ancêtre le moins profond, parent immédiat exclu. `media-orphan` : tout dossier nommé `media` dont le parent ne porte aucun fichier index. Pour ces deux règles, seuls comptent les segments situés sous la racine.
+15. **Schémas d'URL.** `url-scheme-forbidden` : une valeur chaîne de `cover`, de `images[].url`, `files[].url`, `embeds[].url` ou `embeds[].poster` du frontmatter, ou d'une entrée de `images.json` (chaîne, ou `url` d'un objet de `images` ou de `files`), qui n'a pas une forme admise de §1.12. Une valeur absente, `null`, vide ou qui n'est pas une chaîne n'est pas concernée (une `url` d'embed absente relève d'`embed-url-missing`). Le contrôle porte sur la valeur telle qu'écrite et vaut aussi pour un `cover` que la règle 10 ne vérifie pas (non relatif) ; une valeur refusée ne subit aucun autre contrôle (pas de `cover-not-image` ni de `cover-not-found`). Un fichier à l'état `placeholder`, `conflict` ou aux octets divergents n'est pas lu (règles 3 et 4) : aucun diagnostic de champ.
 
 ### 4.11 — Garde de publication
 
@@ -2205,6 +2228,7 @@ Vérifications :
 - [ ] Aucun dossier nommé `page` directement dans un dossier de série — segment réservé à la pagination (§1.6)
 - [ ] Un `index.md` à la racine du corpus déclare `type: section` (§1.10)
 - [ ] Chaque entrée `embeds:` porte une `url` (§1.11)
+- [ ] Chaque champ d'URL (`cover`, `images[].url`, `files[].url`, `embeds[].url`, `embeds[].poster`) a une forme admise : chemin relatif, chemin absolu au site ou `http:`/`https:` — jamais `javascript:`, `data:` ni `file:` (§1.12) ; `embeds[].url` est en `http:`/`https:`
 - [ ] Chaque `embeds[].poster` en chemin relatif pointe vers un fichier existant de `media/`
 - [ ] Aucun `poster` d'embed n'est aussi listé dans `images:` ou `attachments:` — une image est une photo de la série ou la vignette d'un embed, pas les deux
 
@@ -3229,6 +3253,21 @@ Un dossier G.12 existant reste lisible par Hyperfocus : c'est un projet auquel i
 ---
 
 ## Changelog
+
+### 2.17-draft — 2026-10-30
+
+Durcissement issu de l'audit du 2026-10-29 (sécurité, coût imposé, fixtures) : la spec n'avait **aucun modèle de menace**, alors que sa raison d'être est de laisser des contributeurs non développeurs publier depuis un dossier partagé. Une seule version regroupe les correctifs de l'audit, détaillés ci-dessous au fil des issues.
+
+#### Schémas d'URL et modèle de confiance (§0, §1.12, §2.1, §4.10, Annexe A) — SPEC-S-02, [#49](https://github.com/izo/hyperfocale-spec/issues/49)
+
+- **§1.12 (nouveau)** : le contenu d'un corpus partagé n'est pas fiable ; les champs d'URL n'admettent que `http:`, `https:`, un chemin absolu au site ou un chemin relatif. `javascript:`, `data:`, `file:` et tout autre schéma sont refusés, ainsi que `//hôte` et les valeurs à caractère de contrôle. Contrat minimum d'un lecteur (§0, point 9) et invariants de §0 alignés.
+- **§4.10** : nouveau diagnostic `url-scheme-forbidden` (error, règle 15) pour les champs d'URL du core, frontmatter et `images.json`.
+- **§2.1** : l'exemple Zod n'utilise plus `z.url()`, qui accepte `javascript:`, `data:` et `file:` (mesuré avec Zod 4.6.7) et rejetait déjà les entrées relatives de §1.5.1.
+- **Identifiants d'embed** : `id` borné à `^[A-Za-z0-9_-]{1,128}$` avant toute construction d'URL de lecture ; sinon repli sur le lien (la classe de défaut de plugin 0.18.2).
+
+**Décisions normatives** : *liste blanche* plutôt qu'une liste noire de schémas dangereux (la liste noire oublie le suivant) ; `mailto:` refusé dans les champs du core, aucun n'en désigne un contact ; la valeur se lit telle qu'écrite, sans décodage, pour qu'aucun contournement par encodage ne passe le contrôle ; les champs des profils G restent hors de la validation de la couche 4 (règle commune de G) mais sous le contrôle du rendu.
+
+**Fixtures** : corpus `invalid-url-scheme-forbidden` (deux fichiers fautifs, une série aux formes admises).
 
 ### 2.16-draft — 2026-10-25
 
