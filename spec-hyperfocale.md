@@ -860,6 +860,7 @@ La classification se fait par extension de fichier — partie du nom qui suit so
 | Lecteurs | Un adaptateur PEUT rendre `video` / `audio` en lecteurs intégrés ; à défaut, il les liste en pièces jointes. |
 | Robustesse | Un lecteur NE DOIT jamais échouer sur un fichier de type inconnu dans `media/` : il le classe `file` et le liste en document joint. |
 | `index.md` | N'est jamais un document joint (c'est le fichier de métadonnées de la série). |
+| Service *(v2.17)* | `media/` accepte tout type de fichier : un `.html` ou un `.svg` déposé là s'exécuterait sur l'origine du site s'il était servi avec le site. Les documents joints se servent de façon isolée (§1.12, *Documents joints*). |
 
 #### Originaux *(introduit v2.11)*
 
@@ -1087,6 +1088,17 @@ Cette section réunit les règles de la couche 1. Celles de la couche 4 sont en 
 | Au rendu | Un lecteur DOIT refuser une valeur refusée avant de produire un `href` ou un `src` : il omet le lien ou la ressource, sans échec de build, et DEVRAIT le signaler. La valeur se lit telle qu'écrite : elle n'est jamais décodée ni normalisée avant le contrôle. |
 | À l'ingestion | `url-scheme-forbidden` (§4.10, règle 15) pour les champs du core. Les champs des profils ne sont pas validés par la couche 4 (Annexe G) : le contrôle du rendu les couvre. |
 | Identifiants d'embed | Un adaptateur ne construit l'URL de lecture d'un embed que si `platform` appartient au vocabulaire reconnu (§1.11) et si `id` vérifie `^[A-Za-z0-9_-]{1,128}$` ; sinon il se rabat sur le lien (`url`, déjà contrôlée). L'`id` ne se concatène jamais à une URL sans ce contrôle. |
+
+#### Documents joints
+
+`media/` accepte « tout type de fichier » (§1.2, §1.9) : `.html`, `.xhtml`, `.svg`, `.js` y sont des documents joints de classe `file`. Servi depuis l'origine du site, un tel fichier s'exécute avec ses cookies et son stockage (XSS stockée, hameçonnage de confiance).
+
+| Règle | Description |
+|-------|-------------|
+| Service isolé | Un site DOIT servir les fichiers de classe `file` (§1.9) de l'une de ces deux façons. **(a)** Depuis une **origine distincte** de celle des pages et de l'API : domaine ou sous-domaine dédié, sans aucun cookie du site, sans accès à ses jetons. **(b)** Depuis l'origine du site, avec `Content-Disposition: attachment`, `X-Content-Type-Options: nosniff` et `Content-Security-Policy: sandbox` : le navigateur télécharge au lieu d'interpréter. Le chemin, le nom du fichier et son extension ne suffisent jamais à les rendre inoffensifs. |
+| Types actifs | Une extension de la liste fermée `.html` `.htm` `.xhtml` `.svg` `.svgz` `.xml` `.xsl` `.xslt` `.js` `.mjs` désigne un contenu **actif** : un navigateur l'exécute ou l'interprète. L'ingestion le signale (`attachment-active-content`, §4.10, *warning*) ; un site PEUT le refuser. La liste est fermée et versionnée avec la spec ; un type actif absent de la liste reste couvert par *Service isolé*. |
+| Autres classes | Les classes `document`, `video` et `audio` se servent avec `X-Content-Type-Options: nosniff` et un `Content-Type` déduit de l'extension, jamais du contenu : elles PEUVENT rester en ligne (lecteur PDF, `<video>`). Les images de la galerie se servent elles aussi avec `nosniff`. |
+| Pas de sniffing | Aucun type de contenu ne se devine à partir des octets : un `.txt` qui contient du HTML reste du texte. |
 
 #### Confidentialité
 
@@ -2096,6 +2108,7 @@ Transitions — la liste est **exhaustive** : toute autre transition est interdi
 | `images-json-invalid` | warning | JSON illisible, racine qui n'est pas un objet, clé `images` absente ou non tableau (§1.5.1) | le `images.json` |
 | `attachment-not-found` | warning | entrée `attachments[]` dont le `file` est absent de `media/` ou désigne un original (§1.9) | le fichier |
 | `embed-url-missing` | error | entrée `embeds[]` sans `url` (§1.11) | le fichier |
+| `attachment-active-content` | warning | entrée `media` dont l'extension désigne un contenu actif : `.html`, `.htm`, `.xhtml`, `.svg`, `.svgz`, `.xml`, `.xsl`, `.xslt`, `.js`, `.mjs` (§1.12) | l'entrée |
 | `private-type-invalid` | error | `private` présent (non `null`) et non booléen : `"true"`, `yes`, `1`… (§1.12) | le fichier |
 | `private-key-suspect` | warning | clé qui ne diffère de `private` que par la casse, des espaces, `_` ou `-` (§1.12) | le fichier |
 | `index-mdx-forbidden` | error | fichier `index.mdx` ou `index.<lang>.mdx` : MDX est du code exécutable (§1.12) | le fichier |
@@ -2128,6 +2141,7 @@ La sévérité est celle d'un **outil d'ingestion**, qui décide d'une publicati
 13. **Type d'un dossier porteur.** Il se lit dans `index.md`, sinon dans le premier `index.<lang>.md` de l'ordre canonique. Un fichier illisible, aux octets divergents (§4.4), `placeholder` ou `conflict` vaut `series` : la nature de section ne se devine jamais (§1.10).
 14. **Structure.** `slug-invalid` porte sur le dernier segment de chaque dossier porteur, sauf le dossier qui est lui-même la racine de validation : il n'a pas de slug, et un `index.md` à la racine du corpus est licite. `nesting-too-deep` : une série qui compte au moins deux dossiers porteurs de type série parmi ses ancêtres situés dans sa racine (le dossier racine compris) — un diagnostic par série fautive. `media-nested` : pour chaque entrée d'une racine, le dossier situé juste sous le segment `media` ancêtre le moins profond, parent immédiat exclu. `media-orphan` : tout dossier nommé `media` dont le parent ne porte aucun fichier index. Pour ces deux règles, seuls comptent les segments situés sous la racine.
 15. **Schémas d'URL.** `url-scheme-forbidden` : une valeur chaîne de `cover`, de `images[].url`, `files[].url`, `embeds[].url` ou `embeds[].poster` du frontmatter, ou d'une entrée de `images.json` (chaîne, ou `url` d'un objet de `images` ou de `files`), qui n'a pas une forme admise de §1.12. Une valeur absente, `null`, vide ou qui n'est pas une chaîne n'est pas concernée (une `url` d'embed absente relève d'`embed-url-missing`). Le contrôle porte sur la valeur telle qu'écrite et vaut aussi pour un `cover` que la règle 10 ne vérifie pas (non relatif) ; une valeur refusée ne subit aucun autre contrôle (pas de `cover-not-image` ni de `cover-not-found`). Un fichier à l'état `placeholder`, `conflict` ou aux octets divergents n'est pas lu (règles 3 et 4) : aucun diagnostic de champ.
+16. **Contenu actif.** `attachment-active-content` : toute entrée de `kind` `media` d'une racine dont l'extension (§4.1) est dans la liste fermée de §1.12 (*Documents joints*). Le diagnostic ne dépend que du chemin : il vaut quel que soit l'état de l'entrée, et le fichier n'est pas lu. Un original (§1.9) n'est jamais concerné, les extensions étant disjointes.
 
 ### 4.11 — Garde de publication
 
@@ -2240,6 +2254,7 @@ Vérifications :
 - [ ] Un `cover` relatif désigne un fichier existant : une image de `media/`, ou — pour un conteneur (§1.8) ou une section (§1.10) — une image d'un contenu qu'il regroupe ; une URL ou un chemin absolu au site n'est pas vérifié
 - [ ] `media/` ne contient pas de sous-dossiers
 - [ ] Chaque fichier de `media/` est classé (image, original ou document joint, §1.9)
+- [ ] Aucun document joint de contenu actif (`.html`, `.svg`, `.js`…) sans y avoir pensé : le site les sert de façon isolée (§1.12)
 - [ ] `cover` pointe vers une image (jamais un document joint ni un original)
 - [ ] Chaque entrée `attachments:` du frontmatter référence un fichier existant de `media/` qui n'est pas un original
 - [ ] `iptc.country_code` est un code ISO 3166-1 valide (si présent)
@@ -3314,6 +3329,17 @@ La confidentialité ne reposait que sur la frappe exacte d'un booléen dans un f
 **Hors périmètre de cette version** (non décidé, à reprendre à part) : promouvoir `private` (ou `visibility`) dans le core avec un effet normatif sur le snapshot publié ; faire retirer `portfolio.client` du fichier publié par `confidential` (G.7), pas seulement du rendu.
 
 **Fixtures** : corpus `invalid-private-type-invalid` et `invalid-private-key-suspect` ; garde `private-type-changed`.
+
+#### Documents joints servis de façon isolée (§1.9, §1.12, §4.10, Annexe A) — SPEC-S-03, [#52](https://github.com/izo/hyperfocale-spec/issues/52)
+
+`media/` accepte « tout type de fichier », donc `.html`, `.svg`, `.js` : classés `file`, proposés au téléchargement, et servis, sur `mathieu-drouet.com`, par le Worker depuis R2 — c'est-à-dire depuis l'origine du site. Un SVG ou un HTML déposé là s'exécutait sur cette origine, sans aucun diagnostic.
+
+- **§1.12 (Documents joints)** : les fichiers de classe `file` se servent de façon **isolée** — soit depuis une origine distincte des pages et de l'API (sans cookie du site), soit avec `Content-Disposition: attachment`, `X-Content-Type-Options: nosniff` et `Content-Security-Policy: sandbox`. Les autres classes et les images se servent avec `nosniff` et un `Content-Type` déduit de l'extension, jamais du contenu. §1.9 renvoie à cette règle.
+- **§4.10** : nouveau diagnostic `attachment-active-content` (warning, règle 16) pour une entrée `media` dont l'extension est dans la liste fermée `.html` `.htm` `.xhtml` `.svg` `.svgz` `.xml` `.xsl` `.xslt` `.js` `.mjs`.
+
+**Décisions normatives** : *service isolé exigé* plutôt qu'un diagnostic seul, car l'exposition est une propriété du service, pas du fichier ; *deux voies* (origine distincte ou trio d'en-têtes) plutôt qu'une, pour ne pas imposer un second domaine à un petit site ; *warning* et non erreur à l'ingestion, parce qu'un `.svg` joint peut être légitime tant que le service est isolé ; `.xml` est dans la liste (XHTML, XSLT) ; les PDF, vidéos et audios peuvent rester en ligne.
+
+**Fixtures** : corpus `invalid-attachment-active-content` (`.svg`, `.HTML`, `.JS` ; un PDF sain).
 
 ### 2.16-draft — 2026-10-25
 
