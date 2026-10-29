@@ -133,6 +133,7 @@ Ces règles s'appliquent quel que soit l'adaptateur ou la plateforme :
 | **Documents joints** | Tout autre fichier de `media/`, ni image ni original, est un document joint (§1.9), listé après la galerie |
 | **Pas de récursion** | `media/` est plat, pas de sous-dossiers |
 | **Passthrough** | Les champs inconnus du frontmatter ne provoquent pas d'erreur |
+| **Contenu exécutable** | Pas de `index.mdx` : seul `index.md` porte une série. Le HTML rendu depuis le body est assaini (§1.12) |
 | **URLs de contenu** | Un champ d'URL n'admet que `http:`, `https:`, un chemin absolu au site ou un chemin relatif : `javascript:`, `data:`, `file:` et tout autre schéma sont refusés (§1.12) |
 
 ### Ce que n'est PAS le format
@@ -151,7 +152,7 @@ Toute implémentation (adaptateur, script, outil) qui lit du contenu Hyperfocale
 3. Scanner `media/` — absent, il vaut un `media/` vide — en ignorant les fichiers système (§4.2), et trier les fichiers alphabétiquement au sens de §1.6 — les images alimentent la galerie, les originaux sont ignorés, les autres fichiers sont des documents joints (§1.9)
 4. Utiliser `cover` ou la première image comme couverture (ni les documents joints ni les originaux ne sont jamais candidats)
 5. Exclure les entrées `draft: true` des listings publics
-6. Rendre le body Markdown
+6. Rendre le body Markdown, en HTML assaini (§1.12)
 7. Ne jamais échouer sur un fichier de type inconnu dans `media/`
 8. Ne pas traiter comme une série un `index.md` déclarant `type: section` — c'est un rangement, pas un contenu (§1.10)
 9. Ne rendre en lien ou en ressource (`href`, `src`) qu'une URL de forme admise : le contenu d'un corpus partagé n'est pas fiable (§1.12)
@@ -419,7 +420,7 @@ Chaque série est **autonome** : toutes ses données (métadonnées + médias) v
 |---------|-----------|
 | `<content-root>` | Libre selon la plateforme. Exemples : `src/content/` (Astro), `content/` (Next.js), racine du vault (Obsidian). |
 | `<slug>` | Identifiant unique. Minuscules, chiffres, tirets uniquement. Regex : `^[a-z0-9]+(-[a-z0-9]+)*$`. Utilisé dans les URLs. |
-| `index.md` | Obligatoire. Contient le frontmatter YAML et le body Markdown. Encodage UTF-8. Les plateformes MDX (Astro, Next.js) PEUVENT lui substituer `index.mdx`, de même rôle ; si les deux existent, `index.md` fait foi (c'est l'ordre de lecture de la couche 4, §4.10). Les variantes de langue `index.<lang>.md` relèvent de l'Annexe F. |
+| `index.md` | Obligatoire. Contient le frontmatter YAML et le body Markdown. Encodage UTF-8. **`index.mdx` est interdit** *(v2.17)* : seul `index.md` porte une série, et un corpus qui contient un `index.mdx` est invalide (§1.12, `index-mdx-forbidden`, §4.10). Les variantes de langue `index.<lang>.md` relèvent de l'Annexe F. |
 | `media/` | Plat — pas de sous-dossiers. Porte les fichiers locaux de la série ; PEUT être absent quand il n'y en a aucun (voir *Absence de `media/`*). |
 | Images | Formats alimentant la galerie : `.jpg`, `.jpeg`, `.png`, `.webp`, `.avif`, `.tif`, `.tiff`. Pas de récursion dans `media/`. |
 | Originaux | RAW et sidecars de développement (liste fermée, §1.9) : acceptés dans `media/`, ignorés par les lecteurs. |
@@ -1068,6 +1069,14 @@ Le contenu d'un corpus partagé n'est pas fiable. Toute personne qui peut dépos
 
 Cette section réunit les règles de la couche 1. Celles de la couche 4 sont en §4.0 (providers), §4.10 (diagnostics) et §4.11 (garde).
 
+#### Contenu exécutable et rendu du body
+
+| Règle | Description |
+|-------|-------------|
+| `index.mdx` interdit | Seul `index.md` (et ses variantes `index.<lang>.md`, Annexe F) porte une série. Un fichier MDX est du JavaScript exécuté au build : qui peut écrire dans le dossier source exécuterait du code dans la chaîne de publication. Un lecteur NE DOIT PAS compiler, évaluer ni importer un fichier `index.mdx` ou `index.<lang>.mdx` d'un corpus ; un outil d'ingestion le refuse (`index-mdx-forbidden`, §4.10, qui vaut pour toute racine de validation) ; un outil qui écrit (CMS, exporter) NE DOIT PAS en créer. La compatibilité MDX par plateforme, admise jusqu'à la v2.16, disparaît : un site MDX lit son contenu en Markdown. |
+| Rendu du body assaini | Le HTML produit à partir du body — qu'il vienne du Markdown ou du HTML brut que le moteur laisse passer — DOIT être assaini : le rendu retire les éléments exécutables ou qui changent le document (`script`, `iframe`, `object`, `embed`, `style`, `link`, `meta`, `base`, `form`), tout attribut d'événement (`on…`), et tout attribut `href`, `src`, `srcset`, `action`, `formaction`, `poster` ou `xlink:href` dont la valeur n'a pas une forme admise (*Schémas d'URL*, ci-dessous). Un adaptateur PEUT à la place désactiver le HTML brut de son moteur Markdown, pourvu que les liens et images qui restent suivent la même liste blanche. |
+| Données injectées | Toute donnée de contenu insérée dans une page — titre, description, JSON-LD, attribut, champ de profil — est échappée selon son contexte : une chaîne qui contient `</script>` ne ferme pas le script qui la porte. |
+
 #### Schémas d'URL
 
 | Règle | Description |
@@ -1104,7 +1113,8 @@ Tout adaptateur Hyperfocale **DOIT** :
 | Exposer les contenus embarqués | Rendre `embeds` accessible aux templates, et **exclure les images désignées par un `poster` du scan de galerie** (§1.11) — *conformité v2.8* |
 | Respecter `draft` | Exclure les drafts en production |
 | Trier par date desc | Listing par défaut : date décroissante |
-| Exposer le body | Rendre le Markdown du body en HTML |
+| Exposer le body | Rendre le Markdown du body en HTML **assaini** (§1.12) — *conformité v2.17* |
+| Refuser le contenu exécutable | Ne jamais compiler, évaluer ni importer un fichier `index.mdx` d'un corpus (§1.12) — *conformité v2.17* |
 
 Tout adaptateur **PEUT** :
 
@@ -1847,6 +1857,8 @@ Chaque entrée porte un `kind`, déterminé par son seul chemin, par la premièr
 
 L'ordre compte : `media/images.json` est `derived`, `media/index.md` est `media`, `media/raw/01.tif` est `other` (son parent immédiat est `raw`), `Media/01.jpg` est `other`. Le `kind` d'une entrée DOIT être égal à la classification de son chemin ; un écart produit `entry-kind-mismatch`, et les règles de validation (§4.10) s'appuient toujours sur la classification recalculée.
 
+Un fichier `index.mdx` reste `content` — le snapshot décrit tout ce que la source contient — mais n'est jamais un fichier index : il est refusé (`index-mdx-forbidden`, §4.10).
+
 Un original (§1.9) reste une entrée `media` : le snapshot d'une source décrit tout ce qu'elle contient. C'est la publication qui l'écarte (§4.11, *Originaux et projection publiable*).
 
 ### 4.4 — Hash
@@ -2062,7 +2074,7 @@ Transitions — la liste est **exhaustive** : toute autre transition est interdi
 | `slug-invalid` | error | dossier porteur d'un fichier index dont le nom ne suit pas `^[a-z0-9]+(-[a-z0-9]+)*$` (§1.2) | le dossier |
 | `media-nested` | error | dossier sous `media/` (§1.2) : entrée dont un segment ancêtre autre que le parent immédiat est `media` | le dossier imbriqué |
 | `media-orphan` | warning | dossier `media` dont le dossier parent ne porte aucun fichier index | le dossier `media` |
-| `index-default-missing` | warning | `index.<lang>.md` présent sans `index.md` ni `index.mdx` | le dossier |
+| `index-default-missing` | warning | `index.<lang>.md` présent sans `index.md` | le dossier |
 | `nesting-too-deep` | error | série sous une sous-série (§1.8) ; les sections `type: section` ne comptent pas | la série la plus profonde |
 | `section-has-media` | warning | `type: section` et `media/` (§1.10) | le dossier |
 | `frontmatter-missing` | error | fichier index sans bloc `---` initial refermé | le fichier |
@@ -2077,6 +2089,7 @@ Transitions — la liste est **exhaustive** : toute autre transition est interdi
 | `images-json-invalid` | warning | JSON illisible, racine qui n'est pas un objet, clé `images` absente ou non tableau (§1.5.1) | le `images.json` |
 | `attachment-not-found` | warning | entrée `attachments[]` dont le `file` est absent de `media/` ou désigne un original (§1.9) | le fichier |
 | `embed-url-missing` | error | entrée `embeds[]` sans `url` (§1.11) | le fichier |
+| `index-mdx-forbidden` | error | fichier `index.mdx` ou `index.<lang>.mdx` : MDX est du code exécutable (§1.12) | le fichier |
 | `url-scheme-forbidden` | error | valeur d'un champ d'URL du core hors des formes admises : schéma autre que `http:`/`https:`, `//hôte`, caractère de contrôle (§1.12) | le fichier où la valeur est écrite |
 | `hash-incomparable` | warning | diff : `kind` et `size` égaux, aucun algorithme commun (§4.7) | l'entrée (le `to` d'un déplacement) |
 | `move-ambiguous` | info | diff : appariement non unique (§4.7) | l'entrée |
@@ -2085,7 +2098,7 @@ La sévérité est celle d'un **outil d'ingestion**, qui décide d'une publicati
 
 #### Fichiers index et racines
 
-**Fichiers index** : entrées de `kind` `content` dont le nom de base est `index.md`, `index.mdx` ou `index.<lang>.md` (Annexe F, stratégie 2), avec `<lang>` = `[a-z]{2}(-[A-Z]{2})?`. `index.english.md` ou `index.EN.md` n'en sont pas : ils sont copiés, jamais validés. Chaque fichier index est validé indépendamment. Un **dossier porteur** est un dossier qui contient directement au moins un fichier index.
+**Fichiers index** : entrées de `kind` `content` dont le nom de base est `index.md` ou `index.<lang>.md` (Annexe F, stratégie 2), avec `<lang>` = `[a-z]{2}(-[A-Z]{2})?`. `index.english.md` ou `index.EN.md` n'en sont pas : ils sont copiés, jamais validés. Chaque fichier index est validé indépendamment. Un **dossier porteur** est un dossier qui contient directement au moins un fichier index. *(v2.17)* `index.mdx` et `index.<lang>.mdx` ne sont **pas** des fichiers index : ils ne sont jamais lus, ne rendent pas leur dossier porteur, et produisent `index-mdx-forbidden` (§1.12) dans toute racine de validation, quel que soit leur état (`placeholder` et `conflict` compris : le diagnostic ne dépend que du chemin).
 
 **Racines de validation** : la validation du contenu porte sur des racines configurées, `roots: [{ "path": "archives", "dateRequired": true }, …]` (`dateRequired` vaut `true` par défaut). Défaut : une racine unique `""` (tout le corpus), `dateRequired: true`. Un fichier appartient à la racine la plus longue qui le contient ; hors racines, les fichiers sont copiés, pas validés. Les diagnostics `snapshot-*` et `entry-*` portent sur le snapshot entier, indépendamment des racines.
 
@@ -2103,7 +2116,7 @@ La sévérité est celle d'un **outil d'ingestion**, qui décide d'une publicati
 10. **Couverture.** Seul un `cover` relatif est vérifié. `cover-not-image` dépend de la seule extension, que le fichier existe ou non. `cover-not-found` est produit si le chemin résolu n'est pas une entrée du snapshot **et** qu'aucune entrée du manifeste `images.json` de la série (chaîne, ou `url` d'un objet) ne lui correspond : une entrée relative correspond si elle se résout au même chemin ; une entrée absolue, si elle se termine par `/` suivi du chemin résolu (`/content/<chemin résolu>`, `https://cdn.example.com/<chemin résolu>`).
 11. **Manifeste.** `images-conflict` : le frontmatter porte `images` et le dossier contient un `images.json`. `images-json-invalid` s'évalue pour tout `images.json` des racines.
 12. **Documents joints et embeds.** Chaque entrée de `attachments` dont `file` manque, n'est pas relatif, ou ne se résout pas vers une entrée existante située directement dans `<dossier>/media/`, ou se résout vers un original (extension de la liste fermée de §1.9), produit `attachment-not-found`. Chaque entrée de `embeds` qui n'est pas un objet portant une `url` chaîne non vide produit `embed-url-missing`.
-13. **Type d'un dossier porteur.** Il se lit dans `index.md`, sinon dans `index.mdx`, sinon dans le premier `index.<lang>.md` de l'ordre canonique. Un fichier illisible, aux octets divergents (§4.4), `placeholder` ou `conflict` vaut `series` : la nature de section ne se devine jamais (§1.10).
+13. **Type d'un dossier porteur.** Il se lit dans `index.md`, sinon dans le premier `index.<lang>.md` de l'ordre canonique. Un fichier illisible, aux octets divergents (§4.4), `placeholder` ou `conflict` vaut `series` : la nature de section ne se devine jamais (§1.10).
 14. **Structure.** `slug-invalid` porte sur le dernier segment de chaque dossier porteur, sauf le dossier qui est lui-même la racine de validation : il n'a pas de slug, et un `index.md` à la racine du corpus est licite. `nesting-too-deep` : une série qui compte au moins deux dossiers porteurs de type série parmi ses ancêtres situés dans sa racine (le dossier racine compris) — un diagnostic par série fautive. `media-nested` : pour chaque entrée d'une racine, le dossier situé juste sous le segment `media` ancêtre le moins profond, parent immédiat exclu. `media-orphan` : tout dossier nommé `media` dont le parent ne porte aucun fichier index. Pour ces deux règles, seuls comptent les segments situés sous la racine.
 15. **Schémas d'URL.** `url-scheme-forbidden` : une valeur chaîne de `cover`, de `images[].url`, `files[].url`, `embeds[].url` ou `embeds[].poster` du frontmatter, ou d'une entrée de `images.json` (chaîne, ou `url` d'un objet de `images` ou de `files`), qui n'a pas une forme admise de §1.12. Une valeur absente, `null`, vide ou qui n'est pas une chaîne n'est pas concernée (une `url` d'embed absente relève d'`embed-url-missing`). Le contrôle porte sur la valeur telle qu'écrite et vaut aussi pour un `cover` que la règle 10 ne vérifie pas (non relatif) ; une valeur refusée ne subit aucun autre contrôle (pas de `cover-not-image` ni de `cover-not-found`). Un fichier à l'état `placeholder`, `conflict` ou aux octets divergents n'est pas lu (règles 3 et 4) : aucun diagnostic de champ.
 
@@ -2209,7 +2222,7 @@ hyperfocale-lint ./content/series/
 ```
 
 Vérifications :
-- [ ] Chaque dossier série contient `index.md`
+- [ ] Chaque dossier série contient `index.md` ; aucun `index.mdx` (§1.12)
 - [ ] Frontmatter contient `title`, et `date` sauf dans une collection `dateRequired: false` (§1.3) — une section ne requiert que `title` (§1.10)
 - [ ] `type`, si présent, vaut `series` ou `section`
 - [ ] Dans une collection où `date` est requise, un `index.md` sans `date` déclare explicitement `type: section` (une série sans date y reste une erreur)
@@ -3268,6 +3281,16 @@ Durcissement issu de l'audit du 2026-10-29 (sécurité, coût imposé, fixtures)
 **Décisions normatives** : *liste blanche* plutôt qu'une liste noire de schémas dangereux (la liste noire oublie le suivant) ; `mailto:` refusé dans les champs du core, aucun n'en désigne un contact ; la valeur se lit telle qu'écrite, sans décodage, pour qu'aucun contournement par encodage ne passe le contrôle ; les champs des profils G restent hors de la validation de la couche 4 (règle commune de G) mais sous le contrôle du rendu.
 
 **Fixtures** : corpus `invalid-url-scheme-forbidden` (deux fichiers fautifs, une série aux formes admises).
+
+#### `index.mdx` interdit, rendu assaini (§0, §1.2, §1.12, §2.0, §4.3, §4.10, Annexe A) — SPEC-S-01, [#50](https://github.com/izo/hyperfocale-spec/issues/50)
+
+- **`index.mdx` est interdit** : seul `index.md` (et `index.<lang>.md`) porte une série. Décision du propriétaire du 2026-10-29 ([Hyper-F#15](https://github.com/izo/Hyper-F/issues/15)), qui **remplace** la règle de la 2.15 (« `index.mdx` admis, `index.md` fait foi »). §1.2, §0 (invariants), §2.0 (contrat d'adaptateur) et l'Annexe A alignés.
+- **§1.12** : un lecteur ne compile, n'évalue ni n'importe jamais un `.mdx` de corpus ; un outil qui écrit n'en crée pas ; le HTML rendu depuis le body est **assaini** (éléments exécutables, attributs `on…`, attributs d'URL hors liste blanche) ; les données injectées dans une page sont échappées selon leur contexte (la faille corrigée en 0.18.1 devient une règle).
+- **§4.10** : nouveau diagnostic `index-mdx-forbidden` (error). `index.mdx` n'est plus un fichier index : il ne rend pas son dossier porteur, n'est jamais lu, et la règle 13 (type d'un dossier porteur) ne le consulte plus. §4.3 : il reste `content` (le snapshot décrit tout ce que la source contient).
+
+**Décisions normatives** : *interdire* plutôt qu'exiger l'assainissement du MDX — un fichier MDX est du code, aucun filtre ne le rend inoffensif ; l'assainissement du Markdown s'ajoute quand même, car le HTML brut d'un body passe par le moteur de rendu ; *diagnostic d'erreur* plutôt qu'un fichier ignoré en silence, pour qu'un `index.mdx` déposé par erreur ne soit pas publié comme une page vide ; le diagnostic vaut dans toute racine de validation, `placeholder` et `conflict` compris (il ne dépend que du chemin).
+
+**Fixtures** : corpus `invalid-index-mdx-forbidden` (`index.md` + `index.mdx`, `index.en.mdx`, `index.mdx` seul). Les validations existantes sont inchangées.
 
 ### 2.16-draft — 2026-10-25
 
