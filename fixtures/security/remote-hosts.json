@@ -1,0 +1,318 @@
+{
+  "description": "Décision syntaxique de récupération d'une URL de contenu (§1.12, *Récupération d'URL*) : `allow` ou `deny`, sans résolution DNS. Chaque cas donne l'URL, la liste blanche d'hôtes du site et le résultat attendu. La vérification de l'adresse résolue se teste avec `addresses.json`.",
+  "cases": [
+    {
+      "url": "https://cdn.example.org/a.jpg",
+      "allowlist": [
+        "cdn.example.org",
+        "*.images.example.net"
+      ],
+      "expected": "allow",
+      "why": "hôte exact"
+    },
+    {
+      "url": "HTTPS://CDN.EXAMPLE.ORG/a.jpg",
+      "allowlist": [
+        "cdn.example.org",
+        "*.images.example.net"
+      ],
+      "expected": "allow",
+      "why": "schéma et hôte comparés sans tenir compte de la casse"
+    },
+    {
+      "url": "https://cdn.example.org./a.jpg",
+      "allowlist": [
+        "cdn.example.org",
+        "*.images.example.net"
+      ],
+      "expected": "allow",
+      "why": "point final de l'hôte retiré"
+    },
+    {
+      "url": "http://cdn.example.org/a.jpg",
+      "allowlist": [
+        "cdn.example.org",
+        "*.images.example.net"
+      ],
+      "expected": "allow",
+      "why": "http admis"
+    },
+    {
+      "url": "https://a.images.example.net/a.jpg",
+      "allowlist": [
+        "cdn.example.org",
+        "*.images.example.net"
+      ],
+      "expected": "allow",
+      "why": "motif *. : un sous-domaine"
+    },
+    {
+      "url": "https://a.b.images.example.net/a.jpg",
+      "allowlist": [
+        "cdn.example.org",
+        "*.images.example.net"
+      ],
+      "expected": "allow",
+      "why": "motif *. : plusieurs niveaux"
+    },
+    {
+      "url": "https://images.example.net/a.jpg",
+      "allowlist": [
+        "cdn.example.org",
+        "*.images.example.net"
+      ],
+      "expected": "deny",
+      "why": "motif *. : pas le domaine lui-même"
+    },
+    {
+      "url": "https://evil.example/a.jpg",
+      "allowlist": [
+        "cdn.example.org",
+        "*.images.example.net"
+      ],
+      "expected": "deny",
+      "why": "hôte hors liste"
+    },
+    {
+      "url": "https://cdn.example.org.evil.example/a.jpg",
+      "allowlist": [
+        "cdn.example.org",
+        "*.images.example.net"
+      ],
+      "expected": "deny",
+      "why": "hôte qui commence par un hôte de la liste"
+    },
+    {
+      "url": "https://evilcdn.example.org/a.jpg",
+      "allowlist": [
+        "cdn.example.org",
+        "*.images.example.net"
+      ],
+      "expected": "deny",
+      "why": "sous-domaine d'un hôte exact"
+    },
+    {
+      "url": "https://cdn.example.org@evil.example/a.jpg",
+      "allowlist": [
+        "cdn.example.org",
+        "*.images.example.net"
+      ],
+      "expected": "deny",
+      "why": "identifiant dans l'URL"
+    },
+    {
+      "url": "https://user:pw@cdn.example.org/a.jpg",
+      "allowlist": [
+        "cdn.example.org",
+        "*.images.example.net"
+      ],
+      "expected": "deny",
+      "why": "identifiant dans l'URL, hôte de la liste"
+    },
+    {
+      "url": "https://cdn.example.org\\@evil.example/a.jpg",
+      "allowlist": [
+        "cdn.example.org",
+        "*.images.example.net"
+      ],
+      "expected": "deny",
+      "why": "antislash"
+    },
+    {
+      "url": " https://cdn.example.org/a.jpg",
+      "allowlist": [
+        "cdn.example.org",
+        "*.images.example.net"
+      ],
+      "expected": "deny",
+      "why": "espace initiale"
+    },
+    {
+      "url": "https://cdn.example.org/a\t.jpg",
+      "allowlist": [
+        "cdn.example.org",
+        "*.images.example.net"
+      ],
+      "expected": "deny",
+      "why": "caractère de contrôle"
+    },
+    {
+      "url": "//cdn.example.org/a.jpg",
+      "allowlist": [
+        "cdn.example.org",
+        "*.images.example.net"
+      ],
+      "expected": "deny",
+      "why": "URL sans schéma"
+    },
+    {
+      "url": "ftp://cdn.example.org/a.jpg",
+      "allowlist": [
+        "cdn.example.org",
+        "*.images.example.net"
+      ],
+      "expected": "deny",
+      "why": "schéma ftp"
+    },
+    {
+      "url": "javascript:alert(1)",
+      "allowlist": [
+        "cdn.example.org",
+        "*.images.example.net"
+      ],
+      "expected": "deny",
+      "why": "schéma javascript"
+    },
+    {
+      "url": "data:image/svg+xml,<svg/>",
+      "allowlist": [
+        "cdn.example.org",
+        "*.images.example.net"
+      ],
+      "expected": "deny",
+      "why": "schéma data"
+    },
+    {
+      "url": "file:///etc/passwd",
+      "allowlist": [
+        "cdn.example.org",
+        "*.images.example.net"
+      ],
+      "expected": "deny",
+      "why": "schéma file"
+    },
+    {
+      "url": "https://cdn.example.org:8443/a.jpg",
+      "allowlist": [
+        "cdn.example.org",
+        "*.images.example.net"
+      ],
+      "expected": "deny",
+      "why": "port hors 80/443, absent du motif"
+    },
+    {
+      "url": "https://cdn.example.org:8443/a.jpg",
+      "allowlist": [
+        "cdn.example.org:8443"
+      ],
+      "expected": "allow",
+      "why": "port déclaré dans le motif"
+    },
+    {
+      "url": "https://cdn.example.org/a.jpg",
+      "allowlist": [
+        "cdn.example.org:8443"
+      ],
+      "expected": "deny",
+      "why": "le motif impose son port"
+    },
+    {
+      "url": "https://cdn.example.org/a.jpg",
+      "allowlist": [],
+      "expected": "deny",
+      "why": "liste vide : aucune récupération"
+    },
+    {
+      "url": "https://127.0.0.1/a.jpg",
+      "allowlist": [
+        "cdn.example.org",
+        "*.images.example.net"
+      ],
+      "expected": "deny",
+      "why": "IP littérale"
+    },
+    {
+      "url": "https://[::1]/a.jpg",
+      "allowlist": [
+        "cdn.example.org",
+        "*.images.example.net"
+      ],
+      "expected": "deny",
+      "why": "IPv6 littérale"
+    },
+    {
+      "url": "https://2130706433/a.jpg",
+      "allowlist": [
+        "cdn.example.org",
+        "*.images.example.net"
+      ],
+      "expected": "deny",
+      "why": "IPv4 en entier décimal (127.0.0.1)"
+    },
+    {
+      "url": "https://0x7f.1/a.jpg",
+      "allowlist": [
+        "cdn.example.org",
+        "*.images.example.net"
+      ],
+      "expected": "deny",
+      "why": "IPv4 en hexadécimal (127.0.0.1)"
+    },
+    {
+      "url": "https://0177.0.0.1/a.jpg",
+      "allowlist": [
+        "cdn.example.org",
+        "*.images.example.net"
+      ],
+      "expected": "deny",
+      "why": "IPv4 en octal (127.0.0.1)"
+    },
+    {
+      "url": "https://169.254.169.254/latest/meta-data/",
+      "allowlist": [
+        "cdn.example.org",
+        "*.images.example.net"
+      ],
+      "expected": "deny",
+      "why": "métadonnées d'un hébergeur cloud"
+    },
+    {
+      "url": "https://169.254.169.254/latest/meta-data/",
+      "allowlist": [
+        "169.254.169.254"
+      ],
+      "expected": "deny",
+      "why": "IP littérale refusée même listée"
+    },
+    {
+      "url": "https://8.8.8.8/a.jpg",
+      "allowlist": [
+        "8.8.8.8"
+      ],
+      "expected": "deny",
+      "why": "IP littérale publique refusée aussi : un nom DNS est exigé"
+    },
+    {
+      "url": "https://localhost/a.jpg",
+      "allowlist": [
+        "localhost"
+      ],
+      "expected": "deny",
+      "why": "localhost refusé même listé"
+    },
+    {
+      "url": "https://app.localhost/a.jpg",
+      "allowlist": [
+        "app.localhost"
+      ],
+      "expected": "deny",
+      "why": "nom en .localhost"
+    },
+    {
+      "url": "https://nas.local/a.jpg",
+      "allowlist": [
+        "nas.local"
+      ],
+      "expected": "deny",
+      "why": "nom en .local"
+    },
+    {
+      "url": "https://service.internal/a.jpg",
+      "allowlist": [
+        "service.internal"
+      ],
+      "expected": "deny",
+      "why": "nom en .internal"
+    }
+  ]
+}

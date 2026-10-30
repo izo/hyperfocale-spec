@@ -17,7 +17,8 @@ Dépôt de **spécification uniquement** — pas de code, pas de build, pas de d
 - `spec-hyperfocale.md` — spec complète du format de contenu Hyperfocale (couches 1 à 4)
 - `README.md` — présentation du projet (tableau Écosystème avec la version du plugin, ligne Statut avec la version de la spec)
 - `AGENTS.md` — miroir de ce fichier pour les agents non-Claude : le tenir synchronisé (règles, ligne de version)
-- `fixtures/ingestion/` — fixtures de conformité de la couche 4 (corpus, snapshots, validations, diffs, gardes, identifiants, chemins, vecteurs de hash) ; leur format est dans `fixtures/ingestion/README.md`
+- `fixtures/ingestion/` — fixtures de conformité de la couche 4 (corpus, snapshots, validations, diffs, gardes, identifiants, chemins, providers, vecteurs de hash) ; leur format est dans `fixtures/ingestion/README.md`
+- `fixtures/security/` — fixtures de conformité de la récupération d'URL (§1.12) : hôtes admis et adresses refusées ; format dans `fixtures/security/README.md`
 
 ## Ce qu'est ce repo
 

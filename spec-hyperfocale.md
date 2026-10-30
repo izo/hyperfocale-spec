@@ -1102,6 +1102,18 @@ Un fichier de quelques centaines d'octets peut épuiser un lecteur sans contenir
 
 Un lecteur DOIT appliquer ces bornes avant de construire la structure ; un fichier « illisible » se traite comme un frontmatter illisible (§4.10, règle 6) ou un manifeste illisible (§1.5.1) : le contenu n'est pas lu, le build n'échoue pas pour autant. Une implémentation PEUT choisir des bornes plus strictes pour son propre usage, jamais plus larges. L'ingestion les applique à l'identique (§4.10, règles 4 et 6) : un fichier dépassant une borne produit `frontmatter-invalid` ou `images-json-invalid`.
 
+#### Récupération d'URL au build ou en edge *(introduit v2.17)*
+
+Toute URL de contenu est licite (§1.12, *Schémas d'URL*) : l'auteur choisit l'hôte que l'optimiseur d'images, l'extraction d'EXIF ou un téléchargement ira lire. Sans borne, c'est une requête forgée côté serveur (SSRF) — métadonnées d'un hébergeur cloud, hôtes internes, amplification de trafic.
+
+| Règle | Description |
+|-------|-------------|
+| Liste blanche d'hôtes | Tout outil qui **récupère** une URL de contenu — optimiseur d'images (§2.0, §2.2), extraction d'EXIF ou de dimensions, téléchargement, vérification de lien — DOIT n'accéder qu'aux hôtes d'une liste blanche que **le site configure** (`remotePatterns` pour `next/image`). La liste est **vide par défaut** : sans configuration, rien n'est récupéré à distance. Un motif est un hôte exact (`cdn.example.org`) ou `*.example.org`, qui désigne tout sous-domaine d'au moins un niveau, pas le domaine lui-même ; un port autre que 80 et 443 doit figurer dans le motif (`cdn.example.org:8443`). Les hôtes se comparent en minuscules, point final retiré. |
+| Formes refusées | Quelle que soit la liste : un schéma autre que `http:` et `https:`, une URL sans schéma (`//hôte`), un identifiant dans l'URL (`utilisateur:mot@hôte`), un `\`, un caractère de contrôle ou une espace initiale, un hôte littéral IP **dans toute écriture** (`127.0.0.1`, `2130706433`, `0x7f.1`, `[::1]`), `localhost` et les noms en `.localhost`, `.local`, `.localdomain`, `.internal`. |
+| Adresses refusées | L'adresse **résolue** DOIT être vérifiée à chaque connexion — y compris après chaque redirection et à chaque résolution DNS, pas seulement sur le nom — et refusée si elle est privée, locale ou réservée : `0.0.0.0/8`, `10.0.0.0/8`, `100.64.0.0/10`, `127.0.0.0/8`, `169.254.0.0/16` (dont les métadonnées cloud `169.254.169.254`), `172.16.0.0/12`, `192.0.0.0/24`, `192.168.0.0/16`, `198.18.0.0/15`, `224.0.0.0/4`, `240.0.0.0/4`, `::`, `::1`, `fc00::/7`, `fe80::/10`, `ff00::/8`, `2001:db8::/32`, et toute adresse IPv4 portée par `::ffff:0:0/96` jugée sur l'adresse IPv4. |
+| Redirections et bornes | Au plus 3 redirections, chacune contrôlée comme une première requête. Délai d'attente, taille de réponse et type de contenu attendu (`image/*` pour une image) sont bornés ; la réponse n'est jamais interprétée au-delà. Aucun cookie ni en-tête d'autorisation du site n'est envoyé. |
+| Fixtures | `fixtures/security/` : décision syntaxique (`remote-hosts.json`) et adresses refusées (`addresses.json`). |
+
 #### Références de fichiers
 
 | Règle | Description |
@@ -1161,7 +1173,7 @@ Tout adaptateur **PEUT** :
 
 | Extension | Description |
 |-----------|-------------|
-| Optimiser les images | Générer des formats modernes, srcset, dimensions |
+| Optimiser les images | Générer des formats modernes, srcset, dimensions — une image distante ne se récupère que sous la liste blanche d'hôtes de §1.12 |
 | Ajouter des routes | Pages de tags, flux RSS, sitemap, API JSON |
 | Enrichir les métadonnées | Extraire EXIF des images, géocoder, etc. |
 | Proposer un thème | CSS, tokens, design system — hors périmètre de la spec |
@@ -1324,7 +1336,7 @@ Les composants sont des Server Components par défaut, sauf `SeriesLightbox` (Cl
 
 #### Optimisation d'images
 
-L'adaptateur utilise `next/image` pour l'optimisation automatique. En mode local, les images sont servies depuis `public/` ou via un loader custom.
+L'adaptateur utilise `next/image` pour l'optimisation automatique ; `remotePatterns` y est la liste blanche d'hôtes de §1.12 et reste vide par défaut. En mode local, les images sont servies depuis `public/` ou via un loader custom.
 
 ### 2.3 — Adaptateur Hugo
 
@@ -1866,6 +1878,11 @@ Le contenu d'une source partagée n'est pas fiable (§1.12) : un provider est la
 | Règle | Description |
 |---|---|
 | Liens symboliques | Un provider filesystem NE DOIT PAS suivre les liens symboliques — fichiers, dossiers, alias, jonctions. Il n'ouvre pas la cible, ne descend pas dans un dossier lien et n'ajoute aucune entrée au snapshot pour lui ; il le signale par `entry-symlink` (warning, §4.10) sur le chemin du lien. Un lien qui pointe hors du corpus ajouterait au snapshot — classé `media`, haché, envoyé en stockage objet — un fichier que personne n'a décidé de publier ; une boucle de liens rendrait le parcours infini. Dropbox ne synchronise pas les liens, mais un checkout Git, iCloud ou un volume monté en posent. Un fichier que le lien désigne dans le corpus est listé à son propre chemin : le lien n'ajoute rien. |
+| Portée minimale | Un outil d'ingestion demande à son provider la portée **en lecture seule** : pour Dropbox, `files.metadata.read` et `files.content.read`, jamais `files.content.write`. Un jeton en écriture est celui d'un éditeur (CMS) qui en a besoin, jamais celui du runner d'ingestion : la capacité `remoteWrite` d'un provider (§4.8) dit ce qu'il sait faire, pas ce que l'ingestion doit demander. |
+| Secrets | Un jeton, un mot de passe ou un secret d'application ne s'écrit jamais dans le dépôt, un snapshot, un diagnostic ou un journal ; il vit dans le trousseau du système ou l'environnement du runner, et se révoque. Aucun `message` de diagnostic ne reproduit un jeton ni une URL signée. |
+| TLS | Un provider distant se joint en TLS (`https:`), WebDAV compris ; un serveur WebDAV en `http:` est refusé. La vérification du certificat n'est jamais désactivée et aucun identifiant ne part en clair. |
+| Webhook | Un webhook est un **déclencheur** : son corps n'est jamais une source de vérité. Sa signature (HMAC-SHA256 du corps brut : `X-Dropbox-Signature` pour Dropbox) se vérifie **avant** toute action, sur les octets reçus, par une comparaison **en temps constant** ; une signature absente ou invalide est rejetée. Quand le provider horodate la notification, elle est refusée au-delà de 5 minutes d'écart. L'idempotence (invariant 6) borne le rejeu : une notification rejouée provoque au pire une ingestion de plus, jamais un changement. |
+| Ce que le snapshot publié ne dit pas | `source` (racine du dossier source, révision du provider) ne figure jamais dans le snapshot publié (§4.11, *projection publiable*). Un identifiant de fichier (`identity`) y figure, car le diff en a besoin ; un consommateur qui versionne son snapshot publié dans un dépôt **public** retire `identity` de son exemplaire versionné — le diff retombe alors sur le contenu (§4.7, étape 4). `publishable()` ne le fait pas à sa place. |
 
 ### 4.1 — Chemins
 
@@ -1953,7 +1970,7 @@ Un snapshot est la liste complète des fichiers d'un corpus à un instant donné
 | `id` | oui | Calculé (§4.6). Un `id` qui ne correspond pas aux entrées déclarées produit `snapshot-id-mismatch`. |
 | `createdAt` | oui | ISO 8601 UTC. Informatif, hors `id`. |
 | `complete` | oui | `true` seulement si le listing du provider a abouti sans erreur ni page manquante. Hors `id`. |
-| `source` | non | Opaque ; `provider`, `revision` et `root` facultatifs. Hors `id`. Un consommateur d'un snapshot **publié** NE DOIT PAS en dépendre. |
+| `source` | non | Opaque ; `provider`, `revision` et `root` facultatifs. Hors `id`. Absent du snapshot **publié** (§4.11, *projection publiable*) : un consommateur ne peut pas en dépendre. |
 | `entries` | oui | Triées dans l'ordre canonique (§4.1), chemins uniques, chacun valide et non exclu. |
 | `entries[].path` | oui | Chemin (§4.1). |
 | `entries[].kind` | oui | Classification du chemin (§4.3). Un écart produit `entry-kind-mismatch`. |
@@ -2222,7 +2239,7 @@ Le snapshot publié ne contient jamais d'original :
 publishable(snapshot) → snapshot
 ```
 
-La **projection publiable** reprend le snapshot à l'identique — `format`, `version`, `createdAt`, `complete`, `source`, champs inconnus — sans ses entrées originales, avec un `id` recalculé (§4.6) sur les entrées restantes. Un snapshot sans original est sa propre projection, au même `id`.
+La **projection publiable** reprend le snapshot à l'identique — `format`, `version`, `createdAt`, `complete`, champs inconnus — **sans `source`** *(v2.17 : elle porte le chemin de la source et la révision du provider)* et sans ses entrées originales, avec un `id` recalculé (§4.6) sur les entrées restantes. Un snapshot sans original garde son `id` : sa projection ne diffère de lui que par l'absence de `source`.
 
 - Ce qui se publie est `publishable(target)`. Le diff que reçoit la garde, et que la publication applique, va de `base` à `publishable(target)`. La validation (§4.10), elle, porte sur `target` tel quel : elle signale un `cover` ou une entrée `attachments:` qui désigne un original.
 - `guard-oversize` s'évalue sur la projection : un RAW de 80 Mo ne bloque pas une publication dont il est exclu.
@@ -2249,7 +2266,7 @@ Ces exemples montrent comment des providers réels se projettent sur le contrat.
 | Chemins | `path_display` n'est fiable qu'en son dernier segment : la casse des dossiers se reconstruit depuis leurs propres entrées, puis NFC. |
 | Exclusions | `.dropbox` et `.dropbox.cache` tombent sous §4.2. |
 | Conflit | la détection des conflits incombe au provider : une « copie en conflit » Dropbox est le signal qu'il traduit en entrée `state: "conflict"` (`entry-conflict`, §4.5), et la publication passe à l'état `conflict` (§4.9). |
-| Webhook | simple **déclencheur** : la notification ne porte aucun contenu ; sa signature (`X-Dropbox-Signature`, HMAC-SHA256 du corps avec le secret de l'application) se vérifie, puis une ingestion démarre. Aucune lecture Dropbox au runtime. |
+| Webhook | simple **déclencheur** : la notification ne porte aucun contenu ; sa signature (`X-Dropbox-Signature`, HMAC-SHA256 du corps avec le secret de l'application) se vérifie avant toute action, en temps constant (§4.0), puis une ingestion démarre. Aucune lecture Dropbox au runtime. |
 
 ```json
 { "path": "archives/music/concerts/2010/the-wombats-paris-2010/media/01.jpg",
@@ -3408,6 +3425,16 @@ Un frontmatter de 359 octets (dix niveaux d'alias de neuf éléments) est accept
 **Rupture assumée** : un consommateur qui n'avait fixé aucun seuil voit maintenant `guard-mass-deletion`, `guard-mass-move` ou `guard-oversize` apparaître sur des volumes que la spec ne bornait pas. Les trois fixtures de garde sans seuils explicites (`private-*`) les désactivent désormais par `null`.
 
 **Fixtures** : `validation/frontmatter-limits.json` ; `guard/defaults-mass-deletion`, `defaults-mass-move`, `defaults-oversize`, `defaults-disabled` ; `policy` de `guard/private-exposed`, `private-fail-closed` et `private-type-changed` rendues explicites.
+
+#### Récupération d'URL et secrets des providers (§1.12, §2.0, §2.2, §4.0, §4.5, §4.11, §4.13) — SPEC-S-08 et SPEC-S-09, [#55](https://github.com/izo/hyperfocale-spec/issues/55)
+
+- **Récupération d'URL (S-08)** : avec SPEC-S-02, toute URL était licite et l'auteur de contenu choisissait l'hôte que l'optimiseur d'images ou l'extraction d'EXIF irait lire (SSRF en build ou en edge). §1.12 (*Récupération d'URL au build ou en edge*) : liste blanche d'hôtes configurée par le site, **vide par défaut** ; refus quelle que soit la liste d'un schéma autre que http(s), d'un identifiant dans l'URL, de `\`, d'un hôte littéral IP dans toute écriture, de `localhost`, `.local`, `.internal`… ; adresse **résolue** vérifiée à chaque connexion et à chaque redirection (liste des plages privées, locales et réservées, métadonnées cloud comprises) ; trois redirections au plus, bornes de délai, de taille et de type. §2.0 et §2.2 y renvoient (`remotePatterns`).
+- **Providers (S-09)** : §4.0, *Exigences des providers* — portée en **lecture seule** pour l'ingestion (Dropbox : `files.metadata.read` et `files.content.read`, pas d'écriture) ; secrets jamais dans le dépôt, le snapshot, un diagnostic ni un journal ; TLS obligatoire, WebDAV en `http:` refusé ; webhook = simple déclencheur, signature HMAC vérifiée avant toute action, **en temps constant**, notification horodatée refusée au-delà de 5 minutes d'écart. §4.13 y renvoie.
+- **Projection publiable sans `source` (§4.11, §4.5)** : le chemin de la source (`/MDR Content`) et la révision du provider ne figurent plus dans le snapshot publié. `identity` y reste, car le diff en a besoin ; un snapshot versionné dans un dépôt public en retire `identity` de son exemplaire (§4.0), au prix de la détection de déplacement par identité.
+
+**Décisions normatives** : *liste blanche vide par défaut* plutôt qu'une liste noire d'hôtes dangereux ; les IP littérales sont refusées **même listées** (un nom DNS est exigé : le contrôle de l'adresse résolue le rend vérifiable) ; `identity` **conservée** dans la projection, alors que l'audit proposait de la retirer — la retirer priverait le diff de son seul moyen d'apparier un renommage sans relire les octets ; pas de protection contre le rejeu au-delà de l'horodatage quand le provider n'en fournit pas (Dropbox n'en fournit pas) : l'idempotence suffit, le webhook ne porte aucun contenu.
+
+**Fixtures** : `fixtures/security/remote-hosts.json` (36 cas) et `addresses.json` (43 adresses), nouveau dossier `fixtures/security/` ; `publishable/source-removed.json`. La fixture ne teste ni DNS ni redirections, qui dépendent du réseau.
 
 ### 2.16-draft — 2026-10-25
 

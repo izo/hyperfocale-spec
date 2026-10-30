@@ -1,0 +1,177 @@
+{
+  "description": "Adresses résolues à refuser (§1.12, *Adresses refusées*) : `refuse: true` pour une adresse privée, locale ou réservée, `false` pour une adresse publique. Une adresse IPv4 portée par `::ffff:0:0/96` se juge sur l'adresse IPv4 (`::ffff:7f00:1` est `127.0.0.1`). Les bornes de chaque plage sont testées de part et d'autre.",
+  "addresses": [
+    {
+      "ip": "0.0.0.0",
+      "refuse": true
+    },
+    {
+      "ip": "0.1.2.3",
+      "refuse": true
+    },
+    {
+      "ip": "10.0.0.1",
+      "refuse": true
+    },
+    {
+      "ip": "100.64.0.1",
+      "refuse": true
+    },
+    {
+      "ip": "100.127.255.255",
+      "refuse": true
+    },
+    {
+      "ip": "100.128.0.1",
+      "refuse": false
+    },
+    {
+      "ip": "127.0.0.1",
+      "refuse": true
+    },
+    {
+      "ip": "127.255.255.254",
+      "refuse": true
+    },
+    {
+      "ip": "169.254.169.254",
+      "refuse": true
+    },
+    {
+      "ip": "172.15.255.255",
+      "refuse": false
+    },
+    {
+      "ip": "172.16.0.1",
+      "refuse": true
+    },
+    {
+      "ip": "172.31.255.255",
+      "refuse": true
+    },
+    {
+      "ip": "172.32.0.1",
+      "refuse": false
+    },
+    {
+      "ip": "192.0.0.1",
+      "refuse": true
+    },
+    {
+      "ip": "192.0.2.1",
+      "refuse": false
+    },
+    {
+      "ip": "192.168.1.1",
+      "refuse": true
+    },
+    {
+      "ip": "198.17.255.255",
+      "refuse": false
+    },
+    {
+      "ip": "198.18.0.1",
+      "refuse": true
+    },
+    {
+      "ip": "198.19.255.255",
+      "refuse": true
+    },
+    {
+      "ip": "198.20.0.1",
+      "refuse": false
+    },
+    {
+      "ip": "224.0.0.1",
+      "refuse": true
+    },
+    {
+      "ip": "239.255.255.255",
+      "refuse": true
+    },
+    {
+      "ip": "240.0.0.1",
+      "refuse": true
+    },
+    {
+      "ip": "255.255.255.255",
+      "refuse": true
+    },
+    {
+      "ip": "8.8.8.8",
+      "refuse": false
+    },
+    {
+      "ip": "93.184.216.34",
+      "refuse": false
+    },
+    {
+      "ip": "::",
+      "refuse": true
+    },
+    {
+      "ip": "::1",
+      "refuse": true
+    },
+    {
+      "ip": "fc00::1",
+      "refuse": true
+    },
+    {
+      "ip": "fd12:3456:789a::1",
+      "refuse": true
+    },
+    {
+      "ip": "fbff::1",
+      "refuse": false
+    },
+    {
+      "ip": "fe80::1",
+      "refuse": true
+    },
+    {
+      "ip": "febf::1",
+      "refuse": true
+    },
+    {
+      "ip": "fec0::1",
+      "refuse": false
+    },
+    {
+      "ip": "ff02::1",
+      "refuse": true
+    },
+    {
+      "ip": "2001:db8::1",
+      "refuse": true
+    },
+    {
+      "ip": "2001:db9::1",
+      "refuse": false
+    },
+    {
+      "ip": "::ffff:127.0.0.1",
+      "refuse": true
+    },
+    {
+      "ip": "::ffff:7f00:1",
+      "refuse": true
+    },
+    {
+      "ip": "::ffff:8.8.8.8",
+      "refuse": false
+    },
+    {
+      "ip": "::ffff:a00:1",
+      "refuse": true
+    },
+    {
+      "ip": "2606:4700:4700::1111",
+      "refuse": false
+    },
+    {
+      "ip": "2a00:1450:4007:80f::200e",
+      "refuse": false
+    }
+  ]
+}

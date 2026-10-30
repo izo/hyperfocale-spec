@@ -60,12 +60,13 @@ Comparaison : `format`, `version`, `id`, `complete`, et pour chaque entrée `pat
 { "description": "…", "corpus": "<nom>", "expected": <snapshot> }
 ```
 
-Projection publiable (§4.11) : le snapshot sans ses entrées originales, `id` recalculé. L'entrée est `snapshots/<corpus>.json`, ou un `snapshot` donné inline à la place de `corpus`. Comparaison : comme pour `snapshots/` — `format`, `version`, `id`, `complete`, et pour chaque entrée `path`, `kind`, `size`, `hashes`.
+Projection publiable (§4.11) : le snapshot **sans `source`** et sans ses entrées originales, `id` recalculé. L'entrée est `snapshots/<corpus>.json`, ou un `snapshot` donné inline à la place de `corpus`. Comparaison : comme pour `snapshots/` — `format`, `version`, `id`, `complete`, et pour chaque entrée `path`, `kind`, `size`, `hashes` —, plus l'**absence** de `source` dans la projection.
 
 | Cas | Ce qu'il couvre |
 |---|---|
 | `originals` | dossier de travail : `.RAF` et `.xmp` retirés, JPEG, devis et `index.md` gardés |
 | `no-originals` | snapshot sans original (`minimal`) : la projection est le snapshot lui-même, même `id` |
+| `source-removed` | snapshot qui porte `source` (provider, révision, racine) : la projection ne la garde pas ; `identity` des entrées conservée |
 | `extensions` | casse ignorée (`.RAF`, `.Dng`, `.XMP`), dernier point seul (`.jpg.cr3` original, `.raf.jpg` image), fichier sans extension, entrées `other` à extension d'original gardées |
 
 ### `validation/<cas>.json`
