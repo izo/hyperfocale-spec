@@ -56,6 +56,27 @@
       ]
     },
     {
+      "name": "fuseau-ecrit",
+      "description": "Le jour calendaire est celui **écrit**, sans conversion de fuseau (§1.3, §1.6, v2.17) : `a` est le 15 juin (`23:30-05:00`, soit le 16 en UTC), `b` le 16 juin (`00:30+02:00`, soit le 15 en UTC). Décroissant : `b` avant `a`. Un lecteur qui convertit en UTC les inverse.",
+      "dateRequired": true,
+      "series": [
+        {
+          "path": "a",
+          "title": "A",
+          "date": "2026-06-15T23:30:00-05:00"
+        },
+        {
+          "path": "b",
+          "title": "B",
+          "date": "2026-06-16T00:30:00+02:00"
+        }
+      ],
+      "expected": [
+        "b",
+        "a"
+      ]
+    },
+    {
       "name": "egalite-titre-puis-chemin",
       "description": "À date égale : titre croissant, puis chemin (§1.6). `b/zoo` et `a/zoo` ont le même titre : le chemin les départage.",
       "dateRequired": true,

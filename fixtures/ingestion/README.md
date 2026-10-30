@@ -181,6 +181,7 @@ Pour la même raison, aucun corpus ne contient deux noms égaux après repli de 
 | `entry-symlink` | `providers/symlink.json` (diagnostic du provider à l'énumération, non de la validation d'un snapshot) |
 | `cover-not-image`, `attachment-not-found` vers un original | `validation/originals-references.json` (snapshot inline) ; `validation/originals.json` vérifie qu'un dossier de travail sain n'en produit aucun |
 | `hash-incomparable` | `diff/incomparable.json` |
+| NFC et casse d'une référence relative (§4.10, règles 9 et 10) | `validation/references-nfc-case.json` (snapshot inline, chemins non ASCII en `\uXXXX`) |
 | `move-ambiguous` | `diff/ambiguous.json` |
 
 | Garde (§4.11) | Fixture |
@@ -205,7 +206,7 @@ Chaque fixture de garde fixe sa `policy` : les seuils réels appartiennent au co
 
 ## Diffs couverts
 
-`initial` (base `null`), `added`, `modified`, `deleted`, `moved-identity` (l'identité résout ce que le contenu laisserait ambigu), `moved-content`, `moved-and-modified`, `moved-identity-resized` (move par identité sans algorithme commun, taille ou `kind` changé : pas de `hash-incomparable`), `ambiguous`, `ambiguous-one-to-two` (1 supprimé : 2 ajoutés), `identity-duplicated` (identité portée par deux entrées : pas de move par identité), `incomparable` (changement de provider, taille différente, move par identité sans algorithme commun), `hash-preference` (sha256 > dropbox > `x-*` alphabétique), `rename-series-folder` (N moves), `idempotence` (`diff(S, S)` vide, entrée `placeholder` comprise).
+`initial` (base `null`), `added`, `modified`, `deleted`, `moved-identity` (l'identité résout ce que le contenu laisserait ambigu), `moved-content`, `moved-and-modified`, `moved-identity-resized` (move par identité sans algorithme commun, taille ou `kind` changé : pas de `hash-incomparable`), `ambiguous`, `ambiguous-one-to-two` (1 supprimé : 2 ajoutés), `identity-duplicated` (identité portée par deux entrées : pas de move par identité), `incomparable` (changement de provider, taille différente, move par identité sans algorithme commun), `hash-preference` (sha256 > dropbox > `x-*` alphabétique), `mixed-algorithms` (algorithmes différents d'une paire : le premier commun décide, jamais un index sur une clé unique ; ambiguïté par deux algorithmes), `rename-series-folder` (N moves), `idempotence` (`diff(S, S)` vide, entrée `placeholder` comprise).
 
 ## Provenance des valeurs attendues
 

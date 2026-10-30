@@ -39,7 +39,7 @@ Le reste (métadonnées IPTC, GPS, couverture, mots-clés...) est optionnel et s
 
 | Outil | Dépôt | Rôle |
 |-------|-------|------|
-| `@regrets/hyperfocale` (v0.25.0) | https://github.com/izo/hyperfocale-astro-plugins | Plugin Astro 7 — schéma Zod, collections, presets, composants ; outils d'ingestion de la couche 4 (snapshot, diff, validation, garde, providers filesystem, Dropbox, WebDAV) |
+| `@regrets/hyperfocale` (v0.25.1) | https://github.com/izo/hyperfocale-astro-plugins | Plugin Astro 7 — schéma Zod, collections, presets, composants ; outils d'ingestion de la couche 4 (snapshot, diff, validation, garde, providers filesystem, Dropbox, WebDAV) |
 | Exporter Lightroom | https://github.com/izo/hyperfocale-exporter-app | Export LR → format Hyperfocale avec métadonnées IPTC |
 | Hyperfocale CMS | https://github.com/izo/hyperfocale-cms | Éditeur Swift (CLI, macOS, iOS) — ouvrir, éditer et publier une série sans écrire de YAML |
 | hyperfocale-vault | https://github.com/izo/hyperfocale-vault | Gestion de projets photo macOS — producteur du dossier de travail (G.12, repris par Hyperfocus) |
@@ -67,9 +67,9 @@ La spec est organisée en quatre couches, précédées d'une spec générique :
 
 La couche 4 s'accompagne de **fixtures de conformité** cross-language, dans [`fixtures/ingestion/`](./fixtures/ingestion/) : corpus d'entrée et résultats attendus que toute implémentation — TypeScript, Swift ou autre — doit reproduire à l'identique. La couche 1 a les siennes pour ses fonctions pures (tri, parent d'une série, routes) dans [`fixtures/format/`](./fixtures/format/), et la récupération d'URL dans [`fixtures/security/`](./fixtures/security/).
 
-Au-delà de la série photo, l'**Annexe G** standardise **douze profils de contenu** réutilisant le même squelette : Série (`series`), Événement (`event`), Recette (`recipe`), Application (`app`), Livre (`book`), Lieu (`place`), Écran (`screen`), Portfolio (`portfolio`), Musique (`music`), Catalogue (`catalog`), Presse (`press`), Projet (`project`).
+Au-delà de la série photo, l'**Annexe G** standardise **onze profils de contenu** réutilisant le même squelette — la série (`series`) et dix extensions hors noyau : Événement (`event`), Recette (`recipe`), Application (`app`), Livre (`book`), Lieu (`place`), Écran (`screen`), Portfolio (`portfolio`), Musique (`music`), Catalogue (`catalog`), Presse (`press`).
 
-Le profil Projet décrit un **dossier de travail** géré dès la prise de vue : `media/` y porte aussi les **originaux** (RAW, sidecars `.xmp`), que les lecteurs ignorent et que la publication écarte. Un tel dossier ne se publie jamais tel quel, mais par export vers une série.
+Le travail qui **précède** la publication — projets, originaux (RAW, sidecars `.xmp`), sélection — relève d'**[Hyperfocus](https://github.com/izo/hyperfocus)** ([`spec-hyperfocus.md`](https://github.com/izo/hyperfocus/blob/main/spec-hyperfocus.md)), qui découle de cette spec : l'ancien profil Projet (G.12) y est passé en 2.14. Un dossier de travail ne se publie jamais tel quel, mais par export vers une série ; ici, les lecteurs ignorent les originaux et la publication les écarte (§1.9, §4.11).
 
 ## Statut
 
