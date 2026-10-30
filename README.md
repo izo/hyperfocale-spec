@@ -65,7 +65,7 @@ La spec est organisée en quatre couches, précédées d'une spec générique :
 | **3 — Composants UI** | Vocabulaire partagé (SeriesCard, Gallery, Lightbox...) |
 | **4 — Ingestion** | Contrat des outils qui publient un corpus édité dans Dropbox, iCloud Drive, WebDAV… : snapshot, diff, diagnostics, garde de publication. Ne change rien à ce qu'un lecteur doit faire |
 
-La couche 4 s'accompagne de **fixtures de conformité** cross-language, dans [`fixtures/ingestion/`](./fixtures/ingestion/) : corpus d'entrée et résultats attendus que toute implémentation — TypeScript, Swift ou autre — doit reproduire à l'identique.
+La couche 4 s'accompagne de **fixtures de conformité** cross-language, dans [`fixtures/ingestion/`](./fixtures/ingestion/) : corpus d'entrée et résultats attendus que toute implémentation — TypeScript, Swift ou autre — doit reproduire à l'identique. La couche 1 a les siennes pour ses fonctions pures (tri, parent d'une série, routes) dans [`fixtures/format/`](./fixtures/format/), et la récupération d'URL dans [`fixtures/security/`](./fixtures/security/).
 
 Au-delà de la série photo, l'**Annexe G** standardise **douze profils de contenu** réutilisant le même squelette : Série (`series`), Événement (`event`), Recette (`recipe`), Application (`app`), Livre (`book`), Lieu (`place`), Écran (`screen`), Portfolio (`portfolio`), Musique (`music`), Catalogue (`catalog`), Presse (`press`), Projet (`project`).
 

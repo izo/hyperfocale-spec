@@ -18,6 +18,7 @@ Dépôt de **spécification uniquement** — pas de code, pas de build, pas de d
 - `README.md` — présentation du projet (tableau Écosystème avec la version du plugin, ligne Statut avec la version de la spec)
 - `AGENTS.md` — miroir de ce fichier pour les agents non-Claude : le tenir synchronisé (règles, ligne de version)
 - `fixtures/ingestion/` — fixtures de conformité de la couche 4 (corpus, snapshots, validations, diffs, gardes, identifiants, chemins, providers, vecteurs de hash) ; leur format est dans `fixtures/ingestion/README.md`
+- `fixtures/format/` — fixtures de conformité des fonctions pures de la couche 1 (tri des séries, parent d'une série, routes) ; format dans `fixtures/format/README.md`
 - `fixtures/security/` — fixtures de conformité de la récupération d'URL (§1.12) : hôtes admis et adresses refusées ; format dans `fixtures/security/README.md`
 
 ## Ce qu'est ce repo

@@ -47,6 +47,14 @@ Arborescence d'entrée. Un provider filesystem la parcourt récursivement ; chaq
 | `roots` | racines de validation (`validation/roots.json`, `validation/roots-default.json`) | selon la racine |
 | `invalid-<code>` | un corpus par diagnostic de validation `error` ou `warning` qui dépend du contenu | exactement `<code>` |
 | `cover-cumulative` | `cover` relatif vers un document joint absent : deux diagnostics sur le même fichier | `cover-not-found` + `cover-not-image` |
+| `container-section` | conteneur dont les sous-séries passent par un rangement (`lots/`) et par une page de section (`rubrique/`) : transparents, parent = le conteneur | aucun |
+| `nesting-through-section` | conteneur → section → sous-série → série : la section ne compte pas, la série sous la sous-série est trop profonde | `nesting-too-deep` |
+| `edge-bom` | `index.md` précédé d'un BOM UTF-8 | aucun |
+| `edge-crlf` | frontmatter et body en `\r\n` | aucun |
+| `edge-duplicate-key` | clé YAML dupliquée (`title` deux fois) | `frontmatter-invalid` |
+| `edge-utf8-invalid` | octets `ff fe c3 28` dans le body (corpus sur disque : inexprimable en JSON) | `frontmatter-invalid` |
+| `edge-date-time` | dates valides avec heure et fuseau (`+02:00`, `Z`, fraction, `-05:30`), 29 février bissextile | aucun |
+| `edge-date-hour24` | `T24:00:00Z` : l'heure 24 est invalide | `date-invalid` |
 
 ### `snapshots/<nom>.json`
 

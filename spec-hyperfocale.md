@@ -736,6 +736,7 @@ Le `<prefix>` est configurable par l'adaptateur (défaut recommandé : `series`)
 | Identité *(v2.13)* | Une route se construit sur le chemin, jamais sur le slug seul, qui PEUT ne pas être unique (§1.2) : `concerts/bretagne-2024/` et `festivals/bretagne-2024/` ont deux routes distinctes. |
 | Pagination *(v2.13)* | La page 1 est la route de la série elle-même ; `/page/1/` n'est pas une route (un adaptateur PEUT la rediriger). Le segment `page` sépare la pagination des sous-séries (§1.8), dont le slug peut être un nombre : `/<conteneur>/2/` est une sous-série, `/<conteneur>/page/2/` la page 2 de la galerie du conteneur. |
 | Segment réservé *(v2.13)* | Un dossier nommé `page` situé directement dans un dossier de série est réservé : une série rangée sous `<série>/page/2/` aurait la route de la page 2 de `<série>`. Le lint DEVRAIT le signaler (Annexe A). |
+| Fixtures *(v2.17)* | `fixtures/format/` : tri des séries (`sort-series.json`), parent d'une série (`series-parent.json`, §1.8) et résolution des routes (`routes.json`). Elles sont normatives au même titre que ce texte. |
 | Ancienne forme | Jusqu'à la v2.12, la pagination s'écrivait `/<prefix>/<slug>/<page>/`. Un adaptateur qui l'a servie DEVRAIT rediriger une telle URL vers `/<prefix>/<chemin>/page/<n>/` quand aucune série n'occupe ce chemin. |
 
 ### 1.7 — Ajout d'une série
@@ -3512,6 +3513,17 @@ La spec imposait, sans le dire, le coût le plus lourd : tout hacher (deux algor
 **Décisions normatives** : *autoriser et encadrer* un cache plutôt que l'interdire (un cache qui change un résultat est un bug, pas une règle) ; *décrire* le mode reconstruit plutôt qu'assumer que `incrementalChanges` n'est qu'un déclencheur, car c'est le seul chemin économique sur Dropbox — la description est assortie d'une équivalence d'`id` testable ; exclusions *recommandées* et non imposées, car elles modifient le contenu du snapshot, donc son `id`, et dépendent du consommateur.
 
 **Fixtures** : `publishable/originals-single-hash.json` ; propriété de recomposition `apply(base, diff) = target` documentée et vérifiée sur les quinze fixtures `diff/` (README). Le cache et les exclusions recommandées ne changent aucun résultat prescrit : sans fixture.
+
+#### Fixtures : la couche 1 en a désormais, les cas fins aussi (§1.6, `fixtures/format/`, `fixtures/ingestion/`) — SPEC-C-02 et SPEC-C-04, [#58](https://github.com/izo/hyperfocale-spec/issues/58)
+
+Quatre bumps normatifs de la couche 1 (2.13 à 2.16) — tri, pagination, parent d'une sous-série, `dateRequired`, `index.md` racine de type section — répétaient « aucune fixture ne change » : « conforme v2.16 » était un jugement par relecture de code, et le site `mathieu-drouet.com` avait déjà un tri non conforme. Les règles les plus fines de la couche 4 (YAML, date) — celles où `js-yaml`, Yams et Foundation diffèrent — n'avaient aucun cas, bien que les 41 codes de diagnostic en aient un chacun.
+
+- **`fixtures/format/` (nouveau, SPEC-C-02)** : les fonctions pures de la couche 1 — `sort-series.json` (date calendaire, titre, chemin, sans date, octets UTF-8), `series-parent.json` (conteneur, rangement, page de section transparente, section racine), `routes.json` (pagination `page/<n>`, sous-série numérique, segment réservé, identité par le chemin). §1.6 y renvoie.
+- **Corpus de la couche 4** : `container-section` et `nesting-through-section` (conteneur → rangement et section → sous-série, et la limite d'un niveau à travers une section) ; six cas fins (SPEC-C-04) — `edge-bom`, `edge-crlf`, `edge-duplicate-key`, `edge-utf8-invalid` (sur disque : inexprimable en JSON), `edge-date-time`, `edge-date-hour24`. Les deux autres cas relevés par l'audit — `index.mdx` et `private` non booléen dans `index.en.md` — sont couverts par les corpus de #50 et #51.
+
+**Décision normative** : *oui, la couche 1 a un jeu de conformité*, mais seulement pour ce qui se décrit par des entrées et des sorties ; le **rendu** (body avant la galerie, lightbox, composants, flux) n'est pas testable mécaniquement, ce que `fixtures/format/README.md` écrit noir sur blanc. Alternative écartée : déclarer toute la couche 1 non testable, ce qui aurait laissé le tri et le parent — les deux règles qui ont dérivé — sans garde-fou.
+
+**Fixtures** : `fixtures/format/` (3 fichiers, 16 cas) ; 8 corpus. Aucune règle ne change : les fixtures confirment les règles 2.13 à 2.16 et les règles 4 à 8 de §4.10.
 
 ### 2.16-draft — 2026-10-25
 
