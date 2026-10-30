@@ -563,7 +563,7 @@ Tous les champs ci-dessous sont optionnels. Un adaptateur DOIT les ignorer sans 
 | `headline` | `string` | Titre court pour syndication (si différent de `title`) |
 | `instructions` | `string` | Instructions d'utilisation |
 | `source` | `string` | Source originale du contenu |
-| `gps` | `object` | Coordonnées GPS : `{ lat: number, lng: number }` |
+| `gps` | `object` | Coordonnées GPS : `{ lat: number, lng: number }`. **Opt-in, précision limitée** *(v2.17)* : un outil ne l'écrit pas sans choix explicite de l'auteur, et la précision recommandée est de 2 décimales — voir §1.12, *Données de localisation*. |
 
 > **Extensibilité** : des champs hors de ce vocabulaire peuvent être ajoutés sous `iptc.custom.*` ou à la racine du frontmatter. Les adaptateurs DOIVENT les transmettre sans modification (passthrough).
 
@@ -593,8 +593,8 @@ iptc:
   country: "France"
   country_code: "FR"
   gps:
-    lat: 48.3905
-    lng: -4.4861
+    lat: 48.39
+    lng: -4.49
 ---
 
 Texte libre affiché **avant** la galerie de photos.
@@ -1102,6 +1102,18 @@ Un fichier de quelques centaines d'octets peut épuiser un lecteur sans contenir
 
 Un lecteur DOIT appliquer ces bornes avant de construire la structure ; un fichier « illisible » se traite comme un frontmatter illisible (§4.10, règle 6) ou un manifeste illisible (§1.5.1) : le contenu n'est pas lu, le build n'échoue pas pour autant. Une implémentation PEUT choisir des bornes plus strictes pour son propre usage, jamais plus larges. L'ingestion les applique à l'identique (§4.10, règles 4 et 6) : un fichier dépassant une borne produit `frontmatter-invalid` ou `images-json-invalid`.
 
+#### Données de localisation
+
+Un frontmatter est public. `iptc.gps` publié avec la précision d'un récepteur GPS (4 décimales : une dizaine de mètres) peut désigner un domicile, un hébergement ou un lieu de tournage privé ; c'était pourtant la valeur par défaut d'un export depuis Lightroom.
+
+| Règle | Description |
+|-------|-------------|
+| Opt-in | `iptc.gps` — comme `place.gps` (G.5) et tout champ de coordonnées — n'est **jamais écrit sans choix explicite** de l'auteur, par série. Un exporter (§2.7), un CMS ou un plugin ne le déduit pas des EXIF par défaut. Sans choix : le champ est absent. |
+| Précision | Un outil qui écrit `iptc.gps` l'arrondit à **2 décimales** (≈ 1,1 km en latitude) et DEVRAIT avertir l'auteur dès qu'il en écrit davantage : la précision supérieure se réserve à un lieu public (monument, site, salle). |
+| Fichiers images | Les images exportées ne portent pas de coordonnées GPS dans leurs EXIF ou XMP, sauf choix explicite : le fichier `media/01.jpg`, servi tel quel, publierait ce que le frontmatter ne dit plus. Un exporter DEVRAIT les retirer. |
+| Cartes | Un composant de carte (§3.1, plugin Obsidian §2.5) ne demande à son fournisseur de tuiles que des coordonnées de **tuiles** (`z/x/y`), jamais la position d'une série ; le fournisseur apprend la zone consultée et l'adresse IP du visiteur, ce que le site déclare. |
+| À l'ingestion | `gps-precision-excessive` (§4.10, règle 18, *warning*) pour un `iptc.gps` à plus de 2 décimales. La couche 4 ne valide pas les coordonnées des profils (Annexe G). |
+
 #### Récupération d'URL au build ou en edge *(introduit v2.17)*
 
 Toute URL de contenu est licite (§1.12, *Schémas d'URL*) : l'auteur choisit l'hôte que l'optimiseur d'images, l'extraction d'EXIF ou un téléchargement ira lire. Sans borne, c'est une requête forgée côté serveur (SSRF) — métadonnées d'un hébergeur cloud, hôtes internes, amplification de trafic.
@@ -1603,7 +1615,7 @@ L'exporter lit les métadonnées du catalogue Lightroom et les inscrit dans le f
 | Province / État | `iptc.province` | Métadonnée IPTC LR |
 | Pays | `iptc.country` | Métadonnée IPTC LR |
 | Code pays | `iptc.country_code` | Métadonnée IPTC LR |
-| GPS (EXIF) | `iptc.gps` | Centroïde si plusieurs positions |
+| GPS (EXIF) | `iptc.gps` | **Opt-in** : écrit seulement si l'auteur le demande (§1.12) ; centroïde arrondi à 2 décimales si plusieurs positions |
 
 #### Paramètres de l'exporter
 
@@ -1616,6 +1628,7 @@ L'exporter lit les métadonnées du catalogue Lightroom et les inscrit dans le f
 | **Mode draft** | Exporter avec `draft: true` pour révision avant publication |
 | **Écraser** | Si la série existe déjà : écraser, fusionner, ou erreur |
 | **Body** | Texte libre injecté dans le body Markdown |
+| **GPS** *(v2.17)* | Désactivé par défaut. Activé : `iptc.gps` arrondi à 2 décimales, avertissement si l'auteur choisit plus ; les GPS EXIF/XMP des images exportées sont retirés sauf choix contraire (§1.12) |
 
 #### Dual naming mode des images *(officialisé v2.1)*
 
@@ -2155,6 +2168,7 @@ Transitions — la liste est **exhaustive** : toute autre transition est interdi
 | `images-json-invalid` | warning | JSON illisible, racine qui n'est pas un objet, clé `images` absente ou non tableau (§1.5.1) | le `images.json` |
 | `attachment-not-found` | warning | entrée `attachments[]` dont le `file` est absent de `media/` ou désigne un original (§1.9) | le fichier |
 | `embed-url-missing` | error | entrée `embeds[]` sans `url` (§1.11) | le fichier |
+| `gps-precision-excessive` | warning | `iptc.gps.lat` ou `iptc.gps.lng` numérique à plus de 2 décimales (§1.12) | le fichier |
 | `reference-unsafe` | error | référence relative non sûre : `\`, caractère de contrôle, `%2e` `%2f` `%5c`, ou résolution hors de la racine du corpus (§1.12) | le fichier où la valeur est écrite |
 | `entry-symlink` | warning | lien symbolique rencontré à l'énumération par un provider filesystem : ignoré, jamais suivi (§4.0). Produit par le provider, non par la validation d'un snapshot | le chemin du lien |
 | `attachment-active-content` | warning | entrée `media` dont l'extension désigne un contenu actif : `.html`, `.htm`, `.xhtml`, `.svg`, `.svgz`, `.xml`, `.xsl`, `.xslt`, `.js`, `.mjs` (§1.12) | l'entrée |
@@ -2192,6 +2206,7 @@ La sévérité est celle d'un **outil d'ingestion**, qui décide d'une publicati
 15. **Schémas d'URL.** `url-scheme-forbidden` : une valeur chaîne de `cover`, de `images[].url`, `files[].url`, `embeds[].url` ou `embeds[].poster` du frontmatter, ou d'une entrée de `images.json` (chaîne, ou `url` d'un objet de `images` ou de `files`), qui n'a pas une forme admise de §1.12. Une valeur absente, `null`, vide ou qui n'est pas une chaîne n'est pas concernée (une `url` d'embed absente relève d'`embed-url-missing`). Le contrôle porte sur la valeur telle qu'écrite et vaut aussi pour un `cover` que la règle 10 ne vérifie pas (non relatif) ; une valeur refusée ne subit aucun autre contrôle (pas de `cover-not-image` ni de `cover-not-found`). Un fichier à l'état `placeholder`, `conflict` ou aux octets divergents n'est pas lu (règles 3 et 4) : aucun diagnostic de champ.
 16. **Contenu actif.** `attachment-active-content` : toute entrée de `kind` `media` d'une racine dont l'extension (§4.1) est dans la liste fermée de §1.12 (*Documents joints*). Le diagnostic ne dépend que du chemin : il vaut quel que soit l'état de l'entrée, et le fichier n'est pas lu. Un original (§1.9) n'est jamais concerné, les extensions étant disjointes.
 17. **Références sûres.** `reference-unsafe` : une référence **relative** (règle 9) non sûre au sens de §1.12 — elle contient `\`, un caractère de contrôle ou `%2e`, `%2f`, `%5c` (casse ignorée), ou sa résolution sort de la racine du corpus (et non de la racine de validation). Sont contrôlées les valeurs de `cover`, `attachments[].file`, `embeds[].poster`, `images[].url` et `files[].url` du frontmatter, et les entrées relatives de `images.json`. Le diagnostic porte sur le fichier où la valeur est écrite ; une référence non sûre ne subit aucun autre contrôle (ni `cover-not-found`, ni `cover-not-image`, ni `attachment-not-found`). Une valeur qui porte un schéma, ou qui commence par `/`, n'est pas relative : elle relève de la règle 15.
+18. **Coordonnées précises.** `gps-precision-excessive` : `iptc.gps` est un mapping dont `lat` ou `lng` est un nombre qui n'égale pas son arrondi à deux décimales — `|v − round(v × 100) / 100| > 10⁻⁹`. Une valeur non numérique est ignorée (`iptc` est du passthrough pour la couche 4) ; les bornes ±90 et ±180 ne sont pas vérifiées ici (Annexe A).
 
 ### 4.11 — Garde de publication
 
@@ -2317,7 +2332,7 @@ Vérifications :
 - [ ] `cover` pointe vers une image (jamais un document joint ni un original)
 - [ ] Chaque entrée `attachments:` du frontmatter référence un fichier existant de `media/` qui n'est pas un original
 - [ ] `iptc.country_code` est un code ISO 3166-1 valide (si présent)
-- [ ] `iptc.gps.lat` est entre -90 et 90, `lng` entre -180 et 180 (si présent)
+- [ ] `iptc.gps.lat` est entre -90 et 90, `lng` entre -180 et 180 (si présent) ; au plus 2 décimales, et écrit par choix explicite de l'auteur (§1.12)
 - [ ] Pas de mélange mode local / mode distant / manifeste dans la même série
 - [ ] `images.json` (si présent) est un JSON valide dont la clé `images` est un tableau (§1.5.1)
 - [ ] Aucune série imbriquée au-delà d'un niveau — un conteneur §1.8 n'est jamais lui-même une sous-série (la profondeur de rangement §1.2, elle, n'est pas contrainte)
@@ -3435,6 +3450,20 @@ Un frontmatter de 359 octets (dix niveaux d'alias de neuf éléments) est accept
 **Décisions normatives** : *liste blanche vide par défaut* plutôt qu'une liste noire d'hôtes dangereux ; les IP littérales sont refusées **même listées** (un nom DNS est exigé : le contrôle de l'adresse résolue le rend vérifiable) ; `identity` **conservée** dans la projection, alors que l'audit proposait de la retirer — la retirer priverait le diff de son seul moyen d'apparier un renommage sans relire les octets ; pas de protection contre le rejeu au-delà de l'horodatage quand le provider n'en fournit pas (Dropbox n'en fournit pas) : l'idempotence suffit, le webhook ne porte aucun contenu.
 
 **Fixtures** : `fixtures/security/remote-hosts.json` (36 cas) et `addresses.json` (43 adresses), nouveau dossier `fixtures/security/` ; `publishable/source-removed.json`. La fixture ne teste ni DNS ni redirections, qui dépendent du réseau.
+
+#### Coordonnées GPS : opt-in et précision limitée (§1.3, §1.4, §1.12, §2.7, §4.10, Annexe A) — SPEC-S-10, [#56](https://github.com/izo/hyperfocale-spec/issues/56)
+
+`iptc.gps` publiait par défaut la position d'un récepteur GPS (4 décimales, une dizaine de mètres) : l'adresse d'un domicile, d'un client ou d'un lieu privé pouvait finir dans un frontmatter public, sans avertissement ni opt-in, et les EXIF des images exportées la contenaient encore.
+
+- **§1.12 (Données de localisation)** : `iptc.gps` n'est jamais écrit sans choix explicite de l'auteur, par série ; il est arrondi à **2 décimales** (≈ 1,1 km) et l'outil avertit s'il en écrit davantage ; les images exportées ne portent pas de GPS EXIF/XMP sauf choix explicite (DEVRAIT) ; un composant de carte ne demande au fournisseur que des coordonnées de tuiles.
+- **§2.7** : le mapping Lightroom → `iptc.gps` devient opt-in et un paramètre « GPS » (désactivé par défaut) est ajouté à l'exporter ; **§1.3**, **§1.4** : champ marqué opt-in, exemple ramené à 2 décimales.
+- **§4.10** : nouveau diagnostic `gps-precision-excessive` (warning, règle 18) au-delà de 2 décimales ; Annexe A alignée.
+
+**Décisions normatives** : *opt-in* plutôt qu'un avertissement seul — une position précise publiée est irréversible (CDN, caches, archives) ; *2 décimales* comme seuil d'écriture et de diagnostic, valeur de l'audit ; *warning* et non erreur, car un lieu public peut justifier plus de précision ; le retrait des GPS des images est un DEVRAIT (la spec ne définit pas le traitement d'image d'un exporter).
+
+**À reprendre côté implémentations** : l'exporter Lightroom écrit aujourd'hui `iptc.gps` par défaut ; un corpus existant à 4 décimales produira ce `warning` à l'ingestion (`mathieu-drouet.com` a 549 `index*.md` portant `iptc:`).
+
+**Fixtures** : corpus `invalid-gps-precision-excessive`.
 
 ### 2.16-draft — 2026-10-25
 
