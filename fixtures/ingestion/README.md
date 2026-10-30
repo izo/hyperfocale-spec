@@ -93,7 +93,7 @@ Comparaison : `format`, `version`, `base`, `target` à l'identique ; `added`, `m
   "files": { "base": { "<chemin>": "<texte>" }, "target": { … } }, "policy": { … }, "expected": [ { "code", "severity", "path" } ] }
 ```
 
-`changeSet` est le diff de `base` vers `publishable(target)`, fourni pour tester la garde indépendamment du diff (il est égal à ce que produit §4.7 ; sans original dans `target`, c'est le diff vers `target` lui-même). `read(côté, chemin)` rend les octets UTF-8 de `files[côté][chemin]` ; une lecture hors de `files` est un défaut d'implémentation. Ces octets correspondent au hash de l'entrée, sauf `series/divergente-2024/index.md` côté `base` dans `guard/private-fail-closed.json`, qui teste précisément l'écart. `policy` est toujours explicite. Comparaison des diagnostics : comme pour `validation/`.
+`changeSet` est le diff de `base` vers `publishable(target)`, fourni pour tester la garde indépendamment du diff (il est égal à ce que produit §4.7 ; sans original dans `target`, c'est le diff vers `target` lui-même). `read(côté, chemin)` rend les octets UTF-8 de `files[côté][chemin]` ; une lecture hors de `files` est un défaut d'implémentation. Ces octets correspondent au hash de l'entrée, sauf `series/divergente-2024/index.md` côté `base` dans `guard/private-fail-closed.json`, qui teste précisément l'écart. `policy` est toujours explicite : un seuil absent prend son défaut (§4.11, *v2.17*), si bien que les fixtures qui ne testent pas les défauts désactivent les seuils par `null` (`"maxFileBytes": null`…). `guard/defaults-*.json` testent les défauts, avec `policy: {}`. Comparaison des diagnostics : comme pour `validation/`.
 
 ### `snapshot-id/<cas>.json`
 
@@ -180,6 +180,16 @@ Pour la même raison, aucun corpus ne contient deux noms égaux après repli de 
 | `guard-originals-excluded` | `guard/originals.json` (`count` et `bytes` comparés ; `.RAF` au-delà de `maxFileBytes.media` sans `guard-oversize`, puisqu'ils ne sont pas publiés) |
 
 Chaque fixture de garde fixe sa `policy` : les seuils réels appartiennent au consommateur.
+
+| Défauts de §4.11 | Fixture |
+|---|---|
+| `maxDeletedSeries` (10) | `guard/defaults-mass-deletion.json` |
+| `maxMovedSeries` (10) | `guard/defaults-mass-move.json` |
+| `maxFileBytes` : `content` et `derived` à 1 Mio, aucun plafond pour `media` et `other` ; désactivation par `null` | `guard/defaults-oversize.json`, `guard/defaults-disabled.json` |
+
+| Bornes de lecture (§1.12) | Fixture |
+|---|---|
+| Alias exponentiels, profondeur 32 / 33, fichier de plus de 1 Mio (jamais lu), JSON à 33 niveaux | `validation/frontmatter-limits.json` (snapshot inline ; les deux fichiers de plus de 1 Mio sont déclarés par leur `size` et n'ont aucune entrée dans `files`) |
 
 ## Diffs couverts
 
