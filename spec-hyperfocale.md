@@ -1921,6 +1921,8 @@ Certains fichiers n'entrent jamais dans un snapshot, et leur présence n'est jam
 - les noms de base `Thumbs.db`, `desktop.ini` et `Icon\r` (`Icon` suivi de U+000D), comparés exactement, casse comprise ;
 - un consommateur PEUT ajouter ses propres exclusions (`_todo/`, `_drafts/`…). Elles modifient le contenu du snapshot : il DEVRAIT les documenter.
 
+**Exclusions recommandées** *(v2.17)*. La racine d'un corpus n'est pas toujours un corpus : un dossier `node_modules/`, une `Library/` ou une archive posés sous la racine deviendraient des entrées `other`, toutes lues, hachées (§4.4) et publiées. Un consommateur DEVRAIT, sauf besoin documenté, exclure : tout segment `node_modules` ou `__MACOSX`, les fichiers `*.tmp`, `*.part` et `~$*` (verrous et fichiers temporaires d'éditeurs), et limiter les entrées `other` **hors** `media/` — que ni un adaptateur ni la validation ne lisent — à une liste blanche d'extensions qu'il documente. Ces exclusions sont les siennes : elles modifient le contenu du snapshot, donc son `id`, et ne font l'objet d'aucune fixture.
+
 L'exclusion s'évalue **avant** la validité : un chemin exclu disparaît sans diagnostic, même s'il est invalide (`Icon\r` contient un caractère de contrôle). Un chemin non exclu et invalide produit `entry-path-invalid` (§4.10). Dans un snapshot, une entrée dont le chemin relève d'une exclusion est non conforme et produit elle aussi `entry-path-invalid`.
 
 ### 4.3 — Classification
@@ -1953,6 +1955,18 @@ Une entrée porte un objet `hashes` : `{ "<algorithme>": "<valeur>" }`.
 - Une entrée **matérialisée** DOIT porter au moins un hash. Une entrée `placeholder` (présente à la source mais non matérialisée) ou `conflict` (en conflit de version, §4.5) PEUT n'en porter aucun.
 - Un outil qui lit les octets d'une entrée DOIT les vérifier contre son hash : le premier algorithme enregistré qu'elle porte, `sha256` puis `dropbox` (une valeur `x-*` est opaque et ne se vérifie pas). Un écart signe un fichier modifié entre le listing et la lecture : le snapshot n'est pas publiable, et un nouveau listing s'impose. La validation le signale par `entry-hash-mismatch` (§4.10) ; la garde en tire ses propres conséquences (§4.11).
 - Pour comparer deux entrées, l'ordre de préférence est `sha256`, puis `dropbox`, puis les `x-*` par ordre alphabétique (octets UTF-8). On retient le **premier algorithme présent sur les deux entrées** : lui seul décide, même si un algorithme suivant diverge. Dans un snapshot, un nom d'algorithme ni enregistré ni préfixé `x-` rend l'entrée invalide (`entry-invalid`, §4.5).
+
+#### Coût et cache *(introduit v2.17)*
+
+Hacher est le coût dominant d'une ingestion : mesuré, `sha256` et `dropbox` traitent chacun ≈ 270 Mio/s, soit ≈ 4 s pour 512 Mio avec les deux, ≈ 13 min de CPU par passe pour 100 Go. Pour un provider sans API de hash (filesystem, iCloud), chaque passe relit tout le corpus. La spec n'impose pas ce coût : elle le borne.
+
+| Règle | Description |
+|---|---|
+| Une lecture | Un outil qui calcule `sha256` **et** `dropbox` d'un même fichier les calcule en **une seule lecture** des octets. |
+| Cache de hash | Un outil PEUT, et DEVRAIT, réutiliser un hash déjà calculé sans relire les octets quand `(path, size, modifiedAt, identity)` sont **tous** identiques à ceux de l'entrée pour laquelle il a été calculé (`identity` absent : comparé comme absent). Sans `modifiedAt`, aucune réutilisation. Toute différence d'un des quatre champs invalide l'entrée. |
+| Portée du cache | Un cache est propre à un provider et à une racine de source : en changer le vide. Il n'est jamais une source de vérité : les octets lus pour être publiés se vérifient toujours contre le hash (§4.4) ; un écart (`entry-hash-mismatch`) vide l'entrée du cache et impose un nouveau listing. |
+| Aucun effet visible | Un cache ne change aucun résultat : le snapshot est identique, entrée par entrée, à celui d'un calcul sans cache (invariant 6). |
+| Originaux | Une entrée originale (§1.9) PEUT ne porter qu'**un seul** algorithme : elle n'est jamais publiée, et son hash ne sert qu'à détecter un changement de la source. Les entrées non originales d'un même snapshot portent toutes le même jeu d'algorithmes (§4.6) : l'`id` de la projection publiable (§4.11) n'en dépend donc pas. |
 
 Pour un fichier non vide d'au plus un bloc, `dropbox` est le SHA-256 du digest binaire SHA-256 du contenu : il diffère donc de `sha256`. Pour le fichier vide, les deux valeurs sont égales. Vecteurs multi-blocs, dont 5 000 000 octets nuls : `fixtures/ingestion/hashes/vectors.json`.
 
@@ -2076,11 +2090,33 @@ Tous les providers ne savent pas tout faire. Un provider déclare ses capacités
 
 Une capacité booléenne absente vaut `false` ; `hashAlgorithms` absent vaut `[]`. Le pipeline NE DOIT jamais supposer une capacité absente : sans webhook, il réconcilie périodiquement ; sans changements incrémentaux, il relit le listing complet ; sans identité stable, il n'infère les déplacements que par contenu (§4.7).
 
+#### `incrementalChanges` : snapshot reconstruit depuis un état *(introduit v2.17)*
+
+Sans description, la capacité `incrementalChanges` n'a aucun consommateur dans le contrat : le chemin sûr (relister tout) devient la norme, y compris sur un provider qui sait donner les changements. Cette section définit le chemin économique.
+
+Un outil qui conserve le dernier snapshot **complet** `S` d'une source et le curseur du provider associé PEUT produire le snapshot suivant `S'` en appliquant à `S` les changements du provider depuis ce curseur, au lieu de relister :
+
+```
+apply(S, Δ) = ( S.entries − Δ.deleted − Δ.moved[].before − Δ.modified[].before ) + Δ.added + Δ.moved[].after + Δ.modified[].after
+```
+
+où `Δ` est le ContentChangeSet (§4.7) que décrivent les changements du provider. Les conditions suivantes sont **toutes** exigées pour que `S'` soit `complete: true` ; sinon il n'y a pas de reconstruction, l'outil relit le listing complet et `complete` est celui de ce listing :
+
+1. `S` est `complete: true` et son curseur est valide : celui du listing qui l'a produit, ou du dernier lot de changements appliqué ;
+2. les changements ont été consommés **jusqu'au bout** : aucune page restante (`has_more`), aucune erreur ;
+3. chaque entrée ajoutée ou modifiée a un chemin valide et non exclu (§4.1, §4.2) et un hash, fourni par le provider ou calculé (§4.4) ; la suppression d'un dossier vaut pour tout son contenu ;
+4. aucun changement ne désigne une entrée absente de `S` quand il suppose qu'elle y est (déplacement ou modification d'un chemin inconnu) ;
+5. un curseur expiré ou refusé (`reset` pour Dropbox) n'est **jamais** lu comme « tout est supprimé » : il impose le listing complet (invariant 3).
+
+**Équivalence.** `S'` DOIT avoir exactement l'`id` (§4.6) d'un listing complet de la même source au même instant (invariant 6). Un outil qui reconstruit DEVRAIT confronter périodiquement `S'` à un listing complet — quotidien, par exemple — pour détecter une dérive. Sans ce mode, `incrementalChanges` n'est qu'une optimisation du **déclenchement** : savoir qu'il y a quelque chose à relire ; le pipeline n'en dépend pas.
+
+La même propriété se teste sans provider : pour toute fixture `diff/<cas>.json`, `apply(base, expected)` redonne les entrées de `target` (`fixtures/ingestion/README.md`) — au choix d'algorithme près : une entrée jugée inchangée (§4.7, étape 1) garde sa version de `base`, y compris quand un algorithme que la comparaison n'a pas retenu diverge (seule `hash-preference` est concernée).
+
 Valeurs de référence, indicatives :
 
 | Provider | Capacités |
 |---|---|
-| Filesystem | `localRead`, `localWrite`, `hashAlgorithms: ["sha256", "dropbox"]` (calculés) |
+| Filesystem | `localRead`, `localWrite`, `hashAlgorithms: ["sha256", "dropbox"]` (calculés en une lecture, avec cache possible, §4.4) |
 | Dropbox | `remoteRead`, `remoteWrite`, `incrementalChanges`, `stableIdentity`, `serverWebhook`, `hashAlgorithms: ["dropbox"]` |
 | WebDAV | `remoteRead`, `remoteWrite`, `hashAlgorithms: ["x-etag"]` |
 | iCloud Drive (depuis un CMS) | `localRead`, `localWrite`, `clientChangeObservation`, `materializationAware`, `stableIdentity`, `hashAlgorithms: ["sha256"]` |
@@ -3464,6 +3500,18 @@ Un frontmatter de 359 octets (dix niveaux d'alias de neuf éléments) est accept
 **À reprendre côté implémentations** : l'exporter Lightroom écrit aujourd'hui `iptc.gps` par défaut ; un corpus existant à 4 décimales produira ce `warning` à l'ingestion (`mathieu-drouet.com` a 549 `index*.md` portant `iptc:`).
 
 **Fixtures** : corpus `invalid-gps-precision-excessive`.
+
+#### Coût imposé : hash, mise à jour incrémentale, racine sans filtre (§4.2, §4.4, §4.8) — SPEC-P-01, SPEC-P-04 et SPEC-P-06, [#57](https://github.com/izo/hyperfocale-spec/issues/57)
+
+La spec imposait, sans le dire, le coût le plus lourd : tout hacher (deux algorithmes, originaux compris), tout relister, tout publier — sans qu'aucune phrase autorise un cache ni définisse le chemin incrémental. Mesuré : ≈ 270 Mio/s par algorithme, ≈ 13 min de CPU par passe pour 100 Go.
+
+- **§4.4 (Coût et cache)** : les deux hashes d'un fichier se calculent en **une lecture** ; un **cache de hash** indexé par `(path, size, modifiedAt, identity)` est admis (DEVRAIT) avec ses règles d'invalidation, propre à un provider et à une racine, jamais source de vérité (les octets publiés restent vérifiés) ; une entrée **originale** peut ne porter qu'un seul algorithme, puisqu'elle n'est jamais publiée.
+- **§4.8 (`incrementalChanges`)** : un snapshot peut être **reconstruit depuis un état** — `apply(S, Δ)` — à cinq conditions exigées pour `complete: true` (curseur valide, changements consommés jusqu'au bout, hashes et chemins valides, aucune incohérence, `reset` jamais lu comme une suppression) ; il a le même `id` qu'un listing complet ; sans ce mode, la capacité n'est qu'une optimisation du déclenchement.
+- **§4.2 (Exclusions recommandées)** : `node_modules`, `__MACOSX`, `*.tmp`, `*.part`, `~$*`, et une liste blanche d'extensions pour les `other` hors `media/` (DEVRAIT, au choix du consommateur).
+
+**Décisions normatives** : *autoriser et encadrer* un cache plutôt que l'interdire (un cache qui change un résultat est un bug, pas une règle) ; *décrire* le mode reconstruit plutôt qu'assumer que `incrementalChanges` n'est qu'un déclencheur, car c'est le seul chemin économique sur Dropbox — la description est assortie d'une équivalence d'`id` testable ; exclusions *recommandées* et non imposées, car elles modifient le contenu du snapshot, donc son `id`, et dépendent du consommateur.
+
+**Fixtures** : `publishable/originals-single-hash.json` ; propriété de recomposition `apply(base, diff) = target` documentée et vérifiée sur les quinze fixtures `diff/` (README). Le cache et les exclusions recommandées ne changent aucun résultat prescrit : sans fixture.
 
 ### 2.16-draft — 2026-10-25
 

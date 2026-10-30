@@ -67,6 +67,7 @@ Projection publiable (§4.11) : le snapshot **sans `source`** et sans ses entré
 | `originals` | dossier de travail : `.RAF` et `.xmp` retirés, JPEG, devis et `index.md` gardés |
 | `no-originals` | snapshot sans original (`minimal`) : la projection est le snapshot lui-même, même `id` |
 | `source-removed` | snapshot qui porte `source` (provider, révision, racine) : la projection ne la garde pas ; `identity` des entrées conservée |
+| `originals-single-hash` | originaux (`.RAF`, `.xmp`) qui ne portent qu'un seul algorithme (§4.4, *Coût et cache*) : retirés, `id` recalculé sur les entrées restantes |
 | `extensions` | casse ignorée (`.RAF`, `.Dng`, `.XMP`), dernier point seul (`.jpg.cr3` original, `.raf.jpg` image), fichier sans extension, entrées `other` à extension d'original gardées |
 
 ### `validation/<cas>.json`
@@ -86,6 +87,8 @@ Projection publiable (§4.11) : le snapshot **sans `source`** et sans ses entré
 ```
 
 Comparaison : `format`, `version`, `base`, `target` à l'identique ; `added`, `modified`, `deleted`, `moved` égaux en profondeur, dans l'ordre (§4.7, règle 6), les entrées étant comparées comme objets JSON complets (`identity` et `modifiedAt` compris) ; `diagnostics` par `code` + `severity` + `path`.
+
+**Propriété de recomposition** (§4.8, *snapshot reconstruit depuis un état*) : pour toute fixture avec `base` non nul, `apply(base, expected)` — les entrées de `base`, moins les `deleted`, les `before` des `moved` et des `modified`, plus les `added` et les `after` des `moved` et des `modified`, triées dans l'ordre canonique — redonne exactement les entrées de `target`. Seule `hash-preference` ne se compare que sur `path`, `kind` et `size` : une entrée jugée inchangée garde sa version de `base`, y compris quand un algorithme que la comparaison n'a pas retenu diverge.
 
 ### `guard/<cas>.json`
 
@@ -138,7 +141,7 @@ Le hash `dropbox` d'un fichier vide est le SHA-256 de la chaîne vide (aucun blo
 
 ## Prérequis d'une implémentation conforme
 
-Toute implémentation conforme DOIT savoir calculer `sha256` **et** `dropbox` : les snapshots des fixtures portent les deux, et leurs `id` en dépendent. Elle compare et trie les chemins sur leurs octets UTF-8 (ou leurs points de code) — en Swift, sur `unicodeScalars` ou `utf8`, jamais sur `String`, dont `==` identifie les formes NFC et NFD (§4.1).
+Toute implémentation conforme DOIT savoir calculer `sha256` **et** `dropbox` : les snapshots des fixtures portent les deux, et leurs `id` en dépendent. Une ingestion réelle n'a pas à les calculer partout : une seule lecture suffit pour les deux, un cache de hash est admis et un original peut n'en porter qu'un seul (§4.4, *Coût et cache*). Aucune fixture ne teste le cache : il ne change aucun résultat, c'est le même snapshot. Elle compare et trie les chemins sur leurs octets UTF-8 (ou leurs points de code) — en Swift, sur `unicodeScalars` ou `utf8`, jamais sur `String`, dont `==` identifie les formes NFC et NFD (§4.1).
 
 ## Pourquoi il n'y a pas de corpus `collision` sur disque
 
