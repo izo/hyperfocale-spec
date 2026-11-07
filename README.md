@@ -41,7 +41,7 @@ Le reste (métadonnées IPTC, GPS, couverture, mots-clés...) est optionnel et s
 |-------|-------|------|
 | `@regrets/hyperfocale` (v0.25.1) | https://github.com/izo/hyperfocale-astro-plugins | Plugin Astro 7 — schéma Zod, collections, presets, composants ; outils d'ingestion de la couche 4 (snapshot, diff, validation, garde, providers filesystem, Dropbox, WebDAV) |
 | Exporter Lightroom | https://github.com/izo/hyperfocale-exporter-app | Export LR → format Hyperfocale avec métadonnées IPTC |
-| Hyperfocale CMS | https://github.com/izo/hyperfocale-cms | Éditeur Swift (CLI, macOS, iOS) — ouvrir et éditer une série sans écrire de YAML. Les apps n'ouvrent qu'un dossier Dropbox. Le CMS écrit dans Dropbox et ne publie pas : un outil d'ingestion (couche 4) publie |
+| Hyperfocale CMS | https://github.com/izo/hyperfocale-cms | Éditeur Swift (CLI, macOS, iOS) — ouvrir et éditer une série sans écrire de YAML. Le CMS écrit dans un dossier de travail synchronisé (Dropbox, son espace de référence) et ne publie pas : un outil d'ingestion (couche 4) publie |
 | hyperfocale-vault | https://github.com/izo/hyperfocale-vault | Gestion de projets photo macOS — producteur du dossier de travail (G.12, repris par Hyperfocus) |
 | `mathieu-drouet.com` | https://github.com/izo/mdr-monorepo | Archive photo grandeur nature, premier pipeline d'ingestion (couche 4) |
 | `laurenceguenoun.com` | https://github.com/izo/laurenceguenoun | Portfolio, plugin en couche data seule |
