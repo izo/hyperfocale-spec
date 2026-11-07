@@ -65,6 +65,6 @@ Un bump touche, dans le même commit : header (`**Version**` et `**Dernière ré
 
 - Mise à jour du CLAUDE.md : invoquer le skill `claude-md-management:revise-claude-md`
 - Pattern de commit : `type(spec): message` + PR via `gh pr create`
-- Avant toute modification : lire `spec-hyperfocale.md` en entier (~3 570 lignes — dépasse la limite de Read, lire par tranches de ≤950 lignes, soit 4 tranches)
+- Avant toute modification : lire `spec-hyperfocale.md` en entier. Le fichier dépasse la limite de Read : le lire par tranches de 950 lignes au plus (`offset` et `limit`), jusqu'à la dernière ligne. `wc -l spec-hyperfocale.md` donne la taille ; ne pas la recopier ici, elle dérive
 - À chaque release du plugin Astro : mettre à jour §0.5, le header (ligne plugin) et le README. Version réelle : `gh api -H "Accept: application/vnd.github.raw" repos/izo/hyperfocale-astro-plugins/contents/CHANGELOG.md` (CHANGELOG à la racine — le repo n'est pas un monorepo `packages/`)
 - Bump de version uniquement sur changement normatif de la spec (format ou couche 4 ingestion) — une mise à jour §0.5 seule ne bumpe pas (commits `docs(0.5): ...` sans bump)
