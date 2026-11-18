@@ -2,9 +2,9 @@
 
 > **Source de vérité canonique.** Ce document définit le format Hyperfocale — un standard de **séries photo pour le web**, portable entre SSG (Astro, Next.js, Hugo, 11ty...), vaults Obsidian, et CMS headless (Strapi, Sanity, Payload...). Le travail qui précède la publication — projets, originaux, sélection — relève d'**Hyperfocus** ([`spec-hyperfocus.md`](https://github.com/izo/hyperfocus/blob/main/spec-hyperfocus.md)), qui découle de cette spec. Toute évolution du format doit être proposée d'abord ici, dans ce dépôt.
 
-**Version** : 2.17-draft
+**Version** : 2.18-draft
 **Statut** : spécification active — source de vérité canonique
-**Dernière révision** : 2026-10-30
+**Dernière révision** : 2026-11-18
 
 ### Implémentations de référence
 
@@ -136,6 +136,7 @@ Ces règles s'appliquent quel que soit l'adaptateur ou la plateforme :
 | **Passthrough** | Les champs inconnus du frontmatter ne provoquent pas d'erreur |
 | **Contenu exécutable** | Pas de `index.mdx` : seul `index.md` porte une série. Le HTML rendu depuis le body est assaini (§1.12) |
 | **URLs de contenu** | Un champ d'URL n'admet que `http:`, `https:`, un chemin absolu au site ou un chemin relatif : `javascript:`, `data:`, `file:` et tout autre schéma sont refusés (§1.12) |
+| **Données de retour** | Un dossier `_responses/` à la racine du corpus porte ce que des visiteurs ont renvoyé (réponses à un sondage, G.13), pas du contenu : ni série, ni média, jamais rendu ni copié dans une sortie de build (§1.12, §4.2) |
 
 ### Ce que n'est PAS le format
 
@@ -162,7 +163,7 @@ Toute implémentation (adaptateur, script, outil) qui lit du contenu Hyperfocale
 
 ## 0.5 — État des implémentations de référence
 
-Section informative — un audit de conformité des implémentations connues, mis à jour à chaque révision majeure de la spec. **Dernière mise à jour de cette section : 2026-10-30** (relevé des versions : plugin `0.25.1` publié sur npm, `mdr-monorepo` en `^0.24.0`) ; la date de révision du **format** est celle de l'en-tête, et une mise à jour de §0.5 seule ne la change pas. Chaque fiche porte la date et le commit de son relevé : un chiffre sans date ni commit est un défaut de cette section.
+Section informative — un audit de conformité des implémentations connues, mis à jour à chaque révision majeure de la spec. **Dernière mise à jour de cette section : 2026-10-30** (relevé des versions : plugin `0.25.1` publié sur npm, `mdr-monorepo` en `^0.24.0`) ; les lignes *Livraison* et *Données de retour* des fiches du plugin et de `mathieu-drouet.com` datent du 2026-11-18 (2.18) ; la date de révision du **format** est celle de l'en-tête, et une mise à jour de §0.5 seule ne la change pas. Chaque fiche porte la date et le commit de son relevé : un chiffre sans date ni commit est un défaut de cette section.
 
 ### Plugin Astro `@regrets/hyperfocale` (v0.25.1, publiée sur npm ; 0.25.0 le 2026-10-25)
 
@@ -189,6 +190,7 @@ Section informative — un audit de conformité des implémentations connues, mi
 | Ingestion (couche 4) | ✅ | Implémentée en **v0.19.0**, en quatre sous-chemins **additifs** : `/ingest` (contrat, agnostique du runtime), `/ingest/fs`, `/ingest/dropbox`, `/ingest/webdav`, plus les commandes `validate`, `snapshot` et `diff` du CLI. Les 109 fixtures alors présentes dans `fixtures/ingestion/` (spec 2.10, `main@18f48de`) sont copiées à une ref épinglée et rejouées en totalité. L'entrée racine n'atteint aucun code d'ingestion : rien ne change pour un site qui ne l'importe pas |
 | Contenus embarqués (§1.11) | ✅ | Implémentés en **v0.17.0** : champ `embeds`, `getSeriesEmbeds()` (résolution dans l'ordre du tableau, `playable` = plateforme reconnue + `id` présent), `<SeriesEmbeds>` rendu **en façade** (le poster s'affiche, l'iframe n'arrive qu'au clic ; sans JavaScript la façade reste un lien fonctionnel), liste de plateformes ouverte (valeur inconnue → repli en lien), posters exclus du scan de galerie. Vocabulaires (`EMBED_PLATFORMS`, `ATTACHMENT_KINDS`) exportés à la racine en v0.17.1 |
 | URLs (§1.6, v2.13) | ✅ | Routes injectées sur l'`id` du loader, c'est-à-dire sur le chemin (`${prefix}/[...slug]/`) : règle *Identité* respectée. **Depuis la v0.25.0**, la page *n* d'une galerie est servie à `${prefix}/[...slug]/page/[n]/` (le dossier `page` est réservé), ce qui supprime la collision entre la page 2 d'une galerie et une sous-série `2` ; l'ancienne forme `${prefix}/[...slug]/[n]/` redirige en 301 sauf collision avec une série réelle. **Les URLs des pages 2 et suivantes ont changé** |
+| Données de retour (§4.2, v2.18) | ✅ | Écrit sur la branche `claude/gracious-ptolemy-833xiu` (`abbf6a9`, **non fusionné, non publié** — la version en ligne sur npm ne l'a pas) : `isExcluded` écarte `_responses/` à la racine sans règle du consommateur, casse du premier segment ignorée ; `writeResponse` (`/ingest`) n'écrit que sous ce dossier et refuse tout autre chemin ; un delta qui ne porte que lui ne signale aucun changement. Les fixtures `responses` de la 2.18 passent (copie épinglée sur `21d9ca7`). Profil Livraison (G.13) : sous-chemin pur `/delivery` (validation des notes, document de réponse v1, rendu) et composant `SeriesPoll` (§3.1), dont le script client est publié pour les sites qui ne connaissent leurs images qu'après authentification. Relevé le 2026-11-18, suite de tests exécutée |
 | Passthrough racine (champs inconnus) | ✅ | `z.looseObject()` racine — les extensions site-spécifiques ne sont jamais rejetées (v0.4.0) |
 | Tri date desc | ⚠️ | **Depuis la v0.25.0**, `getSeriesList()`, `getSubSeries()` et `querySeries()` comparent la date calendaire seule, départagent à égalité par titre puis chemin et placent les séries sans date après les datées (§1.6, 2.15) ; images et documents joints se trient dans l'ordre canonique de §4.1. Les brouillons sont absents des listings et des routes en production. **Écart depuis la 2.17** : le jour est lu sur la `Date` déjà coercée par le schéma, donc en UTC, alors que la spec fixe le jour **écrit** (§1.3) — une date avec heure et fuseau (`2026-06-15T23:30:00-05:00`) peut tomber la veille ou le lendemain ; sans effet sur une date `AAAA-MM-JJ` seule. Non relevé sur la 0.25.1 |
 
@@ -269,10 +271,13 @@ Les dix profils hors noyau de l'annexe (onze avec `series`) sont couverts depuis
 | Contenus embarqués (§1.11) | — | Non exercés : aucune série ne porte `embeds:` |
 | Ingestion (couche 4) | ✅ | Runner local (agent launchd) sur `@regrets/hyperfocale/ingest`, `/ingest/dropbox` (source en vigueur : l'API Dropbox) et `/ingest/fs` (plugin `^0.24.0`) : snapshot, diff, validation, garde. Dropbox fait foi (`MDR Content/`), aucune primitive générique dans le site. Garde site-spécifique `x-mdr-private-exposed` (§4.10, code `x-*`) |
 | Originaux (§1.9, v2.11) | ✅ | Non exercés — le corpus n'en contient pas —, mais protégés depuis le 2026-10-20 ([mdr-monorepo#246](https://github.com/izo/mdr-monorepo/pull/246)) : diff, garde et snapshot publié passent par `publishable()` du plugin 0.20.0 |
+| Livraison (G.13, v2.18) | ✅ | Extension de site en place **avant** le profil, qui en est issu (ADR-018 du dépôt), puis alignée sur lui. Relevé le 2026-11-18 sur la branche `claude/gracious-ptolemy-833xiu` (`mdr-monorepo@ae1216e`, **non fusionnée, non déployée**), suite de tests exécutée. Bloc `delivery:` à booléens stricts (le schéma refuse une autre valeur au build) ; `download: true` à la racine reste lu pour les séries publiques, forme propre au site. Notes entières de 1 à 5, une par photo, toutes requises (`src/lib/poll.ts`), document de réponse v1 dont `series` est le chemin depuis la racine du corpus (`archives/<chemin>`), refus du téléchargement côté serveur tant qu'aucune réponse n'est enregistrée, échec fermé si l'état ne se lit pas (`/api/private-download`). Le site garde ses propres copies des primitives et du formulaire tant que le plugin qui les porte n'est pas publié |
+| Données de retour (§4.2, v2.18) | ✅ | Même branche, même relevé. Les réponses vivent dans le stockage objet privé du site (`polls/<chemin>.json`, servi par aucune URL) et le runner local en dépose une copie dans la source : `_responses/archives/<chemin>/poll.json` et `poll.md` à côté. Le site est sur une version du plugin antérieure à l'exclusion par défaut : il écarte `_responses/` par sa propre règle (`MDR_EXCLUSIONS`, premier segment, casse ignorée), à retirer à la montée de version. L'écriture demande au jeton Dropbox du runner la portée `files.content.write` (§4.0), **pas encore accordée** au 2026-11-18 : sans elle l'export échoue sans bloquer la publication, et les réponses restent dans le stockage du site |
 | Tri date desc | ⚠️ | `sortSeriesByDate` (`src/lib/utils.ts`) trie sur `getTime()` **sans départage** : la 2.15 demande la date calendaire seule, puis titre croissant, puis chemin (§1.6). Le plugin 0.25.0 expose `compareSeriesOrder` (`src/order.ts`, non exporté publiquement) ; à aligner côté site |
 
 **Extensions strictement site-spécifiques (hors spec)** :
 - `private` + `password_hash` — séries protégées par mot de passe (connues de la garde §4.11 comme extension de site)
+- `download: true` à la racine du frontmatter — ZIP d'une série publique ; précurseur de `delivery.download` (G.13, 2.18), que le site lit aussi. `poll` n'est plus lu qu'en `delivery.poll`
 - `artist`, `bio_source`, `genres` — pipeline de génération de bios via LLM
 - Routage par collection (`series`, `series_fr`, `projects_*`, `store_*`) — pattern i18n documenté en Annexe F stratégie 3. Conventions de nommage des locales divergentes selon le type de contenu (archives : `index.md` = FR ; pages : `{slug}.md` = EN)
 - Champs e-commerce (`price`, `paage_url`, `source_url`, `format`, `edition`, `available`) — strictement hors spec
@@ -1071,7 +1076,7 @@ L'exclusion des posters du scan de galerie ne s'applique qu'aux séries portant 
 
 Le contenu d'un corpus partagé n'est pas fiable. Toute personne qui peut déposer un fichier dans le dossier source — contributeur, client, outil de synchronisation, dépôt Git — écrit à la fois des métadonnées (frontmatter), du texte (body), des noms de fichiers et des fichiers de `media/`. Un lecteur, un adaptateur, un outil d'ingestion ou un exporter DOIT traiter tout cela comme des **données** : jamais comme du code à exécuter, ni comme une adresse à suivre sans contrôle. Le format ne définit aucun rôle d'administrateur : ces garde-fous valent pour toute source partagée, et un projet qui édite seul son dossier les applique aussi, par prudence.
 
-Cette section réunit les règles de la couche 1. Celles de la couche 4 sont en §4.0 (providers), §4.10 (diagnostics) et §4.11 (garde).
+Cette section réunit les règles de la couche 1. Celles de la couche 4 sont en §4.0 (providers), §4.2 (données de retour), §4.10 (diagnostics) et §4.11 (garde).
 
 #### Contenu exécutable et rendu du body
 
@@ -1156,6 +1161,18 @@ Toute URL de contenu est licite (§1.12, *Schémas d'URL*) : l'auteur choisit l'
 | `private` est un booléen | `private` n'est pas un champ du core : c'est une extension de site (§4.11). Un site qui l'emploie l'écrit `private: true`, un **booléen** YAML. Toute autre valeur — la chaîne `"true"`, `yes`, `1`, `oui`, une liste — est une **erreur**, jamais un contenu public : un site qui emploie `private` DOIT refuser de publier le contenu, ou le traiter comme privé, quand `private` est présent (non `null`) sans être un booléen. Un outil d'ingestion la signale (`private-type-invalid`, §4.10) et ne publie pas sans intervention. `yes` est une chaîne en YAML 1.2 et un booléen en YAML 1.1 : deux lecteurs divergeraient, d'où le refus plutôt que l'interprétation. |
 | Clés quasi-homonymes | Une clé qui ne diffère de `private` que par la casse, des espaces, `_` ou `-` (`Private`, `PRIVATE`, `private_`) n'est pas `private` : elle ne protège rien. L'ingestion la signale (`private-key-suspect`, §4.10). |
 
+#### Données de retour *(introduit v2.18)*
+
+Un site peut recueillir ce que ses visiteurs lui renvoient — aujourd'hui, la réponse d'un client au sondage d'une livraison (G.13). Ces données font le chemin inverse du contenu : elles entrent par un formulaire public et finissent près du corpus, dans son dossier `_responses/` (§4.2). Elles ne sont pas du contenu.
+
+| Règle | Description |
+|-------|-------------|
+| Donnée du client, jamais contenu | Une réponse appartient à l'échange entre un site et son client. Elle n'est **jamais un contenu publiable** : ni page, ni listing, ni flux, ni API, ni balisage. Elle ne figure dans **aucune sortie de build**, dans aucun snapshot (§4.2) et dans aucun dépôt ou stockage servi au public. |
+| `_responses/` n'est pas du contenu | Un lecteur, un adaptateur ou un exporter dont `<content-root>` porte un dossier `_responses/` à sa racine NE DOIT PAS le parcourir à la recherche de séries, ni le rendre, ni le copier dans sa sortie — y compris quand il recopie `<content-root>` tel quel. Le nom se compare sans tenir compte de la casse (§4.2). |
+| Entrée non fiable | Une réponse reçue est une donnée non fiable, comme tout ce qui précède dans cette section : le serveur la valide **entièrement** avant de l'enregistrer, contre la galerie qu'il connaît (G.13). Un identifiant de note (`file`) se compare à cette liste ; il ne sert jamais à construire un chemin, une clé de stockage ou une URL. Le chemin d'une réponse dans `_responses/` se construit à partir du chemin de la série que le serveur a résolue, jamais d'une valeur envoyée. |
+| Relecture | Un outil qui affiche une réponse relue dans `_responses/` l'échappe selon son contexte (*Données injectées*, ci-dessus) : un nom de fichier y est un texte choisi par quiconque écrit dans la source. |
+| Accès | Qui peut lire la source lit `_responses/` : sa confidentialité est celle du dossier source, pas davantage. Le site le dit à qui partage ce dossier. |
+
 ---
 
 ## Couche 2 — Adaptateurs plateforme
@@ -1183,6 +1200,7 @@ Tout adaptateur Hyperfocale **DOIT** :
 | Trier par date desc | Listing par défaut : date décroissante |
 | Exposer le body | Rendre le Markdown du body en HTML **assaini** (§1.12) — *conformité v2.17* |
 | Refuser le contenu exécutable | Ne jamais compiler, évaluer ni importer un fichier `index.mdx` d'un corpus (§1.12) — *conformité v2.17* |
+| Ne pas publier les données de retour | Ne jamais lire comme contenu, rendre ni copier dans une sortie de build le dossier `_responses/` de la racine du corpus (§1.12) — *conformité v2.18* |
 
 Tout adaptateur **PEUT** :
 
@@ -1220,7 +1238,7 @@ Un preset NE DOIT PAS :
 - Rendre `title` optionnel
 - Renommer les champs core (`title`, `date`, `description`, `cover`, etc.)
 
-Dix presets non-photo sont standardisés en **Annexe G — Profils de contenu** (`event`, `recipe`, `app`, `book`, `place`, `screen`, `portfolio`, `music`, `catalog`, `press`), comme extensions hors noyau. Le profil Projet (`project`), qui y figurait jusqu'à la v2.13 sous G.12, relève d'**Hyperfocus**. L'ajout de nouveaux profils se discute par PR contre cette spec, en étendant cette annexe.
+Dix presets non-photo sont standardisés en **Annexe G — Profils de contenu** (`event`, `recipe`, `app`, `book`, `place`, `screen`, `portfolio`, `music`, `catalog`, `press`), comme extensions hors noyau. Le profil Projet (`project`), qui y figurait jusqu'à la v2.13 sous G.12, relève d'**Hyperfocus**. Le profil Livraison (`delivery`, G.13, *v2.18*) n'a pas de preset : il ne décrit pas un type de contenu, il s'ajoute à une série. L'ajout de nouveaux profils se discute par PR contre cette spec, en étendant cette annexe.
 
 ### 2.1 — Adaptateur Astro
 
@@ -1746,6 +1764,7 @@ La couche UI est **optionnelle et par framework**. Elle définit un vocabulaire 
 | `SeriesFilter` | Filtrage par keywords, date, lieu | `series: Series[]`, `filters: FilterConfig` |
 | `SeriesAttachments` | Liste des documents joints (téléchargements, lecteurs audio/vidéo) | `attachments: Attachment[]` |
 | `SeriesEmbeds` | Contenus embarqués (lecteurs de plateforme, ou liens) | `embeds: Embed[]` |
+| `SeriesPoll` | Sondage d'une livraison : une note de 1 à 5 pour chaque image de la galerie, puis un envoi (G.13) | `images: Image[]`, `action: string` (adresse d'envoi), `response?: PollResponse` (réponse déjà enregistrée) |
 
 ### 3.2 — Types de données partagés
 
@@ -1801,6 +1820,21 @@ interface Embed {
   height?: number;
 }
 
+/** Note d'une image dans un sondage de livraison (G.13) */
+interface PollScore {
+  file: string;           // chemin du média relatif au dossier de la série : "media/01.jpg"
+  score: 1 | 2 | 3 | 4 | 5;
+}
+
+/** Document de réponse v1 (G.13) — jamais publié (§1.12) */
+interface PollResponse {
+  version: 1;
+  series: string;         // chemin de la série, relatif à la racine du corpus
+  submitted_at: string;   // ISO 8601 UTC, premier envoi
+  updated_at: string;     // ISO 8601 UTC, dernier envoi
+  scores: PollScore[];    // une note par image, dans l'ordre de la galerie
+}
+
 /** Métadonnées IPTC */
 interface IPTCMetadata {
   creator?: string;
@@ -1839,6 +1873,9 @@ interface PaginatedImages {
 | Fermeture lightbox | Esc, clic hors image, bouton fermer |
 | Pagination | Navigation entre les pages de la galerie |
 | Lazy loading | Les images hors viewport ne sont pas chargées. Dans la lightbox : l'image courante et ses deux voisines seulement (§1.6) |
+| Sondage : noter *(v2.18)* | `SeriesPoll` présente **toutes** les images de la galerie, pagination ignorée, et pour chacune un choix unique parmi les cinq notes 1 à 5. Aucune note n'est choisie d'avance ; une note choisie se change jusqu'à l'envoi |
+| Sondage : envoyer | L'envoi est **impossible tant qu'une image n'a pas de note** : la commande d'envoi est inactive et le composant dit combien il en manque. **Rien n'est envoyé avant l'action explicite d'envoi** — ni note isolée, ni brouillon, ni mesure d'audience des choix. L'envoi part en une fois ; un refus du serveur laisse les notes saisies en place |
+| Sondage : clavier | Tout se fait au clavier, sans pointeur : chaque image porte un groupe de cinq choix exclusifs nommé d'après elle (boutons radio natifs, ou `role="radiogroup"` avec flèches et espace), le focus est visible, la note choisie n'est pas signalée par la seule couleur, et l'état de l'envoi (manques, succès, échec) est annoncé aux technologies d'assistance |
 
 ---
 
@@ -1894,7 +1931,7 @@ Le contenu d'une source partagée n'est pas fiable (§1.12) : un provider est la
 | Règle | Description |
 |---|---|
 | Liens symboliques | Un provider filesystem NE DOIT PAS suivre les liens symboliques — fichiers, dossiers, alias, jonctions. Il n'ouvre pas la cible, ne descend pas dans un dossier lien et n'ajoute aucune entrée au snapshot pour lui ; il le signale par `entry-symlink` (warning, §4.10) sur le chemin du lien. Un lien qui pointe hors du corpus ajouterait au snapshot — classé `media`, haché, envoyé en stockage objet — un fichier que personne n'a décidé de publier ; une boucle de liens rendrait le parcours infini. Dropbox ne synchronise pas les liens, mais un checkout Git, iCloud ou un volume monté en posent. Un fichier que le lien désigne dans le corpus est listé à son propre chemin : le lien n'ajoute rien. |
-| Portée minimale | Un outil d'ingestion demande à son provider la portée **en lecture seule** : pour Dropbox, `files.metadata.read` et `files.content.read`, jamais `files.content.write`. Un jeton en écriture est celui d'un éditeur (CMS) qui en a besoin, jamais celui du runner d'ingestion : la capacité `remoteWrite` d'un provider (§4.8) dit ce qu'il sait faire, pas ce que l'ingestion doit demander. |
+| Portée minimale | Un outil d'ingestion demande à son provider la portée **en lecture seule** : pour Dropbox, `files.metadata.read` et `files.content.read`, jamais `files.content.write`. Un jeton en écriture est celui d'un éditeur (CMS) qui en a besoin, jamais celui du runner d'ingestion : la capacité `remoteWrite` d'un provider (§4.8) dit ce qu'il sait faire, pas ce que l'ingestion doit demander. **Seule exception** *(v2.18)* : un outil qui dépose des données de retour (§4.2) demande l'écriture pour cela, et n'écrit alors que sous `_responses/` ; quand le provider sait borner une portée à un dossier, il la borne à celui-là. Un outil qui ne dépose aucun retour reste en lecture seule. |
 | Secrets | Un jeton, un mot de passe ou un secret d'application ne s'écrit jamais dans le dépôt, un snapshot, un diagnostic ou un journal ; il vit dans le trousseau du système ou l'environnement du runner, et se révoque. Aucun `message` de diagnostic ne reproduit un jeton ni une URL signée. |
 | TLS | Un provider distant se joint en TLS (`https:`), WebDAV compris ; un serveur WebDAV en `http:` est refusé. La vérification du certificat n'est jamais désactivée et aucun identifiant ne part en clair. |
 | Webhook | Un webhook est un **déclencheur** : son corps n'est jamais une source de vérité. Sa signature (HMAC-SHA256 du corps brut : `X-Dropbox-Signature` pour Dropbox) se vérifie **avant** toute action, sur les octets reçus, par une comparaison **en temps constant** ; une signature absente ou invalide est rejetée. Quand le provider horodate la notification, elle est refusée au-delà de 5 minutes d'écart. L'idempotence (invariant 6) borne le rejeu : une notification rejouée provoque au pire une ingestion de plus, jamais un changement. |
@@ -1922,11 +1959,30 @@ Certains fichiers n'entrent jamais dans un snapshot, et leur présence n'est jam
 
 - tout chemin dont **un segment** commence par `.` — `.DS_Store`, `.git/`, `.dropbox`, `._01.jpg`, `.gitkeep` ;
 - les noms de base `Thumbs.db`, `desktop.ini` et `Icon\r` (`Icon` suivi de U+000D), comparés exactement, casse comprise ;
+- tout chemin dont le **premier segment** est `_responses` *(v2.18)* — le dossier réservé aux données de retour, à la racine du corpus (voir *Données de retour*, ci-dessous) ;
 - un consommateur PEUT ajouter ses propres exclusions (`_todo/`, `_drafts/`…). Elles modifient le contenu du snapshot : il DEVRAIT les documenter.
 
 **Exclusions recommandées** *(v2.17)*. La racine d'un corpus n'est pas toujours un corpus : un dossier `node_modules/`, une `Library/` ou une archive posés sous la racine deviendraient des entrées `other`, toutes lues, hachées (§4.4) et publiées. Un consommateur DEVRAIT, sauf besoin documenté, exclure : tout segment `node_modules` ou `__MACOSX`, les fichiers `*.tmp`, `*.part` et `~$*` (verrous et fichiers temporaires d'éditeurs), et limiter les entrées `other` **hors** `media/` — que ni un adaptateur ni la validation ne lisent — à une liste blanche d'extensions qu'il documente. Ces exclusions sont les siennes : elles modifient le contenu du snapshot, donc son `id`, et ne font l'objet d'aucune fixture.
 
 L'exclusion s'évalue **avant** la validité : un chemin exclu disparaît sans diagnostic, même s'il est invalide (`Icon\r` contient un caractère de contrôle). Un chemin non exclu et invalide produit `entry-path-invalid` (§4.10). Dans un snapshot, une entrée dont le chemin relève d'une exclusion est non conforme et produit elle aussi `entry-path-invalid`.
+
+#### Données de retour : le dossier réservé `_responses/` *(introduit v2.18)*
+
+Un corpus va de la source vers la publication. Certaines données font le chemin inverse : ce que des visiteurs renvoient au site — la réponse d'un client au sondage d'une livraison (G.13) — et que l'auteur veut retrouver là où il travaille, dans sa source. Elles y ont une place, et une seule : le dossier **`_responses/`**, à la racine du corpus.
+
+| Règle | Description |
+|---|---|
+| Exclusion par défaut | Tout chemin dont le premier segment est `_responses` est exclu, au même rang que les segments commençant par `.` : ce n'est ni une exclusion recommandée ni une exclusion du consommateur, et aucune configuration ne la lève. Rien de ce dossier n'entre dans un snapshot, donc ni dans `publishable()` (§4.11), ni dans un diff, ni dans une publication ; sa présence n'est jamais une erreur et ne produit aucun diagnostic. |
+| Racine seulement | Seul le **premier segment** du chemin compte, relativement à la racine du corpus — celle du snapshot, non une racine de validation (§4.10). `a/_responses/x` et `series/bretagne-2024/_responses/poll.json` ne sont pas exclus : ce sont des entrées ordinaires. Un dossier réservé à tout niveau aurait retiré du snapshot, sans diagnostic, un dossier de série ou de rangement qui porterait ce nom. |
+| Nom exact, casse ignorée | Le segment entier se compare à `_responses` après **minuscule simple** (§4.1) : `_Responses` et `_RESPONSES` sont exclus, `_responsesX`, `_responses-2025` et `responses` ne le sont pas. La casse est ignorée — à la différence de `Thumbs.db` — parce que l'erreur coûte ici une fuite : sur une source insensible à la casse (Dropbox, APFS), une écriture vers `_responses/…` atterrit dans un dossier `_Responses` déjà créé à la main, et une comparaison exacte publierait les réponses qu'il contient. |
+| Emplacement d'une réponse | La réponse au sondage d'une série se dépose à `_responses/<chemin de la série>/poll.json`, où `<chemin de la série>` est le chemin du dossier de la série relatif à la racine du corpus (§1.2) : `_responses/series/bretagne-2024/poll.json`. Son contenu est le document de réponse v1 (G.13). Un outil PEUT déposer à côté un rendu lisible, `poll.md`, que rien ne relit : `poll.json` fait foi. Tout autre nom sous `_responses/` est réservé aux versions futures de cette spec ; un outil n'en crée pas, et un lecteur ignore ceux qu'il ne connaît pas. |
+| Écriture bornée | Un outil qui dépose des retours n'écrit dans la source **que sous `_responses/`**. Il n'écrit **jamais dans une série** : ni fichier voisin d'`index.md`, ni champ de frontmatter, ni `media/`. Un éditeur (CMS, exporter), lui, écrit des séries : ce n'est pas un retour, et il n'écrit pas sous `_responses/`. |
+| Écriture atomique | Quand le provider le permet, une réponse s'écrit de façon atomique — fichier temporaire puis renommage sur un filesystem, téléversement en remplacement par une API — pour qu'aucun lecteur ne voie un `poll.json` à moitié écrit. Un nom temporaire reste sous `_responses/`. Un nouvel envoi remplace le fichier ; il n'y a pas d'historique. |
+| Liens symboliques | Une écriture dont le chemin traverse un lien symbolique — `_responses` lui-même ou l'un de ses sous-dossiers — est **refusée** : le provider n'écrit pas à travers un lien, comme il n'en suit aucun à la lecture (§4.0). |
+| Pas un changement de la source | Une écriture sous `_responses/` ne change pas le corpus (§4.8, *Écriture de retour*). |
+| Pas au runtime | L'enregistrement d'une réponse par le serveur ne contacte pas le provider (invariant 2 de §4.0) : le serveur garde la réponse dans un stockage à lui, privé, et c'est cet état qui décide du téléchargement (G.13). Un outil qui tourne **hors de toute requête** — le runner d'ingestion, par exemple — la recopie ensuite dans la source. La copie de `_responses/` est faite pour être lue par l'auteur ; elle n'est pas relue par le site. |
+
+Un consommateur qui rangeait déjà des retours ailleurs (`_sondages/`, exclu par ses soins) garde une exclusion valide — c'est la sienne — mais un dossier que cette spec ne réserve pas : seul `_responses/` est exclu sans configuration.
 
 ### 4.3 — Classification
 
@@ -2111,9 +2167,22 @@ où `Δ` est le ContentChangeSet (§4.7) que décrivent les changements du provi
 4. aucun changement ne désigne une entrée absente de `S` quand il suppose qu'elle y est (déplacement ou modification d'un chemin inconnu) ;
 5. un curseur expiré ou refusé (`reset` pour Dropbox) n'est **jamais** lu comme « tout est supprimé » : il impose le listing complet (invariant 3).
 
+Un changement du provider qui porte sur un chemin **exclu** (§4.2) n'entre pas dans `Δ` : il est écarté avant tout, comme le fichier le serait d'un listing, et ne compte pas pour la condition 3. Un lot qui ne porte que de tels chemins donne un `Δ` vide : `S'` a les entrées et l'`id` de `S`, seul le curseur avance *(précisé en v2.18)*.
+
 **Équivalence.** `S'` DOIT avoir exactement l'`id` (§4.6) d'un listing complet de la même source au même instant (invariant 6). Un outil qui reconstruit DEVRAIT confronter périodiquement `S'` à un listing complet — quotidien, par exemple — pour détecter une dérive. Sans ce mode, `incrementalChanges` n'est qu'une optimisation du **déclenchement** : savoir qu'il y a quelque chose à relire ; le pipeline n'en dépend pas.
 
 La même propriété se teste sans provider : pour toute fixture `diff/<cas>.json`, `apply(base, expected)` redonne les entrées de `target` (`fixtures/ingestion/README.md`) — au choix d'algorithme près : une entrée jugée inchangée (§4.7, étape 1) garde sa version de `base`, y compris quand un algorithme que la comparaison n'a pas retenu diverge (seule `hash-preference` est concernée).
+
+#### Écriture de retour *(introduit v2.18)*
+
+Déposer une donnée de retour dans la source (§4.2) est la seule écriture que ce contrat demande à un provider.
+
+| Règle | Description |
+|---|---|
+| Capacité | L'écriture de retour demande `localWrite` (filesystem) ou `remoteWrite` (API), et que l'outil ait obtenu la portée correspondante (§4.0, *Portée minimale*) — pour Dropbox, à titre d'exemple non normatif, `files.content.write`. |
+| Son absence ne dégrade que le retour | Sans cette capacité, ou si l'écriture échoue, les réponses restent là où le serveur les garde et l'outil le signale ; **la publication n'en dépend jamais**. Un échec d'écriture de retour n'est pas un diagnostic `error`, ne bloque ni ne retarde une ingestion, et ne fait pas passer la publication à `failed` (§4.9). L'outil réessaie au passage suivant. |
+| Pas un changement de la source | Une écriture sous `_responses/` ne constitue pas un changement de la source. Un lot de changements, une notification ou un listing qui ne diffèrent du précédent que par des chemins exclus (§4.2) **ne déclenchent rien** : ni ingestion, ni validation, ni publication, et l'état reste `sourceSynced` (§4.9). L'outil avance son curseur, rien d'autre. Sans cette règle, chaque retour déposé par le runner réveillerait le runner. |
+| Idempotence | Déposer deux fois la même réponse ne change rien : un outil DEVRAIT comparer la réponse à celle qu'il a déjà déposée — par un hash, par exemple — et ne rien écrire quand elle n'a pas changé. |
 
 Valeurs de référence, indicatives :
 
@@ -2328,6 +2397,7 @@ Ces exemples montrent comment des providers réels se projettent sur le contrat.
 | Identité | `id` du fichier (`id:…`) → `identity` : survit aux renommages et déplacements. |
 | Chemins | `path_display` n'est fiable qu'en son dernier segment : la casse des dossiers se reconstruit depuis leurs propres entrées, puis NFC. |
 | Exclusions | `.dropbox` et `.dropbox.cache` tombent sous §4.2. |
+| Écriture de retour | `files/upload` en mode `overwrite` vers `_responses/<chemin de la série>/poll.json` : le fichier est remplacé d'un coup. Demande la portée `files.content.write` (§4.0, §4.8). L'écriture revient par le curseur comme tout changement ; son chemin est exclu (§4.2), elle ne déclenche rien. |
 | Conflit | la détection des conflits incombe au provider : une « copie en conflit » Dropbox est le signal qu'il traduit en entrée `state: "conflict"` (`entry-conflict`, §4.5), et la publication passe à l'état `conflict` (§4.9). |
 | Webhook | simple **déclencheur** : la notification ne porte aucun contenu ; sa signature (`X-Dropbox-Signature`, HMAC-SHA256 du corps avec le secret de l'application) se vérifie avant toute action, en temps constant (§4.0), puis une ingestion démarre. Aucune lecture Dropbox au runtime. |
 
@@ -2391,6 +2461,8 @@ Vérifications :
 - [ ] Chaque champ d'URL (`cover`, `images[].url`, `files[].url`, `embeds[].url`, `embeds[].poster`) a une forme admise : chemin relatif, chemin absolu au site ou `http:`/`https:` — jamais `javascript:`, `data:` ni `file:` (§1.12) ; `embeds[].url` est en `http:`/`https:`
 - [ ] Chaque `embeds[].poster` en chemin relatif pointe vers un fichier existant de `media/`
 - [ ] Aucun `poster` d'embed n'est aussi listé dans `images:` ou `attachments:` — une image est une photo de la série ou la vignette d'un embed, pas les deux
+- [ ] `delivery.download` et `delivery.poll`, s'ils sont présents, sont des booléens ; une série `delivery.poll: true` a au moins une image dans sa galerie, et ses identifiants d'image sont distincts (G.13)
+- [ ] Aucun fichier de retour hors du dossier `_responses/` de la racine du corpus : ni `poll.json` dans un dossier de série, ni dossier `_responses` ailleurs qu'à la racine (§4.2)
 
 Les outils d'ingestion (couche 4) expriment la plupart de ces vérifications dans un vocabulaire de diagnostics normalisé — code, sévérité, chemin — avec des règles d'évaluation exactes et des fixtures de conformité : voir §4.10 et `fixtures/ingestion/`. Un linter PEUT adopter ce vocabulaire.
 
@@ -2502,7 +2574,7 @@ La section 0 décrit un **squelette universel** : un dossier autonome = `index.m
 Un **profil de contenu** est une déclinaison du squelette pour un domaine donné. Il n'invente rien au niveau structurel — il se contente de :
 
 1. **Réutiliser le core tel quel** (`title`, `date`, `description`, `cover`, `location`, `draft`, `lang`, `tags`, `featured`, `type`).
-2. **Ajouter un bloc d'extension namespacé** propre au domaine (exactement comme `iptc:` l'est pour la photo) : `event:`, `recipe:`, `app:`.
+2. **Ajouter un bloc d'extension namespacé** propre au domaine (exactement comme `iptc:` l'est pour la photo) : `event:`, `recipe:`, `app:`, `delivery:`.
 3. **Optionnellement, rendre `date` optionnelle** pour la collection du profil, par `dateRequired: false` dans son preset (§2.0.1, §1.3).
 
 #### Règles communes à tous les profils
@@ -2537,6 +2609,7 @@ Ces règles garantissent qu'un profil reste un contenu Hyperfocale valide au sen
 | Musique | une sortie | `music` | `/music` | optionnelle (= sortie) | `music:` | schema.org/MusicAlbum |
 | Catalogue | un produit | `catalog` | `/catalog` | optionnelle | `catalog:` | schema.org/Product |
 | Presse | une parution | `press` | `/press` | requise (= parution) | `press:` | schema.org/NewsArticle |
+| Livraison *(v2.18)* | une série livrée | — (s'ajoute à une série, G.13) | — | celle de la série | `delivery:` | — |
 | ~~Projet~~ | *passé dans Hyperfocus (G.12)* | — | — | — | — | — |
 
 ---
@@ -3412,7 +3485,182 @@ Un dossier G.12 existant reste lisible par Hyperfocus : c'est un projet auquel i
 
 ---
 
+### G.13 — Profil Livraison (`delivery`) *(introduit v2.18)*
+
+**Cas d'usage** : remise d'un travail à son destinataire — un mariage, une commande, un reportage. L'atome est **une série livrée** : une série que le client consulte, dont il note les photos, et qu'il télécharge.
+
+> **Un profil qui s'ajoute.** Les profils G.1 à G.10 déclinent le squelette pour un autre type de contenu. Livraison ne décrit pas un type de contenu : il s'ajoute à une série — ou au contenu d'un autre profil — sans en changer le core, la galerie ni la route. Il n'a donc ni preset, ni prefix, ni collection à lui (§2.0.1).
+
+> **Contrôle d'accès.** Une livraison suppose un contrôle d'accès, et c'est **le site** qui le fournit : le format n'en définit aucun. `private` reste une extension de site (§0.5, §1.12, §4.11) ; ce profil y renvoie sans la promouvoir ni la redéfinir. Sans contrôle d'accès, une série qui porte `delivery:` est une série publique comme une autre, et son sondage est ouvert à qui la trouve.
+
+#### Mapping du core
+
+| Champ core | Sens dans le profil |
+|------------|---------------------|
+| `title` | Nom de la livraison — celui de la série |
+| `date` | Celle de la série ; requise ou non selon sa collection (§1.3). Le profil ne change pas `dateRequired`. |
+| `description` | Mot d'accompagnement court |
+| `cover` | Inchangé (fallback : première image de la galerie) |
+| `media/` | Les images livrées : ce sont elles que le client note, et elles que l'archive contient |
+
+#### Bloc d'extension `delivery:`
+
+Deux champs, tous deux optionnels. Un adaptateur DOIT les ignorer sans erreur s'il ne les supporte pas.
+
+| Clé | Type | Description |
+|-----|------|-------------|
+| `download` | `boolean` | `true` = la série se télécharge en archive. Défaut : `false`. |
+| `poll` | `boolean` | `true` = le client doit noter les photos (voir *Sondage*). Défaut : `false`. |
+
+| Règle | Description |
+|-------|-------------|
+| Absent vaut `false` | Un bloc `delivery:` absent, une clé absente ou une clé de valeur `null` valent `false`. |
+| Booléens stricts | Les valeurs sont des booléens YAML, comme `private` (§1.12). Une valeur présente qui n'en est pas un — `"true"`, `yes`, `1` — est une erreur : un adaptateur qui honore le profil n'expose alors **aucun téléchargement** pour cette série, et un outil qui lint DEVRAIT la signaler (Annexe A). Dans le doute, rien ne sort. La couche 4 ne valide pas le bloc (règles communes). |
+| Champs indépendants | `download` seul : l'archive est offerte sans sondage. `poll` seul : le sondage est recueilli, aucune archive n'est produite. Les deux : l'archive ne s'ouvre qu'après le sondage (*Règle de téléchargement*). |
+| Contenu de l'archive | L'archive contient au moins les images de la galerie. Son format, son nom et ce qu'elle porte en plus appartiennent à l'adaptateur ; elle ne contient jamais d'original (§1.9) ni de donnée de retour (§1.12). |
+| Téléchargement | Dans ce profil, *téléchargement* désigne l'archive de `delivery.download` **et** tout autre moyen que le site attache à la série pour en remettre les fichiers en bloc (un lien de livraison externe, par exemple). L'affichage de la galerie n'en est pas un. |
+
+#### Exemple
+
+```yaml
+---
+title: "Mariage — Élise & Tom"
+date: 2026-06-20
+description: "Votre reportage complet. Notez les photos, puis téléchargez-les."
+cover: "./media/01.jpg"
+private: true              # extension du site, pas du profil : son contrôle d'accès
+
+delivery:
+  download: true
+  poll: true
+---
+
+Un mot pour le client. Le body s'affiche **avant** la galerie.
+```
+
+#### Sondage
+
+Le sondage demande au client une note pour chacune des photos livrées. Il n'a qu'une forme.
+
+| Règle | Description |
+|-------|-------------|
+| Échelle fixe | Une note est un **entier de 1 à 5**, 5 étant la meilleure. Ni zéro, ni demi-note, ni « sans avis ». L'échelle ne se règle ni par série, ni par site, ni par adaptateur. |
+| Une note par image, toutes requises | Une réponse porte une note pour **chaque** image de la galerie de la série, et rien d'autre. La galerie est celle de §1.6, entière — toutes ses pages, dans son ordre (§1.5.1 pour un manifeste) : ni les posters d'embeds (§1.11), ni les documents joints, ni les originaux (§1.9) n'en font partie. Une réponse à laquelle il manque une image, ou qui en note une qui n'est pas dans la galerie, est invalide en entier. |
+| Identifiant d'une note | Le champ `file` : le **chemin du média relatif au dossier de la série**, sans `./` initial, en NFC — `media/01.jpg`. C'est le chemin par lequel la galerie désigne déjà l'image : celui de l'entrée du snapshot (§4.5) privé du chemin de la série, et celui auquel se résout une entrée relative de `images:` ou d'`images.json` (§1.5.1 ; §4.10, règle 9). Une entrée absolue du manifeste qui correspond à un fichier de la série au sens de la règle 10 de §4.10 (`/content/<chemin de la série>/media/01.jpg`) a pour identifiant ce chemin relatif (`media/01.jpg`). Une image purement distante, que rien ne rattache à un fichier de la série, a pour identifiant son URL telle qu'écrite. L'identifiant se compare octet à octet, casse comprise. |
+| Identifiants distincts | Les identifiants d'une galerie sont distincts. Si deux images ont le même, le sondage n'est pas réalisable : l'état est illisible (*Règle de téléchargement*). |
+| Une réponse par série | Il y a **une** réponse par série, sans identité de répondant : ni nom, ni adresse, ni identifiant de session n'y figurent. Le site sait seulement que la personne a franchi son contrôle d'accès. |
+| Nouvel envoi | Un nouvel envoi **remplace** le précédent, en entier ; il n'y a ni fusion ni historique. Il **conserve la date du premier** (`submitted_at`) et pose celle du dernier (`updated_at`). |
+| Validation côté serveur | Un adaptateur qui recueille une réponse la valide côté serveur, contre la galerie qu'il connaît lui-même, avant de l'enregistrer : tout ou rien. Ce qu'un navigateur a contrôlé ne compte pas (§1.12, *Données de retour*). |
+| Série sans image | Une série `delivery.poll: true` dont la galerie est vide ne peut recevoir aucune réponse : son téléchargement reste fermé. Un outil qui lint DEVRAIT le signaler. |
+| Galerie modifiée après coup | Une réponse enregistrée le reste si la galerie change ensuite. La règle de téléchargement porte sur l'existence d'une réponse, pas sur sa concordance avec la galerie du jour ; un site PEUT redemander le sondage en retirant la réponse. |
+
+#### Document de réponse (v1)
+
+Une réponse est un document JSON, en UTF-8. Cette forme est **normative** : c'est celle qu'un serveur enregistre et celle qui se dépose dans la source, à `_responses/<chemin de la série>/poll.json` (§4.2).
+
+```json
+{
+  "version": 1,
+  "series": "series/mariage-2026",
+  "submitted_at": "2026-06-25T09:12:00.000Z",
+  "updated_at": "2026-06-26T18:40:00.000Z",
+  "scores": [
+    { "file": "media/01.jpg", "score": 4 },
+    { "file": "media/02.jpg", "score": 2 }
+  ]
+}
+```
+
+| Champ | Requis | Règle |
+|---|---|---|
+| `version` | oui | `1`. Un lecteur DOIT refuser une version qu'il ne connaît pas : le document est alors illisible. |
+| `series` | oui | Chemin du dossier de la série relatif à la racine du corpus (§1.2, §4.1) — le `<chemin de la série>` de son emplacement dans `_responses/`. |
+| `submitted_at` | oui | Date et heure du **premier** envoi, ISO 8601 en UTC, suffixe `Z`. |
+| `updated_at` | oui | Date et heure du **dernier** envoi, même forme. Égale à `submitted_at` tant que la réponse n'a pas été remplacée. |
+| `scores` | oui | Tableau non vide d'objets `{ "file", "score" }`, **dans l'ordre de la galerie** : `file` est l'identifiant de l'image (chaîne), `score` un entier de 1 à 5. |
+
+Un document est **illisible** s'il n'est pas du JSON, si sa racine n'est pas un objet, si `version` ne vaut pas `1`, ou si un champ requis manque ou n'a pas le type et les valeurs ci-dessus. Champs inconnus : un lecteur les ignore ; un écrivain n'en crée pas hors préfixe `x-`.
+
+#### Règle de téléchargement
+
+| Règle | Description |
+|-------|-------------|
+| Refus côté serveur | Un adaptateur qui honore `delivery.poll` DOIT **refuser le téléchargement** d'une série `delivery.poll: true` tant qu'aucune réponse n'est enregistrée pour elle. Le refus se décide **côté serveur**, à chaque demande, sur l'état que le serveur détient : masquer un bouton, ou tenir l'adresse de l'archive secrète, n'est pas un refus. |
+| Échec fermé | Si l'état est **illisible** — stockage injoignable, document illisible, série ou galerie que le serveur ne sait pas résoudre, `delivery.poll` non booléen —, l'adaptateur DOIT refuser le téléchargement. Jamais d'ouverture par défaut. |
+| En plus du contrôle d'accès | La règle s'ajoute au contrôle d'accès du site, elle ne le remplace pas : qui n'a pas accès à la série n'a accès ni au sondage, ni à l'archive, ni à la réponse. |
+| Adaptateur sans serveur | Un adaptateur sans serveur — un build statique pur — ne peut ni recueillir une réponse ni refuser une demande. Il NE DOIT PAS exposer le téléchargement d'une série `delivery.poll: true` : ni archive produite au build, ni lien de livraison rendu. Il PEUT ignorer le profil entièrement. |
+| La réponse ne se publie pas | Une réponse n'est jamais un contenu : aucune page, aucun flux, aucune sortie de build ne la porte (§1.12). Le serveur la garde dans un stockage qu'aucune URL publique ne sert ; un outil la dépose dans la source sous `_responses/` (§4.2). |
+
+#### Preset & règles métier spécifiques
+
+Pas de preset : le profil se lit dans le frontmatter de toute série, quelle que soit sa collection.
+
+| Règle | Description |
+|-------|-------------|
+| Tri, routes, galerie | Inchangés : ceux de la série (§1.6). |
+| Composant | Le sondage se rend par `SeriesPoll` ou équivalent (§3.1), avec les interactions de §3.3. |
+| Balisage | Aucun : une livraison n'est pas un contenu public. Un adaptateur NE DOIT PAS émettre de JSON-LD, de flux ni de sitemap à partir de `delivery.*` ou d'une réponse. C'est pourquoi le profil ne s'aligne sur aucun vocabulaire externe (règles communes : DEVRAIT). |
+| Invariants §0 | Body avant galerie, tri de `media/`, `cover`, `draft`, passthrough : inchangés. Le profil n'ajoute aucun fichier au dossier de la série — une réponse vit hors d'elle. |
+
+#### Compatibilité
+
+`delivery` est un bloc nouveau. Un adaptateur qui ne le connaît pas le traite en champ inconnu (passthrough §1.3) : il rend une série ordinaire, sans archive ni sondage — et **sans contrôle d'accès** s'il ignore aussi l'extension du site qui le porte. Un corpus de livraison ne se confie donc qu'à un site qui protège ses séries. Un outil d'ingestion antérieur à la v2.18 n'exclut pas `_responses/` (§4.2) : il publierait les réponses déposées dans la source.
+
+Le site `mathieu-drouet.com`, dont ce profil est issu, écrivait `download: true` et `poll: true` à la racine du frontmatter ; il emploie désormais le bloc `delivery:` et ne garde à la racine que `download: true`, pour ses séries publiques (§0.5). Cette forme lui est propre : elle n'est pas une variante admise du profil, et un adaptateur n'a pas à la lire.
+
+---
+
 ## Changelog
+
+### 2.18-draft — 2026-11-18
+
+Livrer une série à un client, et retrouver sa réponse dans la source. Le site `mathieu-drouet.com` a écrit la fonctionnalité avant la spec (ADR-018 de `izo/mdr-monorepo`) : une série privée dont le client note chaque photo, et dont l'archive ne se télécharge qu'ensuite. Deux choses y manquaient au format — un vocabulaire pour la livraison, et une place dans la source pour ce qui en revient. Sans elles, le CMS et le plugin auraient chacun inventé les leurs.
+
+#### Profil Livraison (`delivery`) et sondage (§0.5, §2.0.1, §3.1, §3.2, §3.3, Annexe A, G.13) — [#62](https://github.com/izo/hyperfocale-spec/issues/62)
+
+**Ajouts** :
+- **G.13 — Livraison** (`delivery`) : bloc `delivery:` à deux booléens, `download` (la série se télécharge en archive) et `poll` (le client doit noter les photos) ; absents, ils valent `false`. Le profil s'ajoute à une série : ni preset, ni prefix, ni vocabulaire externe. Vue d'ensemble de l'annexe et §2.0.1 complétés ; G.12 garde son numéro de renvoi.
+- **Sondage** : échelle fixe, entiers de 1 à 5 ; une note pour chaque image de la galerie, toutes requises, rien d'autre ; identifiant = chemin du média relatif au dossier de la série (`media/01.jpg`) ; une réponse par série, sans identité de répondant ; un nouvel envoi remplace le précédent et conserve la date du premier.
+- **Document de réponse v1**, normatif : `version`, `series`, `submitted_at`, `updated_at`, `scores` dans l'ordre de la galerie.
+- **Règle de téléchargement** : un adaptateur qui honore `delivery.poll` DOIT refuser le téléchargement, côté serveur, tant qu'aucune réponse n'est enregistrée, et DOIT échouer fermé si l'état est illisible. Un adaptateur sans serveur NE DOIT PAS exposer le téléchargement d'une telle série ; il PEUT ignorer le profil.
+- **§3.1, §3.2, §3.3** : composant `SeriesPoll`, types `PollScore` et `PollResponse`, interactions requises — une note par image, envoi impossible tant qu'il en manque, rien n'est envoyé avant l'action explicite d'envoi, tout au clavier.
+- Annexe A : booléens de `delivery`, galerie non vide pour un sondage.
+- §0.5 : le site `mathieu-drouet.com` écrit `download` et `poll` à la racine du frontmatter — extension en place, migration vers `delivery:` à venir, forme non normative.
+
+**Décisions normatives** (prises par le propriétaire) :
+- **Un profil d'Annexe G, hors noyau, et non des champs du core.** Écarté : `download` et `poll` dans le core. Une livraison suppose un serveur — pour recueillir une réponse, pour refuser une demande — qu'un adaptateur statique ne peut pas honorer ; un champ du core aurait créé une obligation que la moitié des adaptateurs ne peuvent pas tenir, ou qu'ils auraient « tenue » en exposant l'archive sans condition.
+- **`private` reste une extension de site.** Le profil dit qu'une livraison suppose un contrôle d'accès fourni par le site, et renvoie à §0.5, §1.12 et §4.11. La promotion de `private` dans le core reste hors périmètre, comme en 2.17.
+- **Échelle fixe, 1 à 5.** Écartée : une échelle réglable (bornes, pas, libellés par série ou par site). Deux réponses ne se compareraient plus, le document de réponse devrait porter son échelle, et chaque lecteur — CMS, tableur, export — devrait l'interpréter. Une échelle unique rend le document lisible sans la série.
+- **Toutes les images, sinon rien.** Une réponse partielle n'est pas enregistrée : la condition du téléchargement serait sinon « au moins une note », ce qui ne dit rien du travail demandé au client.
+- **Une réponse par série, sans identité.** Le format ne définit pas de compte : le contrôle d'accès du site est la seule chose qui sépare un client d'un autre.
+- **Refus côté serveur, échec fermé.** Un bouton masqué n'est pas un refus ; un stockage injoignable n'ouvre rien.
+- **Numéro G.13.** G.12 reste un renvoi vers Hyperfocus et n'est pas réutilisé ; G.11 (« Créer un nouveau profil ») ne bouge pas, pour ne casser aucun renvoi.
+
+**Fixtures** : aucune pour le profil — la couche 4 ne valide pas les blocs de l'Annexe G, et le sondage relève d'un serveur. Le corpus `responses` porte un bloc `delivery:` et vérifie qu'il ne produit aucun diagnostic.
+
+#### Données de retour dans la source : `_responses/` (§0, §1.12, §2.0, §4.0, §4.2, §4.8, §4.13) — [#63](https://github.com/izo/hyperfocale-spec/issues/63)
+
+**Ajouts** :
+- **§4.2** : le dossier **`_responses/`**, à la racine du corpus, est réservé aux données de retour et **exclu par défaut**, au même rang que les segments commençant par `.` — jamais dans un snapshot, jamais dans `publishable()`. Emplacement d'une réponse : `_responses/<chemin de la série>/poll.json` (document v1) ; un outil PEUT déposer à côté un rendu lisible, `poll.md`.
+- **Contrat d'écriture (§4.2)** : un outil n'écrit dans la source que sous `_responses/`, jamais dans une série ; écriture atomique quand le provider le permet ; un chemin qui traverse un lien symbolique est refusé (§4.0) ; l'enregistrement d'une réponse par le serveur ne contacte pas le provider (invariant 2).
+- **§4.8 (*Écriture de retour*)** : elle demande `localWrite` ou `remoteWrite` ; son absence ne dégrade que le retour, jamais la publication ; une écriture sous `_responses/` ne constitue pas un changement de la source — un lot qui ne porte que des chemins exclus ne déclenche rien. Reconstruction d'un snapshot : un changement sur un chemin exclu n'entre pas dans `Δ`.
+- **§4.0 (*Portée minimale*)** : la lecture seule reste la règle de l'ingestion ; seule exception, l'outil qui dépose des retours demande l'écriture et n'écrit que sous `_responses/`. §4.13 : projection Dropbox (`files.content.write`), non normative.
+- **§1.12 (*Données de retour*)** : une réponse est une donnée du client, jamais un contenu publiable, jamais dans une sortie de build ; un lecteur ne parcourt, ne rend ni ne copie `_responses/`. §0 (règles invariantes) et §2.0 (obligation *Ne pas publier les données de retour*, conformité v2.18) alignés.
+
+**Décisions normatives** :
+- **Exclusion par défaut, pas recommandée.** Une exclusion « recommandée » (§4.2, v2.17) est au choix du consommateur : un outil qui ne l'aurait pas configurée publierait les réponses de clients. Celle-ci ne se configure pas et ne se lève pas.
+- **Racine seulement.** Seul le premier segment du chemin compte. Écarté : réserver le nom à tout niveau, qui retirerait du snapshot, sans diagnostic, un dossier de série ou de rangement nommé ainsi, et rendrait l'exclusion dépendante du reste du chemin.
+- **Casse ignorée** (minuscule simple de §4.1), à la différence de `Thumbs.db`. Sur une source insensible à la casse, une écriture vers `_responses/` atterrit dans un `_Responses` déjà créé à la main : une comparaison exacte publierait ce qu'il contient. Dans le doute, l'exclusion l'emporte.
+- **Le nom `_responses/`.** Écarté : `_sondages/`, le nom qu'emploie le site d'origine. Il est français dans un format dont les noms réservés sont anglais (`media`, `index`, `images.json`), et il ne nomme qu'un cas : le dossier est fait pour les retours à venir, pas seulement les sondages. D'où `poll.json` **sous** un dossier par série, plutôt qu'un fichier par sondage à plat.
+- **Le serveur n'écrit pas dans la source.** Écartée : l'écriture directe, par le serveur qui reçoit la réponse, dans la source éditoriale. Elle mettrait des identifiants du provider dans le runtime et un appel au provider dans une requête de visiteur, contre l'invariant 2 de §4.0 ; et la règle de téléchargement demande de toute façon un état que le serveur lit sans le provider. Le serveur garde la réponse, un outil hors requête la recopie.
+- **JSON qui fait foi, Markdown facultatif.** `poll.json` est le document ; `poll.md` n'est qu'un rendu pour qui ouvre le dossier, que rien ne relit.
+- **Un échec de retour ne bloque rien.** L'écriture de retour est hors du chemin de publication : ni diagnostic `error`, ni état `failed`.
+
+**Rupture assumée** : un corpus qui portait un dossier `_responses/` à sa racine pour un autre usage le voit sortir du snapshot — donc supprimé de la production au diff suivant, sous la garde de §4.11. Aucun corpus connu n'est concerné. Un snapshot existant qui en porte des entrées devient invalide (`entry-path-invalid`).
+
+**Écarts ouverts** (§0.5) : aucun dans le code — le plugin Astro et `mathieu-drouet.com` suivent la 2.18 sur leurs branches de travail du 2026-11-18. Restent la fusion, la publication du plugin, puis le remplacement par le plugin des copies que le site garde.
+
+**Fixtures** : corpus `responses` (un `_responses/…/poll.json` et son `poll.md` à côté d'une série de livraison) avec `snapshots/responses.json` — trois entrées, aucune sous `_responses/` — et `validation/responses.json`, sans diagnostic ; `paths/responses.json` (premier segment, casse, `_responsesX`, `a/_responses/x`, `_sondages`) ; `providers/responses.json` (énumération d'un filesystem) ; `validation/responses-in-snapshot.json` (`entry-path-invalid`). Les fixtures existantes sont inchangées. Aucune famille ne décrit un lot de changements d'un provider : la règle « ne déclenche rien » de §4.8 n'a pas de fixture propre, elle découle de l'exclusion (deux listings de part et d'autre d'une écriture de retour ont le même `id`).
 
 ### 2.17-draft — 2026-10-30
 
