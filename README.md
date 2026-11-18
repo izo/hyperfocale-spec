@@ -67,10 +67,10 @@ La spec est organisée en quatre couches, précédées d'une spec générique :
 
 La couche 4 s'accompagne de **fixtures de conformité** cross-language, dans [`fixtures/ingestion/`](./fixtures/ingestion/) : corpus d'entrée et résultats attendus que toute implémentation — TypeScript, Swift ou autre — doit reproduire à l'identique. La couche 1 a les siennes pour ses fonctions pures (tri, parent d'une série, routes) dans [`fixtures/format/`](./fixtures/format/), et la récupération d'URL dans [`fixtures/security/`](./fixtures/security/).
 
-Au-delà de la série photo, l'**Annexe G** standardise **onze profils de contenu** réutilisant le même squelette — la série (`series`) et dix extensions hors noyau : Événement (`event`), Recette (`recipe`), Application (`app`), Livre (`book`), Lieu (`place`), Écran (`screen`), Portfolio (`portfolio`), Musique (`music`), Catalogue (`catalog`), Presse (`press`).
+Au-delà de la série photo, l'**Annexe G** standardise **onze profils de contenu** réutilisant le même squelette — la série (`series`) et dix extensions hors noyau : Événement (`event`), Recette (`recipe`), Application (`app`), Livre (`book`), Lieu (`place`), Écran (`screen`), Portfolio (`portfolio`), Musique (`music`), Catalogue (`catalog`), Presse (`press`). Un douzième, Livraison (`delivery`, G.13), ne décrit pas un type de contenu : il s'ajoute à une série remise à un client — archive à télécharger, sondage noté de 1 à 5 — et ses réponses reviennent dans la source sous `_responses/`, dossier que l'ingestion ne publie jamais (§4.2).
 
 Le travail qui **précède** la publication — projets, originaux (RAW, sidecars `.xmp`), sélection — relève d'**[Hyperfocus](https://github.com/izo/hyperfocus)** ([`spec-hyperfocus.md`](https://github.com/izo/hyperfocus/blob/main/spec-hyperfocus.md)), qui découle de cette spec : l'ancien profil Projet (G.12) y est passé en 2.14. Un dossier de travail ne se publie jamais tel quel, mais par export vers une série ; ici, les lecteurs ignorent les originaux et la publication les écarte (§1.9, §4.11).
 
 ## Statut
 
-`v2.17-draft` — spécification active, source de vérité canonique. Voir le **Changelog** en fin de `spec-hyperfocale.md` pour l'historique des révisions.
+`v2.18-draft` — spécification active, source de vérité canonique. Voir le **Changelog** en fin de `spec-hyperfocale.md` pour l'historique des révisions.

@@ -10,7 +10,7 @@ Dépôt de **spécification uniquement** — pas de code, pas de build, pas de d
 >
 > `spec-hyperfocale.md` est **la source de vérité unique** du format Hyperfocale. Toutes les implémentations (plugin Astro, site mathieu-drouet.com, exporter Lightroom, projet Recipes) suivent cette spec — elles ne la précèdent pas. Toute évolution du format passe par une modification ici, en premier.
 >
-> Version courante : **2.17-draft** (révisée le 2026-10-30). Le header de `spec-hyperfocale.md` fait foi — cette ligne dérive (constatée 6 versions en retard le 2026-08-22) : la resynchroniser à chaque bump.
+> Version courante : **2.18-draft** (révisée le 2026-11-18). Le header de `spec-hyperfocale.md` fait foi — cette ligne dérive (constatée 6 versions en retard le 2026-08-22) : la resynchroniser à chaque bump.
 
 ## Contenu
 
@@ -44,7 +44,7 @@ Repérer les sections avec `grep -n '^## \|^### ' spec-hyperfocale.md` plutôt q
 - Header : version, date de révision, tableau des implémentations (résumé d'une ligne par implémentation)
 - §0 spec générique (normative, autosuffisante) → §0.5 état détaillé des implémentations
 - Couches 1 (format), 2 (adaptateurs), 3 (composants UI), 4 (ingestion — §4.12 décrit les fixtures)
-- Annexes, dont l'Annexe G : profils G.1 à G.11, extensions hors noyau ; G.12 n'est plus qu'un renvoi vers Hyperfocus
+- Annexes, dont l'Annexe G : profils G.1 à G.11, extensions hors noyau ; G.12 n'est plus qu'un renvoi vers Hyperfocus ; G.13 (Livraison) s'ajoute à une série, sans preset
 - Changelog en fin de fichier, entrée la plus récente en tête ; chaque entrée : `### <version> — <date>`, puis `**Ajouts**`, `**Décisions normatives**` (alternatives écartées et pourquoi), et l'impact sur les fixtures
 
 ## Versioning de la spec
